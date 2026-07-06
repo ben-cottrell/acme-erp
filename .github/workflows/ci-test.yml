@@ -1,0 +1,74 @@
+name: CI Unit Tests
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        description: .NET SDK version used for unit tests.
+        required: false
+        type: string
+        default: 10.0.x
+      configuration:
+        description: Test configuration.
+        required: false
+        type: string
+        default: Release
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.sln', '**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore Acme.Erp.sln
+
+      - name: Run tests with coverage collection
+        run: dotnet test Acme.Erp.sln --configuration ${{ inputs.configuration }} --no-restore --logger "trx;LogFilePrefix=unit-tests" --results-directory TestResults --collect:"XPlat Code Coverage" /p:TreatWarningsAsErrors=true
+
+      - name: Prepare coverage artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path coverage-artifact -Force | Out-Null
+          $coverageFiles = @(Get-ChildItem -Path TestResults -Recurse -Filter coverage.cobertura.xml -ErrorAction SilentlyContinue)
+
+          for ($index = 0; $index -lt $coverageFiles.Count; $index++) {
+            Copy-Item $coverageFiles[$index].FullName -Destination (Join-Path coverage-artifact "coverage-$($index + 1).cobertura.xml")
+          }
+
+          if ($coverageFiles.Count -eq 0) {
+            New-Item -ItemType File -Path coverage-artifact/.keep -Force | Out-Null
+          }
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+      - name: Upload coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-results
+          path: coverage-artifact

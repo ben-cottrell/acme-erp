@@ -1,0 +1,117 @@
+name: CI Docker Images
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        description: .NET SDK version used by GitVersion.
+        required: false
+        type: string
+        default: 10.0.x
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker-images:
+    name: Build Inspect Publish Image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: sales-api
+            dockerfile: src/Sales/Sales.Api/Dockerfile
+          - image: sales-ui
+            dockerfile: src/Sales/Sales.Ui/Dockerfile
+          - image: purchasing-api
+            dockerfile: src/Purchasing/Purchasing.Api/Dockerfile
+          - image: purchasing-ui
+            dockerfile: src/Purchasing/Purchasing.Ui/Dockerfile
+          - image: inventory-management-api
+            dockerfile: src/InventoryManagement/InventoryManagement.Api/Dockerfile
+          - image: inventory-management-ui
+            dockerfile: src/InventoryManagement/InventoryManagement.Ui/Dockerfile
+          - image: order-fulfilment-api
+            dockerfile: src/OrderFulfilment/OrderFulfilment.Api/Dockerfile
+          - image: order-fulfilment-ui
+            dockerfile: src/OrderFulfilment/OrderFulfilment.Ui/Dockerfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v4
+        with:
+          versionSpec: 6.x
+
+      - name: Determine GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v4
+
+      - name: Determine short SHA
+        id: sha
+        shell: pwsh
+        run: |
+          $shortSha = git rev-parse --short=12 HEAD
+          "shortSha=$shortSha" >> $env:GITHUB_OUTPUT
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve image name
+        id: image
+        shell: pwsh
+        run: |
+          $repository = '${{ github.repository }}'.ToLowerInvariant()
+          "name=ghcr.io/$repository/${{ matrix.image }}" >> $env:GITHUB_OUTPUT
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build Docker image
+        shell: pwsh
+        env:
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+          SEMVER: ${{ steps.gitversion.outputs.semVer }}
+          SHORT_SHA: ${{ steps.sha.outputs.shortSha }}
+        run: |
+          docker build `
+            --file '${{ matrix.dockerfile }}' `
+            --tag "${env:IMAGE_NAME}:${env:SEMVER}" `
+            --tag "${env:IMAGE_NAME}:sha-${env:SHORT_SHA}" `
+            .
+
+      - name: Inspect Docker image
+        shell: pwsh
+        env:
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+          SEMVER: ${{ steps.gitversion.outputs.semVer }}
+          SHORT_SHA: ${{ steps.sha.outputs.shortSha }}
+        run: |
+          docker image inspect "${env:IMAGE_NAME}:${env:SEMVER}"
+          docker image inspect "${env:IMAGE_NAME}:sha-${env:SHORT_SHA}"
+
+      - name: Publish Docker image
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+          SEMVER: ${{ steps.gitversion.outputs.semVer }}
+          SHORT_SHA: ${{ steps.sha.outputs.shortSha }}
+        run: |
+          docker push "${env:IMAGE_NAME}:${env:SEMVER}"
+          docker push "${env:IMAGE_NAME}:sha-${env:SHORT_SHA}"

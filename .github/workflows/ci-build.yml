@@ -1,0 +1,45 @@
+name: CI Build
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        description: .NET SDK version used for build.
+        required: false
+        type: string
+        default: 10.0.x
+      configuration:
+        description: Build configuration.
+        required: false
+        type: string
+        default: Release
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Solution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.sln', '**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore Acme.Erp.sln
+
+      - name: Build with warnings as errors
+        run: dotnet build Acme.Erp.sln --configuration ${{ inputs.configuration }} --no-restore -warnaserror /p:TreatWarningsAsErrors=true /p:ContinuousIntegrationBuild=true

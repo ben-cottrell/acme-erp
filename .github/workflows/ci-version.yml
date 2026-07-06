@@ -1,0 +1,62 @@
+name: CI Version
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        description: .NET SDK version used by GitVersion.
+        required: false
+        type: string
+        default: 10.0.x
+    outputs:
+      semver:
+        description: GitVersion semantic version.
+        value: ${{ jobs.version.outputs.semver }}
+      full_semver:
+        description: GitVersion full semantic version.
+        value: ${{ jobs.version.outputs.full_semver }}
+      informational_version:
+        description: GitVersion informational version.
+        value: ${{ jobs.version.outputs.informational_version }}
+      short_sha:
+        description: Short commit SHA used in Docker tags.
+        value: ${{ jobs.version.outputs.short_sha }}
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Determine Version
+    runs-on: ubuntu-latest
+    outputs:
+      semver: ${{ steps.gitversion.outputs.semVer }}
+      full_semver: ${{ steps.gitversion.outputs.fullSemVer }}
+      informational_version: ${{ steps.gitversion.outputs.informationalVersion }}
+      short_sha: ${{ steps.sha.outputs.shortSha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v4
+        with:
+          versionSpec: 6.x
+
+      - name: Determine GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v4
+
+      - name: Determine short SHA
+        id: sha
+        shell: pwsh
+        run: |
+          $shortSha = git rev-parse --short=12 HEAD
+          "shortSha=$shortSha" >> $env:GITHUB_OUTPUT

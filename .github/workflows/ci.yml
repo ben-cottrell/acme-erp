@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - feature/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  version:
+    name: Version
+    uses: ./.github/workflows/ci-version.yml
+    with:
+      dotnet-version: 10.0.x
+
+  vulnerability-scan:
+    name: Vulnerability Scan
+    needs: version
+    uses: ./.github/workflows/ci-vulnerability-scan.yml
+    with:
+      dotnet-version: 10.0.x
+
+  build:
+    name: Build
+    needs: vulnerability-scan
+    uses: ./.github/workflows/ci-build.yml
+    with:
+      dotnet-version: 10.0.x
+      configuration: Release
+
+  test:
+    name: Unit Tests
+    needs: build
+    uses: ./.github/workflows/ci-test.yml
+    with:
+      dotnet-version: 10.0.x
+      configuration: Release
+
+  coverage:
+    name: Coverage Gate
+    needs: test
+    uses: ./.github/workflows/ci-coverage.yml
+    with:
+      dotnet-version: 10.0.x
+      minimum-line-coverage: 90
+
+  docker-images:
+    name: Docker Images
+    needs:
+      - version
+      - coverage
+    uses: ./.github/workflows/ci-docker-images.yml
+    with:
+      dotnet-version: 10.0.x
