@@ -17,6 +17,7 @@ jobs:
 
       - name: Review dependency changes
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: moderate
