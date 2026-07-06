@@ -42,7 +42,7 @@ The task is complete only when all of the following are true:
 Run from the repository root.
 
 ```powershell
-Set-Location C:\dev\reqs
+Set-Location C:\dev\acme-erp
 
 docker version
 docker info
