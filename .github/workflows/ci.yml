@@ -11,8 +11,11 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
   packages: write
+  pull-requests: read
+  security-events: write
 
 jobs:
   version:
@@ -28,10 +31,25 @@ jobs:
     with:
       dotnet-version: 10.0.x
 
+  dependency-review:
+    name: Dependency Review
+    needs: version
+    uses: ./.github/workflows/ci-dependency-review.yml
+
   build:
     name: Build
-    needs: vulnerability-scan
+    needs:
+      - dependency-review
+      - vulnerability-scan
     uses: ./.github/workflows/ci-build.yml
+    with:
+      dotnet-version: 10.0.x
+      configuration: Release
+
+  codeql:
+    name: CodeQL
+    needs: build
+    uses: ./.github/workflows/ci-codeql.yml
     with:
       dotnet-version: 10.0.x
       configuration: Release
@@ -55,6 +73,7 @@ jobs:
   docker-images:
     name: Docker Images
     needs:
+      - codeql
       - version
       - coverage
     uses: ./.github/workflows/ci-docker-images.yml
