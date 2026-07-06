@@ -13,13 +13,13 @@ This folder contains the first implementation slice for the local Docker Desktop
 
 ## Solution
 
-All .NET projects belong to the top-level Visual Studio solution at `../Acme.Erp.sln`. Do not create per-module solution files.
+All .NET projects belong to the top-level Visual Studio solution at `../Acme.Erp.slnx`. Do not create per-module solution files.
 
 Useful checks:
 
 ```powershell
-dotnet sln ..\Acme.Erp.sln list
-dotnet build ..\Acme.Erp.sln
+dotnet sln ..\Acme.Erp.slnx list
+dotnet build ..\Acme.Erp.slnx
 ```
 
 ## Placeholder Services

@@ -33,7 +33,7 @@ The task is complete only when all of the following are true:
 - SQL Server is Ready and `sqlserver-bootstrap` completed.
 - All eight placeholder ASP.NET Core deployments are Ready.
 - All eight local `acme-erp/*` images were rebuilt after deletion.
-- `dotnet build Acme.Erp.sln` succeeds.
+- `dotnet build Acme.Erp.slnx` succeeds.
 - `skaffold diagnose -f build/skaffold.yaml` succeeds.
 - `build/scripts/validate-local.ps1` succeeds.
 
@@ -137,8 +137,8 @@ Do not run broad Docker cleanup such as `docker system prune -a --volumes` unles
 Validate the solution and Skaffold config before deploying.
 
 ```powershell
-dotnet sln Acme.Erp.sln list
-dotnet build Acme.Erp.sln
+dotnet sln Acme.Erp.slnx list
+dotnet build Acme.Erp.slnx
 skaffold diagnose -f build/skaffold.yaml
 ```
 

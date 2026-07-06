@@ -65,8 +65,8 @@ function Invoke-ClusterHttpCheck {
 
 Push-Location $RepoRoot
 try {
-    Invoke-NativeCommand dotnet sln Acme.Erp.sln list
-    Invoke-NativeCommand dotnet build Acme.Erp.sln
+    Invoke-NativeCommand dotnet sln Acme.Erp.slnx list
+    Invoke-NativeCommand dotnet build Acme.Erp.slnx
 
     Invoke-NativeCommand kubectl get namespace $Namespace
     Invoke-NativeCommand kubectl get secret erp-sqlserver --namespace $Namespace

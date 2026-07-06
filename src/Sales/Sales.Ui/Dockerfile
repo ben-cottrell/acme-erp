@@ -5,7 +5,7 @@ EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY Acme.Erp.sln ./
+COPY Acme.Erp.slnx ./
 COPY src ./src
 RUN dotnet restore "src/Sales/Sales.Ui/Sales.Ui.csproj"
 RUN dotnet publish "src/Sales/Sales.Ui/Sales.Ui.csproj" -c Release -o /app/publish --no-restore /p:UseAppHost=false

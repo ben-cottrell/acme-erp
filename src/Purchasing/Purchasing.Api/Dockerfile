@@ -5,7 +5,7 @@ EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY Acme.Erp.sln ./
+COPY Acme.Erp.slnx ./
 COPY src ./src
 RUN dotnet restore "src/Purchasing/Purchasing.Api/Purchasing.Api.csproj"
 RUN dotnet publish "src/Purchasing/Purchasing.Api/Purchasing.Api.csproj" -c Release -o /app/publish --no-restore /p:UseAppHost=false

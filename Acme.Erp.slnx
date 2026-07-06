@@ -1,0 +1,24 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/" />
+  <Folder Name="/src/InventoryManagement/">
+    <Project Path="src/InventoryManagement/InventoryManagement.Api/InventoryManagement.Api.csproj" />
+    <Project Path="src/InventoryManagement/InventoryManagement.Ui/InventoryManagement.Ui.csproj" />
+  </Folder>
+  <Folder Name="/src/OrderFulfilment/">
+    <Project Path="src/OrderFulfilment/OrderFulfilment.Api/OrderFulfilment.Api.csproj" />
+    <Project Path="src/OrderFulfilment/OrderFulfilment.Ui/OrderFulfilment.Ui.csproj" />
+  </Folder>
+  <Folder Name="/src/Purchasing/">
+    <Project Path="src/Purchasing/Purchasing.Api/Purchasing.Api.csproj" />
+    <Project Path="src/Purchasing/Purchasing.Ui/Purchasing.Ui.csproj" />
+  </Folder>
+  <Folder Name="/src/Sales/">
+    <Project Path="src/Sales/Sales.Api/Sales.Api.csproj" />
+    <Project Path="src/Sales/Sales.Ui/Sales.Ui.csproj" />
+  </Folder>
+</Solution>

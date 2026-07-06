@@ -34,12 +34,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.sln', '**/*.csproj', '**/*.props', '**/*.targets') }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.slnx', '**/*.csproj', '**/*.props', '**/*.targets') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
 
       - name: Restore dependencies
-        run: dotnet restore Acme.Erp.sln
+        run: dotnet restore Acme.Erp.slnx
 
       - name: Build with warnings as errors
-        run: dotnet build Acme.Erp.sln --configuration ${{ inputs.configuration }} --no-restore -warnaserror /p:TreatWarningsAsErrors=true /p:ContinuousIntegrationBuild=true
+        run: dotnet build Acme.Erp.slnx --configuration ${{ inputs.configuration }} --no-restore -warnaserror /p:TreatWarningsAsErrors=true /p:ContinuousIntegrationBuild=true

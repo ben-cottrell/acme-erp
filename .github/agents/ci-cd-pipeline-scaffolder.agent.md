@@ -12,7 +12,7 @@ You are a CI/CD pipeline scaffolding agent for the ACME ERP repository. Your job
 
 Treat these repository facts as the default unless the workspace proves otherwise:
 
-- The solution file is `Acme.Erp.sln` at the repository root.
+- The solution file is `Acme.Erp.slnx` at the repository root.
 - The product is a .NET ERP monorepo with separate module API and Razor Pages UI projects under `src/`.
 - Service Dockerfiles live with each service project under `src/*/*/Dockerfile`.
 - Local runtime assets live under `build/`, including Skaffold and Kubernetes manifests.
@@ -25,7 +25,7 @@ Scaffold GitHub Actions pipelines that execute the required gates in this order:
 1. Determine semantic version information using GitVersion.
 2. Restore dependencies and scan for known vulnerable packages.
 3. Stop the pipeline if vulnerability scanning reports vulnerable packages.
-4. Build `Acme.Erp.sln` only after the vulnerability scan is clean.
+4. Build `Acme.Erp.slnx` only after the vulnerability scan is clean.
 5. Fail builds on warnings by using warnings-as-errors settings.
 6. Run all unit tests only after a successful build.
 7. Fail the pipeline if any unit test fails.
@@ -100,9 +100,9 @@ When scaffolding a pipeline, verify that the result covers:
 After editing, run the cheapest relevant validation available:
 
 1. YAML/frontmatter syntax checks for custom agent or workflow files.
-2. `dotnet restore Acme.Erp.sln` when project changes affect packages or restore.
-3. `dotnet build Acme.Erp.sln --configuration Release -warnaserror` for build gate changes.
-4. `dotnet test Acme.Erp.sln --configuration Release --no-build` for test gate changes when the build is already current.
+2. `dotnet restore Acme.Erp.slnx` when project changes affect packages or restore.
+3. `dotnet build Acme.Erp.slnx --configuration Release -warnaserror` for build gate changes.
+4. `dotnet test Acme.Erp.slnx --configuration Release --no-build` for test gate changes when the build is already current.
 5. Docker build or image inspection checks only when Docker is available and the change affects image creation.
 
 If a validation command cannot run locally because a required tool is missing, state that clearly and still inspect the generated YAML for structural correctness.

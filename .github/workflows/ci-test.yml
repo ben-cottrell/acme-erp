@@ -35,15 +35,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.sln', '**/*.csproj', '**/*.props', '**/*.targets') }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.slnx', '**/*.csproj', '**/*.props', '**/*.targets') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
 
       - name: Restore dependencies
-        run: dotnet restore Acme.Erp.sln
+        run: dotnet restore Acme.Erp.slnx
 
       - name: Run tests with coverage collection
-        run: dotnet test Acme.Erp.sln --configuration ${{ inputs.configuration }} --no-restore --logger "trx;LogFilePrefix=unit-tests" --results-directory TestResults --collect:"XPlat Code Coverage" /p:TreatWarningsAsErrors=true
+        run: dotnet test Acme.Erp.slnx --configuration ${{ inputs.configuration }} --no-restore --logger "trx;LogFilePrefix=unit-tests" --results-directory TestResults --collect:"XPlat Code Coverage" /p:TreatWarningsAsErrors=true
 
       - name: Prepare coverage artifact
         shell: pwsh
