@@ -112,10 +112,10 @@ Write architecture specifications as practical engineering documents, not abstra
 
 ## Default Deliverables
 
-Unless the user asks for a different structure, create or update architecture documentation under an `architecture/` folder with this shape:
+Unless the user asks for a different structure, create or update architecture documentation under an `docs/architecture/` folder with this shape:
 
 ```text
-architecture/
+docs/architecture/
   overview.md
   module-boundaries.md
   monorepo-structure.md

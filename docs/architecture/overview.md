@@ -122,21 +122,21 @@ Recommended feature-oriented examples:
 
 Avoid broad technical buckets such as `Models`, `Helpers`, `Utils`, or a catch-all `Controllers` folder as the primary organization method.
 
-## Documentation Backlog
+## Architecture Document Set
 
-The architecture specification agent should expand this baseline into these documents:
+This baseline is expanded by these architecture documents:
 
 | Document | Purpose |
 |---|---|
-| `architecture/module-boundaries.md` | Detailed service/database/API/UI ownership by ERP module |
-| `architecture/monorepo-structure.md` | Repository, project, namespace, Docker image, and deployment asset conventions |
-| `architecture/service-internal-architecture.md` | Layering and vertical-slice organization rules |
-| `architecture/data-architecture.md` | SQL Server, EF Core, migrations, keys, external IDs, and consistency rules |
-| `architecture/api-gateway-and-identity.md` | Gravitee, Authentik, OAuth/OIDC, OpenAPI, and ingress conventions |
-| `architecture/local-kubernetes-runtime.md` | Docker Desktop, Kubernetes, Skaffold, local dependencies, and developer flow |
-| `architecture/testing-and-quality.md` | XUnit v3, analyzers, validation gates, and smoke tests |
-| `architecture/cross-cutting-projects.md` | Shared projects for concerns that affect multiple APIs/services |
-| `architecture/decisions-and-open-questions.md` | Architecture decisions, assumptions, risks, and unresolved policy decisions |
+| `module-boundaries.md` | Detailed service/database/API/UI ownership by ERP module |
+| `monorepo-structure.md` | Repository, project, namespace, Docker image, and deployment asset conventions |
+| `service-internal-architecture.md` | Layering and vertical-slice organization rules |
+| `data-architecture.md` | SQL Server, EF Core, migrations, keys, external IDs, and consistency rules |
+| `api-gateway-and-identity.md` | Gravitee, Authentik, OAuth/OIDC, OpenAPI, and ingress conventions |
+| `local-kubernetes-runtime.md` | Docker Desktop, Kubernetes, Skaffold, local dependencies, and developer flow |
+| `testing-and-quality.md` | XUnit v3, analyzers, validation gates, and smoke tests |
+| `cross-cutting-projects.md` | Shared projects for concerns that affect multiple APIs/services |
+| `decisions-and-open-questions.md` | Architecture decisions, assumptions, risks, and unresolved policy decisions |
 
 ## Architecture Decisions
 
