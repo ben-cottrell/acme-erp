@@ -72,7 +72,7 @@ Primary statuses include Released, Picking, Pick Exception, Picked, Packing, Pac
 | FUL-BR-001 | Fulfillment shall begin only for sales orders released by Sales. | Fulfillment intake | Sales owns order creation and release. |
 | FUL-BR-002 | Components of a sales order shall be taken from inventory. | Picking | Defined in source context. |
 | FUL-BR-003 | Picked components shall be validated against sales order requirements before packing or completion. | Picking/Packing | Supports operational accuracy. |
-| FUL-BR-004 | Courier shipping shall be purchased before a courier shipping label is printed, unless a manual exception process is authorized. | Shipping | MVP supports one courier provider path. UPS is the default first provider unless ACME supplies a different existing courier account before implementation starts. |
+| FUL-BR-004 | Courier shipping shall be purchased before a courier shipping label is printed, unless a manual exception process is authorized. | Shipping | MVP supports one courier provider path. Royal Mail is the default first provider unless ACME supplies a different existing courier account before implementation starts. |
 | FUL-BR-005 | Orders shall not be marked completed until required fulfillment steps are complete or authorized exceptions are recorded. | Completion | Completion requires picked quantities, packing confirmation, courier shipment purchase, label availability or approved manual exception, and successful or queued Sales and Inventory updates. |
 | FUL-BR-006 | Inventory consumption shall be traceable to the fulfillment task and sales order. | Inventory integration | Supports auditability and stock control. |
 
@@ -196,7 +196,7 @@ Fulfilment Supervisor approval is required for pick exceptions, short picks, sub
 
 ## 18. Fulfilment Decisions
 
-- MVP supports one courier provider path. UPS is the default first provider unless ACME supplies a different existing courier account before implementation starts.
+- MVP supports one courier provider path. Royal Mail is the default first provider unless ACME supplies a different existing courier account before implementation starts.
 - Shipping purchase requires ship-from, ship-to, package weight and dimensions, service level, customer contact, sales order reference, and package count where applicable.
 - Shipping costs and selected service levels shall be recorded for operational visibility. Customer delivery promise logic is out of scope for the initial release.
 - Inventory is consumed at fulfilment completion after pick, pack, shipping purchase, and label generation are complete or an approved manual exception exists.
@@ -208,7 +208,7 @@ Fulfilment Supervisor approval is required for pick exceptions, short picks, sub
 
 ## 19. MVP Scope Decisions
 
-- UPS is the default first courier provider unless ACME supplies a different existing courier account before implementation starts. Additional courier providers are future scope.
+- Royal Mail is the default first courier provider unless ACME supplies a different existing courier account before implementation starts. Additional courier providers are future scope.
 - Physical label printer model support is out of scope for MVP. MVP label printing uses PDF labels through browser or operating system print handling.
 
 ## 20. Acceptance Summary

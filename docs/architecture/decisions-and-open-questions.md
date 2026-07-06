@@ -57,7 +57,7 @@ This document records ACME-specific decisions that resolve generated architectur
 | Inventory | Damaged goods, quarantine stock, and rejected receipts are non-available stock states pending review or supplier return/disposal action. |
 | Order Fulfilment | Inventory is consumed at fulfilment completion after pick, pack, shipping purchase, and label generation are complete or an approved manual exception exists. |
 | Order Fulfilment | Partial fulfilment is allowed and reports remaining quantity to Sales as backordered. |
-| Order Fulfilment | Courier integration is limited to one provider path for MVP. UPS is the default first provider unless ACME supplies a different existing courier account before implementation starts. FedEx, DHL, and additional provider adapters are future scope. |
+| Order Fulfilment | Courier integration is limited to one provider path for MVP. Royal Mail is the default first provider unless ACME supplies a different existing courier account before implementation starts. FedEx, DHL, and additional provider adapters are future scope. |
 | Order Fulfilment | Shipping purchase requires ship-from, ship-to, package weight and dimensions, service level, customer contact, sales order reference, and package count where applicable. MVP label output uses PDF/browser printing; ZPL and printer-model-specific handling are future scope. |
 
 ## MVP Scope Decisions
@@ -68,7 +68,7 @@ This document records ACME-specific decisions that resolve generated architectur
 | Privacy controls | MVP captures minimal B2B customer contact, billing, shipping, and order data and applies baseline access control, audit, export logging, and retention rules. Jurisdiction-specific automation is not included unless ACME confirms a legal requirement. | Automated GDPR/CCPA workflows, self-service privacy portals, deletion automation, and jurisdiction-specific consent management. |
 | Role design ownership | Use role-based approval ownership in the MVP: Sales Supervisor, Purchasing Manager, Inventory Supervisor, Fulfilment Supervisor, and Security Administrator. Named-person assignment is operational configuration, not a requirements feature. | Named delegation matrices, approval calendars, and department-specific governance workflows. |
 | Finance integration | No automated Finance integration or event export in MVP. Finance visibility is provided through operational reports and CSV exports. | AP, AR, invoicing, tax, payment, invoice matching, accounting postings, and automated finance events. |
-| Courier provider | Implement one provider path first. UPS is the default unless ACME supplies a different existing courier account before implementation starts. | Multi-provider rating, provider failover, FedEx/DHL adapters, and rate negotiation workflows. |
+| Courier provider | Implement one provider path first. Royal Mail is the default unless ACME supplies a different existing courier account before implementation starts. | Multi-provider rating, provider failover, FedEx/DHL adapters, and rate negotiation workflows. |
 | Label printer support | MVP uses PDF labels and browser/OS printing. | ZPL, direct thermal-printer integration, model-specific printer configuration, and print server management. |
 
 ## Verification Notes
