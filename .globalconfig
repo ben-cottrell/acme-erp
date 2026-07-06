@@ -1,0 +1,4 @@
+is_global = true
+
+# ASP.NET controllers and Razor PageModels are intentionally public framework-discovered entry points.
+dotnet_diagnostic.CA1515.severity = none
