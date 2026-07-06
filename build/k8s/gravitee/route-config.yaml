@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gravitee-acme-erp-routes
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: gravitee-acme-erp-routes
+    app.kubernetes.io/part-of: acme-erp
+data:
+  routes.json: |
+    {
+      "gatewayHost": "erp.local.test",
+      "oidcIssuer": "http://authentik-server.erp-local.svc.cluster.local/application/o/acme-erp/",
+      "routes": [
+        { "name": "sales-api", "path": "/sales/api", "target": "http://sales-api.erp-local.svc.cluster.local/sales/api", "openApi": "http://sales-api.erp-local.svc.cluster.local/openapi/v1.json" },
+        { "name": "sales-ui", "path": "/sales/ui", "target": "http://sales-ui.erp-local.svc.cluster.local/sales/ui" },
+        { "name": "purchasing-api", "path": "/purchasing/api", "target": "http://purchasing-api.erp-local.svc.cluster.local/purchasing/api", "openApi": "http://purchasing-api.erp-local.svc.cluster.local/openapi/v1.json" },
+        { "name": "purchasing-ui", "path": "/purchasing/ui", "target": "http://purchasing-ui.erp-local.svc.cluster.local/purchasing/ui" },
+        { "name": "inventory-management-api", "path": "/inventory/api", "target": "http://inventory-management-api.erp-local.svc.cluster.local/inventory/api", "openApi": "http://inventory-management-api.erp-local.svc.cluster.local/openapi/v1.json" },
+        { "name": "inventory-management-ui", "path": "/inventory/ui", "target": "http://inventory-management-ui.erp-local.svc.cluster.local/inventory/ui" },
+        { "name": "order-fulfilment-api", "path": "/fulfilment/api", "target": "http://order-fulfilment-api.erp-local.svc.cluster.local/fulfilment/api", "openApi": "http://order-fulfilment-api.erp-local.svc.cluster.local/openapi/v1.json" },
+        { "name": "order-fulfilment-ui", "path": "/fulfilment/ui", "target": "http://order-fulfilment-ui.erp-local.svc.cluster.local/fulfilment/ui" }
+      ]
+    }

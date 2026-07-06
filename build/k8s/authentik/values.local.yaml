@@ -1,0 +1,34 @@
+authentik:
+  log_level: info
+  error_reporting:
+    enabled: false
+  disable_update_check: true
+  avatars: none
+  email:
+    host: localhost
+    port: 25
+    use_tls: false
+    use_ssl: false
+
+server:
+  replicas: 1
+  ingress:
+    enabled: false
+  service:
+    type: ClusterIP
+
+worker:
+  replicas: 1
+
+postgresql:
+  enabled: true
+  auth:
+    username: authentik
+    database: authentik
+
+redis:
+  enabled: true
+
+blueprints:
+  configMaps:
+    - authentik-blueprint-acme-erp-local

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sqlserver-bootstrap
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: sqlserver-bootstrap
+    app.kubernetes.io/part-of: acme-erp
+data:
+  bootstrap.sql: |
+    SET NOCOUNT ON;
+
+    IF DB_ID(N'sales_db') IS NULL CREATE DATABASE [sales_db];
+    IF DB_ID(N'purchasing_db') IS NULL CREATE DATABASE [purchasing_db];
+    IF DB_ID(N'inventory_db') IS NULL CREATE DATABASE [inventory_db];
+    IF DB_ID(N'fulfilment_db') IS NULL CREATE DATABASE [fulfilment_db];
+    GO

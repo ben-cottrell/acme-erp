@@ -1,0 +1,1 @@
+This folder is a placeholder for requirements relating to purchasing.   Buyers shall use this module to create purchase orders which record information such as the specific items ordered, SKU, barcode, quantity ordered, unit cost price, purchase date, and expected arrival date.   Purchase orders are used as part of inventory-management.

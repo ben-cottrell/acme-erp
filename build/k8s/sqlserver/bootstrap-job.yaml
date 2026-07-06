@@ -1,0 +1,76 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sqlserver-bootstrap
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: sqlserver-bootstrap
+    app.kubernetes.io/part-of: acme-erp
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sqlserver-bootstrap
+        app.kubernetes.io/part-of: acme-erp
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: sqlserver-bootstrap
+          image: mcr.microsoft.com/mssql-tools:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              SQLCMD=/opt/mssql-tools/bin/sqlcmd
+              if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then SQLCMD=/opt/mssql-tools18/bin/sqlcmd; fi
+              for attempt in {1..60}; do
+                if "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -Q "SELECT 1" >/dev/null 2>&1; then
+                  break
+                fi
+                sleep 5
+              done
+              "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -i /bootstrap/bootstrap.sql
+              "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -Q "IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'sales_app') CREATE LOGIN [sales_app] WITH PASSWORD = '$SALES_PASSWORD', CHECK_POLICY = OFF;"
+              "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -Q "IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'purchasing_app') CREATE LOGIN [purchasing_app] WITH PASSWORD = '$PURCHASING_PASSWORD', CHECK_POLICY = OFF;"
+              "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -Q "IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'inventory_app') CREATE LOGIN [inventory_app] WITH PASSWORD = '$INVENTORY_PASSWORD', CHECK_POLICY = OFF;"
+              "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -Q "IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'fulfilment_app') CREATE LOGIN [fulfilment_app] WITH PASSWORD = '$FULFILMENT_PASSWORD', CHECK_POLICY = OFF;"
+              "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -d sales_db -Q "IF USER_ID(N'sales_app') IS NULL CREATE USER [sales_app] FOR LOGIN [sales_app]; ALTER ROLE [db_owner] ADD MEMBER [sales_app];"
+              "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -d purchasing_db -Q "IF USER_ID(N'purchasing_app') IS NULL CREATE USER [purchasing_app] FOR LOGIN [purchasing_app]; ALTER ROLE [db_owner] ADD MEMBER [purchasing_app];"
+              "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -d inventory_db -Q "IF USER_ID(N'inventory_app') IS NULL CREATE USER [inventory_app] FOR LOGIN [inventory_app]; ALTER ROLE [db_owner] ADD MEMBER [inventory_app];"
+              "$SQLCMD" -S sqlserver.erp-local.svc.cluster.local,1433 -U sa -P "$SA_PASSWORD" -C -d fulfilment_db -Q "IF USER_ID(N'fulfilment_app') IS NULL CREATE USER [fulfilment_app] FOR LOGIN [fulfilment_app]; ALTER ROLE [db_owner] ADD MEMBER [fulfilment_app];"
+          env:
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: erp-sqlserver
+                  key: sa-password
+            - name: SALES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: erp-sqlserver
+                  key: sales-password
+            - name: PURCHASING_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: erp-sqlserver
+                  key: purchasing-password
+            - name: INVENTORY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: erp-sqlserver
+                  key: inventory-password
+            - name: FULFILMENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: erp-sqlserver
+                  key: fulfilment-password
+          volumeMounts:
+            - name: bootstrap
+              mountPath: /bootstrap
+      volumes:
+        - name: bootstrap
+          configMap:
+            name: sqlserver-bootstrap
