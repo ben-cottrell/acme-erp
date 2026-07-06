@@ -13,8 +13,8 @@ You are a CI/CD pipeline scaffolding agent for the ACME ERP repository. Your job
 Treat these repository facts as the default unless the workspace proves otherwise:
 
 - The solution file is `Acme.Erp.slnx` at the repository root.
-- The product is a .NET ERP monorepo with separate module API and Razor Pages UI projects under `src/`.
-- Service Dockerfiles live with each service project under `src/*/*/Dockerfile`.
+- The product is a .NET ERP monorepo with domain API projects under `src/Domain/` and application API/Razor Pages UI pairs under `src/Applications/`.
+- Service Dockerfiles live beside each service project under `src/Domain/*/*/Dockerfile` or `src/Applications/*/*/Dockerfile`.
 - Local runtime assets live under `build/`, including Skaffold and Kubernetes manifests.
 - Prefer PowerShell-compatible commands in documentation and scripts unless the workflow runner step is explicitly Bash.
 

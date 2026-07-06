@@ -11,35 +11,91 @@ build:
     - image: acme-erp/sales-api
       context: .
       docker:
-        dockerfile: src/Sales/Acme.Erp.Sales.Api/Dockerfile
-    - image: acme-erp/sales-ui
-      context: .
-      docker:
-        dockerfile: src/Sales/Acme.Erp.Sales.Ui/Dockerfile
+        dockerfile: src/Domain/Sales/Acme.Erp.Sales.Api/Dockerfile
     - image: acme-erp/purchasing-api
       context: .
       docker:
-        dockerfile: src/Purchasing/Acme.Erp.Purchasing.Api/Dockerfile
-    - image: acme-erp/purchasing-ui
-      context: .
-      docker:
-        dockerfile: src/Purchasing/Acme.Erp.Purchasing.Ui/Dockerfile
+        dockerfile: src/Domain/Purchasing/Acme.Erp.Purchasing.Api/Dockerfile
     - image: acme-erp/inventory-management-api
       context: .
       docker:
-        dockerfile: src/InventoryManagement/Acme.Erp.InventoryManagement.Api/Dockerfile
-    - image: acme-erp/inventory-management-ui
-      context: .
-      docker:
-        dockerfile: src/InventoryManagement/Acme.Erp.InventoryManagement.Ui/Dockerfile
+        dockerfile: src/Domain/InventoryManagement/Acme.Erp.InventoryManagement.Api/Dockerfile
     - image: acme-erp/order-fulfilment-api
       context: .
       docker:
-        dockerfile: src/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Dockerfile
-    - image: acme-erp/order-fulfilment-ui
+        dockerfile: src/Domain/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Dockerfile
+    - image: acme-erp/sales-assistant-api
       context: .
       docker:
-        dockerfile: src/OrderFulfilment/Acme.Erp.OrderFulfilment.Ui/Dockerfile
+        dockerfile: src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Api/Dockerfile
+    - image: acme-erp/sales-assistant-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Ui/Dockerfile
+    - image: acme-erp/customer-ordering-api
+      context: .
+      docker:
+        dockerfile: src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Api/Dockerfile
+    - image: acme-erp/customer-ordering-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Ui/Dockerfile
+    - image: acme-erp/buyer-api
+      context: .
+      docker:
+        dockerfile: src/Applications/Buyer/Acme.Erp.Buyer.Api/Dockerfile
+    - image: acme-erp/buyer-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/Buyer/Acme.Erp.Buyer.Ui/Dockerfile
+    - image: acme-erp/warehouse-operator-api
+      context: .
+      docker:
+        dockerfile: src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Api/Dockerfile
+    - image: acme-erp/warehouse-operator-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui/Dockerfile
+    - image: acme-erp/fulfilment-operator-api
+      context: .
+      docker:
+        dockerfile: src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api/Dockerfile
+    - image: acme-erp/fulfilment-operator-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui/Dockerfile
+    - image: acme-erp/inventory-supervisor-api
+      context: .
+      docker:
+        dockerfile: src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api/Dockerfile
+    - image: acme-erp/inventory-supervisor-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui/Dockerfile
+    - image: acme-erp/fulfilment-supervisor-api
+      context: .
+      docker:
+        dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api/Dockerfile
+    - image: acme-erp/fulfilment-supervisor-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui/Dockerfile
+    - image: acme-erp/security-administration-api
+      context: .
+      docker:
+        dockerfile: src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api/Dockerfile
+    - image: acme-erp/security-administration-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui/Dockerfile
+    - image: acme-erp/audit-reporting-api
+      context: .
+      docker:
+        dockerfile: src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api/Dockerfile
+    - image: acme-erp/audit-reporting-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui/Dockerfile
 manifests:
   rawYaml:
     - build/k8s/namespaces/*.yaml

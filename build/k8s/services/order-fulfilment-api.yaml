@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: order-fulfilment-api
     app.kubernetes.io/part-of: acme-erp
-    app.kubernetes.io/component: api
+    app.kubernetes.io/component: domain-api
 spec:
   replicas: 1
   selector:
@@ -17,7 +17,7 @@ spec:
       labels:
         app.kubernetes.io/name: order-fulfilment-api
         app.kubernetes.io/part-of: acme-erp
-        app.kubernetes.io/component: api
+        app.kubernetes.io/component: domain-api
     spec:
       containers:
         - name: order-fulfilment-api
@@ -29,7 +29,7 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: Development
-            - name: ConnectionStrings__ModuleDatabase
+            - name: ConnectionStrings__DomainDatabase
               valueFrom:
                 secretKeyRef:
                   name: erp-sqlserver-connection-strings

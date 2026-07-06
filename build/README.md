@@ -1,6 +1,6 @@
 # ACME ERP Local Runtime
 
-This folder contains the first implementation slice for the local Docker Desktop Kubernetes runtime. It creates a single-node developer stack with Skaffold-built placeholder ASP.NET Core services, SQL Server, Authentik, and Gravitee configuration assets.
+This folder contains the local Docker Desktop Kubernetes runtime. It creates a single-node developer stack with Skaffold-built domain APIs, application API/UI pairs, SQL Server, Authentik, and Gravitee configuration assets.
 
 ## Prerequisites
 
@@ -22,20 +22,25 @@ dotnet sln ..\Acme.Erp.slnx list
 dotnet build ..\Acme.Erp.slnx
 ```
 
-## Placeholder Services
+## Services
 
 | Service | Project | Image | Route |
 |---|---|---|---|
-| Sales API | `../src/Sales/Acme.Erp.Sales.Api/Acme.Erp.Sales.Api.csproj` | `acme-erp/sales-api` | `/sales/api` |
-| Sales UI | `../src/Sales/Acme.Erp.Sales.Ui/Acme.Erp.Sales.Ui.csproj` | `acme-erp/sales-ui` | `/sales/ui` |
-| Purchasing API | `../src/Purchasing/Acme.Erp.Purchasing.Api/Acme.Erp.Purchasing.Api.csproj` | `acme-erp/purchasing-api` | `/purchasing/api` |
-| Purchasing UI | `../src/Purchasing/Acme.Erp.Purchasing.Ui/Acme.Erp.Purchasing.Ui.csproj` | `acme-erp/purchasing-ui` | `/purchasing/ui` |
-| Inventory Management API | `../src/InventoryManagement/Acme.Erp.InventoryManagement.Api/Acme.Erp.InventoryManagement.Api.csproj` | `acme-erp/inventory-management-api` | `/inventory/api` |
-| Inventory Management UI | `../src/InventoryManagement/Acme.Erp.InventoryManagement.Ui/Acme.Erp.InventoryManagement.Ui.csproj` | `acme-erp/inventory-management-ui` | `/inventory/ui` |
-| Order Fulfilment API | `../src/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Acme.Erp.OrderFulfilment.Api.csproj` | `acme-erp/order-fulfilment-api` | `/fulfilment/api` |
-| Order Fulfilment UI | `../src/OrderFulfilment/Acme.Erp.OrderFulfilment.Ui/Acme.Erp.OrderFulfilment.Ui.csproj` | `acme-erp/order-fulfilment-ui` | `/fulfilment/ui` |
+| Sales API | `../src/Domain/Sales/Acme.Erp.Sales.Api/Acme.Erp.Sales.Api.csproj` | `acme-erp/sales-api` | `/domain/sales/api` |
+| Purchasing API | `../src/Domain/Purchasing/Acme.Erp.Purchasing.Api/Acme.Erp.Purchasing.Api.csproj` | `acme-erp/purchasing-api` | `/domain/purchasing/api` |
+| Inventory Management API | `../src/Domain/InventoryManagement/Acme.Erp.InventoryManagement.Api/Acme.Erp.InventoryManagement.Api.csproj` | `acme-erp/inventory-management-api` | `/domain/inventory/api` |
+| Order Fulfilment API | `../src/Domain/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Acme.Erp.OrderFulfilment.Api.csproj` | `acme-erp/order-fulfilment-api` | `/domain/fulfilment/api` |
+| Sales Assistant API/UI | `../src/Applications/SalesAssistant/` | `acme-erp/sales-assistant-api`, `acme-erp/sales-assistant-ui` | `/apps/sales-assistant/api`, `/apps/sales-assistant/ui` |
+| Customer Ordering API/UI | `../src/Applications/CustomerOrdering/` | `acme-erp/customer-ordering-api`, `acme-erp/customer-ordering-ui` | `/apps/customer-ordering/api`, `/apps/customer-ordering/ui` |
+| Buyer API/UI | `../src/Applications/Buyer/` | `acme-erp/buyer-api`, `acme-erp/buyer-ui` | `/apps/buyer/api`, `/apps/buyer/ui` |
+| Warehouse Operator API/UI | `../src/Applications/WarehouseOperator/` | `acme-erp/warehouse-operator-api`, `acme-erp/warehouse-operator-ui` | `/apps/warehouse-operator/api`, `/apps/warehouse-operator/ui` |
+| Fulfilment Operator API/UI | `../src/Applications/FulfilmentOperator/` | `acme-erp/fulfilment-operator-api`, `acme-erp/fulfilment-operator-ui` | `/apps/fulfilment-operator/api`, `/apps/fulfilment-operator/ui` |
+| Inventory Supervisor API/UI | `../src/Applications/InventorySupervisor/` | `acme-erp/inventory-supervisor-api`, `acme-erp/inventory-supervisor-ui` | `/apps/inventory-supervisor/api`, `/apps/inventory-supervisor/ui` |
+| Fulfilment Supervisor API/UI | `../src/Applications/FulfilmentSupervisor/` | `acme-erp/fulfilment-supervisor-api`, `acme-erp/fulfilment-supervisor-ui` | `/apps/fulfilment-supervisor/api`, `/apps/fulfilment-supervisor/ui` |
+| Security Administration API/UI | `../src/Applications/SecurityAdministration/` | `acme-erp/security-administration-api`, `acme-erp/security-administration-ui` | `/apps/security-administration/api`, `/apps/security-administration/ui` |
+| Audit Reporting API/UI | `../src/Applications/AuditReporting/` | `acme-erp/audit-reporting-api`, `acme-erp/audit-reporting-ui` | `/apps/audit-reporting/api`, `/apps/audit-reporting/ui` |
 
-Each service exposes `/healthz` and `/readyz`. API services also expose `/openapi/v1.json` and a placeholder module route.
+Each service exposes `/healthz` and `/readyz`. API services also expose `/openapi/v1.json`. Domain APIs own SQL Server connection string configuration. Application APIs and UIs do not own database configuration.
 
 ## First-Run Bootstrap
 
@@ -80,7 +85,7 @@ skaffold run -f .\build\skaffold.yaml -p all
 
 The `platform` profile applies namespaces, SQL Server, Authentik bootstrap config, and Gravitee route config. Authentik and Gravitee Helm releases are installed by `bootstrap-local.ps1` because their chart values need generated local secrets.
 
-The `apps` profile builds and deploys the eight placeholder ASP.NET Core images.
+The `apps` profile builds and deploys the 22 ASP.NET Core service images.
 
 ## Helm Local Tuning
 
@@ -101,6 +106,6 @@ Run:
 .\build\scripts\validate-local.ps1
 ```
 
-The validation script builds the solution, checks expected Kubernetes secrets/resources, waits for SQL Server bootstrap completion, waits for Authentik and Gravitee workloads, verifies the route ConfigMap exists, and performs in-cluster HTTP checks against the placeholder services plus Authentik and Gravitee endpoints. Gravitee route publication through the Management API is not implemented yet, so app routes are validated directly through their ClusterIP services.
+The validation script builds the solution, checks expected Kubernetes secrets/resources, waits for SQL Server bootstrap completion, waits for Authentik and Gravitee workloads, verifies the route ConfigMap exists, and performs in-cluster HTTP checks against all domain APIs, application APIs, application UIs, Authentik, and Gravitee endpoints. Gravitee route publication through the Management API is not implemented yet, so app routes are validated directly through their ClusterIP services.
 
 For a destructive clean-slate rebuild and validation handoff, use `clean-slate-teardown-build-test-plan.md`.

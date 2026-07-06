@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-supervisor-ui
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: inventory-supervisor-ui
+    app.kubernetes.io/part-of: acme-erp
+    app.kubernetes.io/component: application-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inventory-supervisor-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: inventory-supervisor-ui
+        app.kubernetes.io/part-of: acme-erp
+        app.kubernetes.io/component: application-ui
+    spec:
+      containers:
+        - name: inventory-supervisor-ui
+          image: acme-erp/inventory-supervisor-ui
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Development
+            - name: ApplicationApi__BaseUrl
+              value: http://inventory-supervisor-api/apps/inventory-supervisor/api
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-supervisor-ui
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: inventory-supervisor-ui
+    app.kubernetes.io/part-of: acme-erp
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: inventory-supervisor-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

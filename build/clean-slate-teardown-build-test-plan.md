@@ -13,13 +13,27 @@ The local runtime owns these resources:
 - Skaffold config: `build/skaffold.yaml`
 - Local app images:
   - `acme-erp/sales-api`
-  - `acme-erp/sales-ui`
   - `acme-erp/purchasing-api`
-  - `acme-erp/purchasing-ui`
   - `acme-erp/inventory-management-api`
-  - `acme-erp/inventory-management-ui`
   - `acme-erp/order-fulfilment-api`
-  - `acme-erp/order-fulfilment-ui`
+  - `acme-erp/sales-assistant-api`
+  - `acme-erp/sales-assistant-ui`
+  - `acme-erp/customer-ordering-api`
+  - `acme-erp/customer-ordering-ui`
+  - `acme-erp/buyer-api`
+  - `acme-erp/buyer-ui`
+  - `acme-erp/warehouse-operator-api`
+  - `acme-erp/warehouse-operator-ui`
+  - `acme-erp/fulfilment-operator-api`
+  - `acme-erp/fulfilment-operator-ui`
+  - `acme-erp/inventory-supervisor-api`
+  - `acme-erp/inventory-supervisor-ui`
+  - `acme-erp/fulfilment-supervisor-api`
+  - `acme-erp/fulfilment-supervisor-ui`
+  - `acme-erp/security-administration-api`
+  - `acme-erp/security-administration-ui`
+  - `acme-erp/audit-reporting-api`
+  - `acme-erp/audit-reporting-ui`
 - Generated local state: `build/.local/`
 
 Do not delete unrelated namespaces, images, volumes, or Docker resources unless the user explicitly asks for a broader machine cleanup.
@@ -31,8 +45,8 @@ The task is complete only when all of the following are true:
 - `erp-local` was removed during teardown and recreated during bootstrap.
 - Helm releases `authentik` and `gravitee` are newly deployed and Ready.
 - SQL Server is Ready and `sqlserver-bootstrap` completed.
-- All eight placeholder ASP.NET Core deployments are Ready.
-- All eight local `acme-erp/*` images were rebuilt after deletion.
+- All 22 ASP.NET Core deployments are Ready.
+- All 22 local `acme-erp/*` images were rebuilt after deletion.
 - `dotnet build Acme.Erp.slnx` succeeds.
 - `skaffold diagnose -f build/skaffold.yaml` succeeds.
 - `build/scripts/validate-local.ps1` succeeds.

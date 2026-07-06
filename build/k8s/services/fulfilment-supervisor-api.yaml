@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fulfilment-supervisor-api
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: fulfilment-supervisor-api
+    app.kubernetes.io/part-of: acme-erp
+    app.kubernetes.io/component: application-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fulfilment-supervisor-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fulfilment-supervisor-api
+        app.kubernetes.io/part-of: acme-erp
+        app.kubernetes.io/component: application-api
+    spec:
+      containers:
+        - name: fulfilment-supervisor-api
+          image: acme-erp/fulfilment-supervisor-api
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Development
+            - name: DomainApis__OrderFulfilment
+              value: http://order-fulfilment-api/domain/fulfilment/api
+            - name: DomainApis__InventoryManagement
+              value: http://inventory-management-api/domain/inventory/api
+            - name: DomainApis__Sales
+              value: http://sales-api/domain/sales/api
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fulfilment-supervisor-api
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: fulfilment-supervisor-api
+    app.kubernetes.io/part-of: acme-erp
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: fulfilment-supervisor-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

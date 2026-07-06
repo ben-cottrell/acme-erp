@@ -256,6 +256,17 @@ function Wait-ForPlatform {
     Invoke-NativeCommand kubectl wait --for=condition=complete job/sqlserver-bootstrap --namespace $Namespace --timeout=600s
 }
 
+function Invoke-SkaffoldProfile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('platform', 'apps')]
+        [string]$SkaffoldProfile
+    )
+
+    $arguments = @('run', '-f', (Join-Path $BuildRoot 'skaffold.yaml'), '-p', $SkaffoldProfile)
+    Invoke-NativeCommand -FilePath skaffold -Arguments $arguments
+}
+
 Require-Command dotnet 'Install the .NET 10 SDK.'
 Require-Command docker 'Install Docker Desktop.'
 Require-Command kubectl 'Install kubectl or enable the Docker Desktop Kubernetes CLI integration.'
@@ -276,12 +287,21 @@ try {
     }
 
     if (-not $SkipDeploy) {
-        Invoke-NativeCommand skaffold run -f (Join-Path $BuildRoot 'skaffold.yaml') -p $Profile
-
-        if ($Profile -eq 'platform' -or $Profile -eq 'all') {
+        if ($Profile -eq 'all') {
+            Invoke-SkaffoldProfile -SkaffoldProfile 'platform'
             Install-Authentik
             Install-Gravitee
             Wait-ForPlatform
+            Invoke-SkaffoldProfile -SkaffoldProfile 'apps'
+        }
+        elseif ($Profile -eq 'platform') {
+            Invoke-SkaffoldProfile -SkaffoldProfile 'platform'
+            Install-Authentik
+            Install-Gravitee
+            Wait-ForPlatform
+        }
+        else {
+            Invoke-SkaffoldProfile -SkaffoldProfile 'apps'
         }
     }
 }

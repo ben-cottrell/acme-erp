@@ -22,21 +22,49 @@ jobs:
       matrix:
         include:
           - image: sales-api
-            dockerfile: src/Sales/Acme.Erp.Sales.Api/Dockerfile
-          - image: sales-ui
-            dockerfile: src/Sales/Acme.Erp.Sales.Ui/Dockerfile
+            dockerfile: src/Domain/Sales/Acme.Erp.Sales.Api/Dockerfile
           - image: purchasing-api
-            dockerfile: src/Purchasing/Acme.Erp.Purchasing.Api/Dockerfile
-          - image: purchasing-ui
-            dockerfile: src/Purchasing/Acme.Erp.Purchasing.Ui/Dockerfile
+            dockerfile: src/Domain/Purchasing/Acme.Erp.Purchasing.Api/Dockerfile
           - image: inventory-management-api
-            dockerfile: src/InventoryManagement/Acme.Erp.InventoryManagement.Api/Dockerfile
-          - image: inventory-management-ui
-            dockerfile: src/InventoryManagement/Acme.Erp.InventoryManagement.Ui/Dockerfile
+            dockerfile: src/Domain/InventoryManagement/Acme.Erp.InventoryManagement.Api/Dockerfile
           - image: order-fulfilment-api
-            dockerfile: src/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Dockerfile
-          - image: order-fulfilment-ui
-            dockerfile: src/OrderFulfilment/Acme.Erp.OrderFulfilment.Ui/Dockerfile
+            dockerfile: src/Domain/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Dockerfile
+          - image: sales-assistant-api
+            dockerfile: src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Api/Dockerfile
+          - image: sales-assistant-ui
+            dockerfile: src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Ui/Dockerfile
+          - image: customer-ordering-api
+            dockerfile: src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Api/Dockerfile
+          - image: customer-ordering-ui
+            dockerfile: src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Ui/Dockerfile
+          - image: buyer-api
+            dockerfile: src/Applications/Buyer/Acme.Erp.Buyer.Api/Dockerfile
+          - image: buyer-ui
+            dockerfile: src/Applications/Buyer/Acme.Erp.Buyer.Ui/Dockerfile
+          - image: warehouse-operator-api
+            dockerfile: src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Api/Dockerfile
+          - image: warehouse-operator-ui
+            dockerfile: src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui/Dockerfile
+          - image: fulfilment-operator-api
+            dockerfile: src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api/Dockerfile
+          - image: fulfilment-operator-ui
+            dockerfile: src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui/Dockerfile
+          - image: inventory-supervisor-api
+            dockerfile: src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api/Dockerfile
+          - image: inventory-supervisor-ui
+            dockerfile: src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui/Dockerfile
+          - image: fulfilment-supervisor-api
+            dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api/Dockerfile
+          - image: fulfilment-supervisor-ui
+            dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui/Dockerfile
+          - image: security-administration-api
+            dockerfile: src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api/Dockerfile
+          - image: security-administration-ui
+            dockerfile: src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui/Dockerfile
+          - image: audit-reporting-api
+            dockerfile: src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api/Dockerfile
+          - image: audit-reporting-ui
+            dockerfile: src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
