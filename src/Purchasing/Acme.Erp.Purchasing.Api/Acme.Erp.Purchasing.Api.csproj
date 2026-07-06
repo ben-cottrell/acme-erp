@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <AssemblyName>Acme.Erp.Sales.Api</AssemblyName>
-    <RootNamespace>Acme.Erp.Sales.Api</RootNamespace>
+    <AssemblyName>Acme.Erp.Purchasing.Api</AssemblyName>
+    <RootNamespace>Acme.Erp.Purchasing.Api</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>

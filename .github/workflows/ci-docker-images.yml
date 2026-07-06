@@ -22,21 +22,21 @@ jobs:
       matrix:
         include:
           - image: sales-api
-            dockerfile: src/Sales/Sales.Api/Dockerfile
+            dockerfile: src/Sales/Acme.Erp.Sales.Api/Dockerfile
           - image: sales-ui
-            dockerfile: src/Sales/Sales.Ui/Dockerfile
+            dockerfile: src/Sales/Acme.Erp.Sales.Ui/Dockerfile
           - image: purchasing-api
-            dockerfile: src/Purchasing/Purchasing.Api/Dockerfile
+            dockerfile: src/Purchasing/Acme.Erp.Purchasing.Api/Dockerfile
           - image: purchasing-ui
-            dockerfile: src/Purchasing/Purchasing.Ui/Dockerfile
+            dockerfile: src/Purchasing/Acme.Erp.Purchasing.Ui/Dockerfile
           - image: inventory-management-api
-            dockerfile: src/InventoryManagement/InventoryManagement.Api/Dockerfile
+            dockerfile: src/InventoryManagement/Acme.Erp.InventoryManagement.Api/Dockerfile
           - image: inventory-management-ui
-            dockerfile: src/InventoryManagement/InventoryManagement.Ui/Dockerfile
+            dockerfile: src/InventoryManagement/Acme.Erp.InventoryManagement.Ui/Dockerfile
           - image: order-fulfilment-api
-            dockerfile: src/OrderFulfilment/OrderFulfilment.Api/Dockerfile
+            dockerfile: src/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Dockerfile
           - image: order-fulfilment-ui
-            dockerfile: src/OrderFulfilment/OrderFulfilment.Ui/Dockerfile
+            dockerfile: src/OrderFulfilment/Acme.Erp.OrderFulfilment.Ui/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v4

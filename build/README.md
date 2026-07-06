@@ -26,14 +26,14 @@ dotnet build ..\Acme.Erp.slnx
 
 | Service | Project | Image | Route |
 |---|---|---|---|
-| Sales API | `../src/Sales/Sales.Api/Sales.Api.csproj` | `acme-erp/sales-api` | `/sales/api` |
-| Sales UI | `../src/Sales/Sales.Ui/Sales.Ui.csproj` | `acme-erp/sales-ui` | `/sales/ui` |
-| Purchasing API | `../src/Purchasing/Purchasing.Api/Purchasing.Api.csproj` | `acme-erp/purchasing-api` | `/purchasing/api` |
-| Purchasing UI | `../src/Purchasing/Purchasing.Ui/Purchasing.Ui.csproj` | `acme-erp/purchasing-ui` | `/purchasing/ui` |
-| Inventory Management API | `../src/InventoryManagement/InventoryManagement.Api/InventoryManagement.Api.csproj` | `acme-erp/inventory-management-api` | `/inventory/api` |
-| Inventory Management UI | `../src/InventoryManagement/InventoryManagement.Ui/InventoryManagement.Ui.csproj` | `acme-erp/inventory-management-ui` | `/inventory/ui` |
-| Order Fulfilment API | `../src/OrderFulfilment/OrderFulfilment.Api/OrderFulfilment.Api.csproj` | `acme-erp/order-fulfilment-api` | `/fulfilment/api` |
-| Order Fulfilment UI | `../src/OrderFulfilment/OrderFulfilment.Ui/OrderFulfilment.Ui.csproj` | `acme-erp/order-fulfilment-ui` | `/fulfilment/ui` |
+| Sales API | `../src/Sales/Acme.Erp.Sales.Api/Acme.Erp.Sales.Api.csproj` | `acme-erp/sales-api` | `/sales/api` |
+| Sales UI | `../src/Sales/Acme.Erp.Sales.Ui/Acme.Erp.Sales.Ui.csproj` | `acme-erp/sales-ui` | `/sales/ui` |
+| Purchasing API | `../src/Purchasing/Acme.Erp.Purchasing.Api/Acme.Erp.Purchasing.Api.csproj` | `acme-erp/purchasing-api` | `/purchasing/api` |
+| Purchasing UI | `../src/Purchasing/Acme.Erp.Purchasing.Ui/Acme.Erp.Purchasing.Ui.csproj` | `acme-erp/purchasing-ui` | `/purchasing/ui` |
+| Inventory Management API | `../src/InventoryManagement/Acme.Erp.InventoryManagement.Api/Acme.Erp.InventoryManagement.Api.csproj` | `acme-erp/inventory-management-api` | `/inventory/api` |
+| Inventory Management UI | `../src/InventoryManagement/Acme.Erp.InventoryManagement.Ui/Acme.Erp.InventoryManagement.Ui.csproj` | `acme-erp/inventory-management-ui` | `/inventory/ui` |
+| Order Fulfilment API | `../src/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Acme.Erp.OrderFulfilment.Api.csproj` | `acme-erp/order-fulfilment-api` | `/fulfilment/api` |
+| Order Fulfilment UI | `../src/OrderFulfilment/Acme.Erp.OrderFulfilment.Ui/Acme.Erp.OrderFulfilment.Ui.csproj` | `acme-erp/order-fulfilment-ui` | `/fulfilment/ui` |
 
 Each service exposes `/healthz` and `/readyz`. API services also expose `/openapi/v1.json` and a placeholder module route.
 

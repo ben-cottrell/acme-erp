@@ -6,19 +6,19 @@
   </Configurations>
   <Folder Name="/src/" />
   <Folder Name="/src/InventoryManagement/">
-    <Project Path="src/InventoryManagement/InventoryManagement.Api/InventoryManagement.Api.csproj" />
-    <Project Path="src/InventoryManagement/InventoryManagement.Ui/InventoryManagement.Ui.csproj" />
+    <Project Path="src/InventoryManagement/Acme.Erp.InventoryManagement.Api/Acme.Erp.InventoryManagement.Api.csproj" />
+    <Project Path="src/InventoryManagement/Acme.Erp.InventoryManagement.Ui/Acme.Erp.InventoryManagement.Ui.csproj" />
   </Folder>
   <Folder Name="/src/OrderFulfilment/">
-    <Project Path="src/OrderFulfilment/OrderFulfilment.Api/OrderFulfilment.Api.csproj" />
-    <Project Path="src/OrderFulfilment/OrderFulfilment.Ui/OrderFulfilment.Ui.csproj" />
+    <Project Path="src/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Acme.Erp.OrderFulfilment.Api.csproj" />
+    <Project Path="src/OrderFulfilment/Acme.Erp.OrderFulfilment.Ui/Acme.Erp.OrderFulfilment.Ui.csproj" />
   </Folder>
   <Folder Name="/src/Purchasing/">
-    <Project Path="src/Purchasing/Purchasing.Api/Purchasing.Api.csproj" />
-    <Project Path="src/Purchasing/Purchasing.Ui/Purchasing.Ui.csproj" />
+    <Project Path="src/Purchasing/Acme.Erp.Purchasing.Api/Acme.Erp.Purchasing.Api.csproj" />
+    <Project Path="src/Purchasing/Acme.Erp.Purchasing.Ui/Acme.Erp.Purchasing.Ui.csproj" />
   </Folder>
   <Folder Name="/src/Sales/">
-    <Project Path="src/Sales/Sales.Api/Sales.Api.csproj" />
-    <Project Path="src/Sales/Sales.Ui/Sales.Ui.csproj" />
+    <Project Path="src/Sales/Acme.Erp.Sales.Api/Acme.Erp.Sales.Api.csproj" />
+    <Project Path="src/Sales/Acme.Erp.Sales.Ui/Acme.Erp.Sales.Ui.csproj" />
   </Folder>
 </Solution>
