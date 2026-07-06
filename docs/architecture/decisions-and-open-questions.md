@@ -19,8 +19,8 @@ This document records ACME-specific decisions that resolve generated architectur
 | Authentik provides OAuth/OIDC identity, with password-only login for the initial release. | The ERP is internal and protected by the company network. | MFA remains optional/future and can be enabled later through Authentik policy. |
 | All user and external client ingress goes through Gravitee. | Matches the fixed architecture baseline and centralizes API exposure. | Internal Kubernetes service calls are allowed only after ingress for trusted ERP services with service identity, authorization, correlation, and audit controls. |
 | The ERP is single-tenant for ACME only. | ACME is one company using one internal ERP. | Tenant partitioning and tenant-level authorization are out of scope for the first release. |
-| Each module owns its own database and uses external IDs for cross-module references. | Preserves service boundaries in the fixed architecture. | Integration contracts must define external ID lifecycle and reconciliation behavior. |
-| No separate master-data service is required for the MVP. | A dedicated master-data service would add architecture and workflow complexity before the core ERP flows are proven. | Inventory owns product/SKU/barcode/serialization configuration, Sales owns customer reference data, Purchasing owns supplier reference data, and other modules use external IDs or read models. |
+| Each domain bounded context owns its own database and uses external IDs for cross-domain references. | Preserves service boundaries in the fixed architecture. | Integration contracts must define external ID lifecycle and reconciliation behavior. |
+| No separate master-data service is required for the MVP. | A dedicated master-data service would add architecture and workflow complexity before the core ERP flows are proven. | Inventory owns product/SKU/barcode/serialization configuration, Sales owns customer reference data, Purchasing owns supplier reference data, and other domains use external IDs or read models. |
 
 ## Cross-Cutting Decisions
 
@@ -29,7 +29,7 @@ This document records ACME-specific decisions that resolve generated architectur
 | Sessions use a 60 minute idle timeout and an 8 hour absolute timeout. | Fits office and warehouse internal use without excessive reauthentication. | Authentik/session integration must enforce both values. |
 | Customer accounts are mandatory for website orders. | ACME has approximately 100 B2B customers, making account management practical. | Guest checkout and anonymous order tracking are out of scope. |
 | Audit retention is 7 years for sales, purchasing, approval, and financially relevant business events; 3 years for inventory and fulfilment operational events; 1 year for authentication, authorization, and integration events unless linked to an incident; 7 years for security incident evidence. | Balances business evidence needs with operational log volume. | Audit storage and export must support retention category tagging. |
-| Approval thresholds are configurable with ACME defaults. | Defaults unblock requirements while allowing later policy changes. | Modules must avoid hard-coding thresholds. |
+| Approval thresholds are configurable with ACME defaults. | Defaults unblock requirements while allowing later policy changes. | Domain APIs must avoid hard-coding thresholds. |
 | Segregation of duties prevents self-approval of controlled actions. | Simple and appropriate for a medium-sized company. | Users may hold multiple roles when configured conflict rules allow it. |
 | Service account credential rotation is owned by System Administration with Security Administrator review. | Keeps technical operation and security oversight separate. | Integration configuration must support credential replacement without broadening permissions. |
 
@@ -43,9 +43,9 @@ This document records ACME-specific decisions that resolve generated architectur
 | Order Fulfilment | Pick exceptions, short picks, substitutions, partial fulfilment release, shipping overrides, cancellation after picking starts, and completion reversals require Fulfilment Supervisor approval. |
 | Security | Security access changes require Security Administrator approval. Emergency access is time-bound, ticket-linked, and reviewed within one business day after use. |
 
-## Module Decisions
+## Domain Decisions
 
-| Module | Decision |
+| Domain | Decision |
 |---|---|
 | Sales | Initial channels are internal sales assistants and authenticated customer website orders. Mandatory data includes customer account, order contact, billing address, shipping address, product/SKU where applicable, quantity, and channel. |
 | Sales | Inventory is checked during order entry and reserved only when Sales releases the order to Order Fulfilment. |
@@ -64,7 +64,7 @@ This document records ACME-specific decisions that resolve generated architectur
 
 | Scope area | MVP answer | Deferred scope |
 |---|---|---|
-| Master data ownership | Do not create a separate master-data service. Inventory owns product/SKU/barcode/serialization configuration; Sales owns customer reference data; Purchasing owns supplier reference data; Authentik and Security Administration own users, roles, and permissions. | Dedicated master-data service, onboarding workflows, lifecycle governance, and cross-module synchronization tooling. |
+| Master data ownership | Do not create a separate master-data service. Inventory owns product/SKU/barcode/serialization configuration; Sales owns customer reference data; Purchasing owns supplier reference data; Authentik and Security Administration own users, roles, and permissions. | Dedicated master-data service, onboarding workflows, lifecycle governance, and cross-domain synchronization tooling. |
 | Privacy controls | MVP captures minimal B2B customer contact, billing, shipping, and order data and applies baseline access control, audit, export logging, and retention rules. Jurisdiction-specific automation is not included unless ACME confirms a legal requirement. | Automated GDPR/CCPA workflows, self-service privacy portals, deletion automation, and jurisdiction-specific consent management. |
 | Role design ownership | Use role-based approval ownership in the MVP: Sales Supervisor, Purchasing Manager, Inventory Supervisor, Fulfilment Supervisor, and Security Administrator. Named-person assignment is operational configuration, not a requirements feature. | Named delegation matrices, approval calendars, and department-specific governance workflows. |
 | Finance integration | No automated Finance integration or event export in MVP. Finance visibility is provided through operational reports and CSV exports. | AP, AR, invoicing, tax, payment, invoice matching, accounting postings, and automated finance events. |
@@ -74,5 +74,5 @@ This document records ACME-specific decisions that resolve generated architectur
 ## Verification Notes
 
 - Requirements should continue to reference configurable thresholds rather than hard-coded values in business logic.
-- Module requirements should remain consistent on inventory timing: reserve at fulfilment release and consume at fulfilment completion.
+- Domain requirements should remain consistent on inventory timing: reserve at fulfilment release and consume at fulfilment completion.
 - Finance, returns/RMA, guest checkout, multi-warehouse, multi-tenant behavior, dedicated master-data services, multi-courier routing, and printer-specific label handling remain out of scope for the MVP unless explicitly promoted into scope.

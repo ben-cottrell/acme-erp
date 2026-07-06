@@ -2,118 +2,100 @@
 
 ## Status
 
-This document defines the first-release service, UI, database, and integration ownership boundaries for the ACME ERP modules.
+This document is retained as a compatibility summary for earlier module-based wording. The controlling boundary model is now `docs/architecture/domain-and-application-boundaries.md`.
 
-## Source Requirements
+The architecture no longer treats each ERP module as a full-stack `API + UI + database` unit. Bounded contexts are domain services. User-facing workloads are application services.
 
-Requirements-derived constraints come from:
+## Updated Boundary Rules
 
-- `docs/cross-cutting/requirements.md`
-- `docs/sales/requirements.md`
-- `docs/purchasing/requirements.md`
-- `docs/inventory-management/requirements.md`
-- `docs/order-fulfilment/requirements.md`
+- Domain bounded contexts own durable business state and SQL Server databases.
+- Domain bounded contexts expose WebAPI contracts and do not own Razor Pages UI services.
+- Application services own user-facing workflows for roles or channels.
+- Each application service has exactly one Razor Pages UI and exactly one application WebAPI.
+- Application UIs call only their paired application APIs.
+- Application APIs do not own databases, EF Core migrations, or durable business state.
+- Application APIs call one or more domain APIs to read or mutate durable business state.
+- Domain APIs remain authoritative for business authorization, validation, persistence, domain invariants, audit decisions, and segregation-of-duties enforcement.
 
-## Requirements-Derived Constraints
+## Domain Boundary Matrix
 
-- Each ERP module has a separate WebAPI service, Razor Pages UI service, and SQL Server database.
-- Razor Pages UI services are presentation-only clients. They do not access databases directly.
-- WebAPI services are the only database access path.
-- Cross-module data references use external ID columns and integration contracts, not cross-database foreign keys.
-- All user and external client ingress enters through Gravitee.
-- API services enforce business authorization, segregation of duties, validation, persistence, and audit behavior.
-- Authentik provides OAuth/OIDC identity for users, administrators, customers where applicable, and service identities.
+| Domain bounded context | Domain API | Database | Owns | Does not own |
+|---|---|---|---|---|
+| Sales | `Acme.Erp.Sales.Api` | Sales database | Customer account reference data for MVP, sales orders, order channels, buyer request state, release-to-fulfilment decisions | Sales assistant UI, customer ordering UI, picking, packing, shipping, PO creation, stock balance updates |
+| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, buyer request queue state, purchasing approvals, PO status | Buyer UI, goods receipt booking, inventory balances, sales order entry, finance postings |
+| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, stock checks, stock movements | Warehouse UI, purchase order authoring, sales order authoring, courier shipment purchase |
+| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, picking, packing, courier shipment records, label references, completion, exceptions | Fulfilment application UI, sales order creation, product master ownership, stock balance authority |
+| Security and Audit | Explicit platform/domain services when introduced | Separate storage only where a service is explicitly introduced | Identity integration conventions, authorization policy support, audit, access review, service account policy | Domain-specific workflow behaviour |
 
-## Service Ownership Matrix
+## Application Boundary Matrix
 
-| Module | API service | UI service | Database | Owns | Does not own |
+| Application | Application API | Application UI | Primary users | Domain APIs consumed | Database |
 |---|---|---|---|---|---|
-| Sales | `Acme.Erp.Sales.Api` | `Acme.Erp.Sales.Ui` | Sales database | Customer account reference data for MVP, sales orders, order channels, buyer requests, release-to-fulfilment decisions | Picking, packing, shipping, PO creation, stock balance updates |
-| Purchasing | `Acme.Erp.Purchasing.Api` | `Acme.Erp.Purchasing.Ui` | Purchasing database | Supplier reference data for MVP, purchase orders, buyer review queue, purchasing approvals, PO status | Goods receipt booking, inventory balances, sales order entry, finance postings |
-| Inventory Management | `Acme.Erp.InventoryManagement.Api` | `Acme.Erp.InventoryManagement.Ui` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, stock checks, stock movements | Purchase order authoring, sales order authoring, courier shipment purchase |
-| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | `Acme.Erp.OrderFulfilment.Ui` | Fulfilment database | Released fulfilment work, picking, packing, courier shipment purchase, label references, fulfilment completion, exceptions | Sales order creation, product master ownership, stock balance authority |
-| Cross-cutting | Shared projects and platform services where explicitly introduced | Security/audit administration views where required | Separate storage only if a cross-cutting service is introduced | Identity integration conventions, authorization policy support, audit conventions, correlation, observability, OpenAPI conventions, health, testing support | Module-specific workflow behavior |
+| Sales Assistant | `Acme.Erp.SalesAssistant.Api` | `Acme.Erp.SalesAssistant.Ui` | Sales Assistant, Sales Supervisor | Sales, Inventory Management, Purchasing, Order Fulfilment | None |
+| Customer Ordering | `Acme.Erp.CustomerOrdering.Api` | `Acme.Erp.CustomerOrdering.Ui` | Authenticated Customer | Sales, Inventory Management | None |
+| Buyer | `Acme.Erp.Buyer.Api` | `Acme.Erp.Buyer.Ui` | Buyer, Purchasing Manager | Purchasing, Sales, Inventory Management | None |
+| Warehouse Operator | `Acme.Erp.WarehouseOperator.Api` | `Acme.Erp.WarehouseOperator.Ui` | Warehouse Operator | Inventory Management, Purchasing | None |
+| Fulfilment Operator | `Acme.Erp.FulfilmentOperator.Api` | `Acme.Erp.FulfilmentOperator.Ui` | Fulfilment Operator | Order Fulfilment, Sales, Inventory Management | None |
+| Inventory Supervisor | `Acme.Erp.InventorySupervisor.Api` | `Acme.Erp.InventorySupervisor.Ui` | Inventory Supervisor | Inventory Management, Purchasing, Order Fulfilment | None |
+| Fulfilment Supervisor | `Acme.Erp.FulfilmentSupervisor.Api` | `Acme.Erp.FulfilmentSupervisor.Ui` | Fulfilment Supervisor | Order Fulfilment, Sales, Inventory Management | None |
+| Security Administration | `Acme.Erp.SecurityAdministration.Api` | `Acme.Erp.SecurityAdministration.Ui` | Security Administrator, System Administrator | Security and Audit services, Authentik integration, domain metadata APIs | None |
+| Audit Reporting | `Acme.Erp.AuditReporting.Api` | `Acme.Erp.AuditReporting.Ui` | Auditor, Security Administrator, business control owners | Security and Audit services, domain audit/reporting APIs | None |
 
 ## Boundary Diagram
 
 ```mermaid
 flowchart LR
-    Gravitee[Gravitee ingress] --> SalesUi[Sales UI]
-    Gravitee --> PurchasingUi[Purchasing UI]
-    Gravitee --> InventoryUi[Inventory UI]
-    Gravitee --> FulfilmentUi[Fulfilment UI]
-    Gravitee --> SalesApi[Sales API]
-    Gravitee --> PurchasingApi[Purchasing API]
-    Gravitee --> InventoryApi[Inventory API]
-    Gravitee --> FulfilmentApi[Fulfilment API]
+    Gravitee[Gravitee ingress] --> WarehouseUi[Warehouse Operator UI]
+    Gravitee --> WarehouseApi[Warehouse Operator API]
+    Gravitee --> FulfilmentUi[Fulfilment Operator UI]
+    Gravitee --> FulfilmentAppApi[Fulfilment Operator API]
+    Gravitee --> SalesAssistantUi[Sales Assistant UI]
+    Gravitee --> SalesAssistantApi[Sales Assistant API]
+    Gravitee --> BuyerUi[Buyer UI]
+    Gravitee --> BuyerApi[Buyer API]
 
-    SalesUi --> SalesApi
-    PurchasingUi --> PurchasingApi
-    InventoryUi --> InventoryApi
-    FulfilmentUi --> FulfilmentApi
+    WarehouseUi --> WarehouseApi
+    FulfilmentUi --> FulfilmentAppApi
+    SalesAssistantUi --> SalesAssistantApi
+    BuyerUi --> BuyerApi
+
+    WarehouseApi --> InventoryApi[Inventory Domain API]
+    WarehouseApi --> PurchasingApi[Purchasing Domain API]
+    FulfilmentAppApi --> FulfilmentApi[Order Fulfilment Domain API]
+    FulfilmentAppApi --> SalesApi[Sales Domain API]
+    FulfilmentAppApi --> InventoryApi
+    SalesAssistantApi --> SalesApi
+    SalesAssistantApi --> InventoryApi
+    SalesAssistantApi --> PurchasingApi
+    SalesAssistantApi --> FulfilmentApi
+    BuyerApi --> PurchasingApi
+    BuyerApi --> SalesApi
+    BuyerApi --> InventoryApi
 
     SalesApi --> SalesDb[(Sales DB)]
     PurchasingApi --> PurchasingDb[(Purchasing DB)]
     InventoryApi --> InventoryDb[(Inventory DB)]
     FulfilmentApi --> FulfilmentDb[(Fulfilment DB)]
-
-    SalesApi -. buyer request .-> PurchasingApi
-    PurchasingApi -. PO receipt data .-> InventoryApi
-    InventoryApi -. availability/reservation .-> SalesApi
-    SalesApi -. released order .-> FulfilmentApi
-    FulfilmentApi -. consumption/completion .-> InventoryApi
-    FulfilmentApi -. fulfilment status .-> SalesApi
 ```
-
-## Module Decisions
-
-### Sales
-
-Sales owns the sales order lifecycle from draft through release, cancellation before fulfilment work starts, and status reconciliation after fulfilment updates. Sales stores the customer account reference data needed for the MVP and must identify the sales channel for every order.
-
-Sales depends on Inventory Management for active stocked product availability and on Purchasing for non-routinely stocked product requests. Sales may display fulfilment status returned by Order Fulfilment but does not own warehouse execution.
-
-Key external references include `ExternalInventoryItemId`, `ExternalBuyerRequestId`, and `ExternalFulfilmentTaskId` where the Sales database needs durable links to records owned outside Sales.
-
-### Purchasing
-
-Purchasing owns supplier-backed purchase orders, buyer workflow, PO approval controls, buyer review of non-routinely stocked product requests, and PO data needed by Inventory Management for goods receipt matching.
-
-Purchasing does not book goods into stock. It receives receipt status and exceptions from Inventory Management to maintain PO receipt visibility.
-
-Key external references include `ExternalSalesBuyerRequestId`, `ExternalInventoryReceiptId`, and `ExternalProductId` where Purchasing records depend on external ownership.
-
-### Inventory Management
-
-Inventory Management is the stock system of record. It owns product, SKU, barcode, stocking, and serialized-product configuration for the MVP. It owns stock checks, discrepancy review, goods receipt booking, available/non-available stock states, reservations, and immutable stock movements.
-
-Inventory validates goods receipts against Purchasing PO data and publishes availability to Sales and Order Fulfilment. Inventory reserves stock at fulfilment release and consumes stock at fulfilment completion.
-
-Key external references include `ExternalPurchaseOrderId`, `ExternalPurchaseOrderLineId`, `ExternalSalesOrderId`, and `ExternalFulfilmentTaskId`.
-
-### Order Fulfilment
-
-Order Fulfilment owns warehouse execution after Sales releases an eligible order. It owns the fulfilment queue, picking, packing, courier shipment purchase, label data, completion, partial fulfilment, and fulfilment exceptions.
-
-Order Fulfilment initiates reservation, consumption, and reversal requests through Inventory Management but does not directly update stock balances. It reports completion, partial fulfilment, shipment references, and exceptions back to Sales.
-
-Key external references include `ExternalSalesOrderId`, `ExternalSalesOrderLineId`, `ExternalInventoryReservationId`, and `ExternalInventoryMovementId`.
 
 ## Integration Contract Rules
 
-- Every cross-module command or event carries a correlation identifier, source service, target service, idempotency key where mutation may be retried, and external record identifiers.
-- APIs reject incomplete cross-module payloads rather than inferring missing ownership data.
-- Read models copied from another module record source, version, update time, and external ID.
+- Every cross-service command or event carries a correlation identifier, source service, target service, idempotency key where mutation may be retried, and external record identifiers.
+- Application APIs may compose domain API calls but must not infer ownership data that domain APIs require.
+- Domain APIs reject incomplete cross-domain payloads rather than inferring missing ownership data.
+- Read models copied from another domain record source, version, update time, and external ID.
 - Status feedback is explicit. A consumer may cache the last known status but must expose stale or failed integration state where it affects user decisions.
 - Finance integrations are future scope for the MVP; operational CSV exports and reports provide interim visibility.
 
 ## Review Checklist
 
-- [ ] Each module has one API, one UI, and one owned database.
-- [ ] UI services call APIs and never connect directly to SQL Server.
-- [ ] WebAPI services own all persistence and EF Core migrations for their databases.
-- [ ] Cross-module references use external ID columns.
-- [ ] Sales releases orders and Order Fulfilment executes warehouse work.
+- [ ] Each domain bounded context has one database-owning API and no UI.
+- [ ] Each application has one UI and one API.
+- [ ] Application UI services call only their paired application APIs.
+- [ ] Application APIs call domain APIs and never connect directly to SQL Server.
+- [ ] Domain APIs own persistence and EF Core migrations for their databases.
+- [ ] Cross-domain references use external ID columns.
+- [ ] Sales releases orders and Order Fulfilment executes warehouse fulfilment state.
 - [ ] Inventory reserves at fulfilment release and consumes at fulfilment completion.
 - [ ] Purchasing supplies PO data for inventory receipt validation but does not book stock.
 - [ ] All ingress is routed through Gravitee with Authentik-backed identity.

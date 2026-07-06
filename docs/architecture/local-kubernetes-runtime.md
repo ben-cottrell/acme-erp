@@ -7,7 +7,7 @@ This document defines the local Docker Desktop Kubernetes runtime architecture a
 ## Runtime Goals
 
 - Run the complete ERP locally using Docker Desktop, Kubernetes, and Skaffold.
-- Include SQL Server, Authentik, Gravitee, all API services, all UI services, and local configuration dependencies.
+- Include SQL Server, Authentik, Gravitee, all domain API services, all application API services, all application UI services, and local configuration dependencies.
 - Keep generated local secrets out of source control.
 - Provide repeatable bootstrap and validation scripts for developers.
 
@@ -28,21 +28,32 @@ flowchart TB
     Docker --> Gravitee[Gravitee]
     Docker --> Authentik[Authentik]
     Docker --> SqlServer[SQL Server]
-    Docker --> Apps[Eight ASP.NET Core services]
-    Apps --> SqlServer
-    Gravitee --> Apps
+    Docker --> Domains[Domain API services]
+    Docker --> Applications[Application API/UI services]
     Gravitee --> Authentik
 
-    subgraph Apps
-        SalesApi[Sales API]
-        SalesUi[Sales UI]
-        PurchasingApi[Purchasing API]
-        PurchasingUi[Purchasing UI]
-        InventoryApi[Inventory API]
-        InventoryUi[Inventory UI]
-        FulfilmentApi[Order Fulfilment API]
-        FulfilmentUi[Order Fulfilment UI]
+    subgraph Domains
+        SalesApi[Sales Domain API]
+        PurchasingApi[Purchasing Domain API]
+        InventoryApi[Inventory Domain API]
+        FulfilmentApi[Order Fulfilment Domain API]
     end
+
+    subgraph Applications
+        WarehouseApi[Warehouse Operator API]
+        WarehouseUi[Warehouse Operator UI]
+        FulfilmentOperatorApi[Fulfilment Operator API]
+        FulfilmentOperatorUi[Fulfilment Operator UI]
+        SalesAssistantApi[Sales Assistant API]
+        SalesAssistantUi[Sales Assistant UI]
+        BuyerApi[Buyer API]
+        BuyerUi[Buyer UI]
+    end
+
+    Applications --> Domains
+    Domains --> SqlServer
+    Gravitee --> Domains
+    Gravitee --> Applications
 ```
 
 ## Skaffold Profiles
@@ -50,7 +61,7 @@ flowchart TB
 | Profile | Purpose | Assets |
 |---|---|---|
 | `platform` | Deploy shared local platform prerequisites | Namespaces, SQL Server, Authentik bootstrap ConfigMap, Gravitee route ConfigMap |
-| `apps` | Build and deploy ERP application services | Eight ASP.NET Core API/UI images and service manifests |
+| `apps` | Build and deploy ERP domain and application services | Domain API images, application API images, application UI images, and service manifests |
 | `all` | Deploy platform and applications together | Platform and app manifests |
 
 `bootstrap-local.ps1` installs Authentik and Gravitee Helm releases because their local values require generated secrets. Skaffold manages raw manifests and app image builds.
@@ -103,15 +114,15 @@ Current limitation: Gravitee route publication through the Management API is not
 ## Health and Readiness
 
 - All services expose `/healthz` and `/readyz`.
-- APIs also expose `/openapi/v1.json`.
+- Domain and application APIs also expose `/openapi/v1.json`.
 - Readiness must fail when a service cannot serve its core workflow safely.
 - Health endpoints must not leak secrets or sensitive configuration.
 
 ## Review Checklist
 
 - [ ] The full local stack runs inside Docker Desktop Kubernetes.
-- [ ] SQL Server, Authentik, Gravitee, APIs, and UIs are included.
-- [ ] Skaffold builds all eight local service images.
+- [ ] SQL Server, Authentik, Gravitee, domain APIs, application APIs, and application UIs are included.
+- [ ] Skaffold builds all configured local service images.
 - [ ] Local secrets are generated and ignored by Git.
 - [ ] Bootstrap works for `platform`, `apps`, and `all` profiles.
 - [ ] Validation builds the solution and verifies platform and app readiness.

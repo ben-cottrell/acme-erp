@@ -1,1 +1,0 @@
-This folder is a placeholder for requirements relating to order shipping.   Warehouse operators shall use this ERP module to identify the components of a sales order, pack the components, purchase shipping from a courier, print the courier's shipping label, and mark the order as completed.   components of a sales order are taken from inventory.

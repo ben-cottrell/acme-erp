@@ -2,7 +2,7 @@
 
 ## Status
 
-This document defines the required internal architecture for WebAPI and Razor Pages services.
+This document defines the required internal architecture for domain WebAPI services, application WebAPI services, and Razor Pages services.
 
 ## Required Architectural Style
 
@@ -16,6 +16,8 @@ Each service uses layered architecture inside a vertical feature organization. L
 | Domain rules | Entities, value objects, domain services, status transitions, business invariants | No infrastructure dependencies |
 | Persistence | EF Core `DbContext`, configurations, migrations, repositories where useful | Domain and application abstractions |
 | Infrastructure/integrations | HTTP clients, Authentik/Gravitee integration support, courier clients, SQL Server providers, observability exporters | Application interfaces and cross-cutting infrastructure |
+
+Domain WebAPI services may use every layer in the table, including persistence. Application WebAPI services use API boundary, application workflow, and integration layers, but they must not use the persistence layer or own domain rules. Razor Pages UI services use the UI boundary layer and API client abstractions.
 
 ## Vertical Slice Organization
 
@@ -49,23 +51,34 @@ Acme.Erp.InventoryManagement.Api/
 
 Use technical folders only when they support a clear boundary that cuts across many features inside the service, such as `Database`, `OpenApi`, or `Security`. Do not use catch-all `Models`, `Helpers`, or `Utils` folders for core behavior.
 
-## WebAPI Service Rules
+## Domain WebAPI Service Rules
 
 - APIs use ASP.NET Core WebAPI Controllers.
 - Controllers stay thin: authenticate, authorize, bind, validate request shape, delegate to application workflow, and translate responses.
 - Business rules live in domain/application code, not controller actions.
-- API services are the only processes that connect to module databases.
-- EF Core migrations are owned by the database-owning API service or an adjacent module-owned persistence project.
+- Domain API services are the only processes that connect to domain databases.
+- EF Core migrations are owned by the database-owning domain API service or an adjacent domain-owned persistence project.
 - Public API contracts use OpenAPI 3.0.
 - Each mutating endpoint accepts or derives an idempotency key when retries can produce duplicate work.
 - Controlled actions record audit events with user/service identity, timestamp, action, outcome, reference record, and correlation ID.
 
+## Application WebAPI Service Rules
+
+- Application APIs use ASP.NET Core WebAPI Controllers.
+- Application APIs orchestrate user-facing workflows by calling domain APIs.
+- Application APIs do not own databases, EF Core migrations, or durable business state.
+- Application APIs do not contain domain invariants or persistence logic.
+- Application APIs may shape workflow-specific responses and compose multiple domain API responses for their paired UI.
+- Application APIs call domain APIs using delegated user context or scoped service identities according to the workflow contract.
+- Application APIs enforce route-level and workflow-level authorization for user experience, but domain APIs remain authoritative for business authorization.
+
 ## Razor Pages Service Rules
 
 - Razor Pages apps use server-side rendering.
-- UI services call WebAPI services; they never use EF Core or direct SQL Server connections.
+- Each Razor Pages application UI calls only its paired application API.
+- UI services never use EF Core or direct SQL Server connections.
 - Page models hold presentation flow and API client calls, not business invariants.
-- UI services enforce route-level and page-level authorization for user experience, but APIs remain the authority for business authorization.
+- UI services enforce route-level and page-level authorization for user experience, but domain APIs remain the authority for business authorization.
 - UI validation improves ergonomics; API validation remains mandatory.
 
 ## Domain and Workflow Rules
@@ -73,7 +86,7 @@ Use technical folders only when they support a clear boundary that cuts across m
 - Status transitions are explicit and tested.
 - Approval thresholds and segregation-of-duties rules are configurable, not hard-coded constants in domain logic.
 - Domain models use `System.Guid` identifiers backed by SQL Server `UNIQUEIDENTIFIER` columns.
-- Cross-module references are named external IDs, not navigation properties to another module's database.
+- Cross-domain references are named external IDs, not navigation properties to another domain's database.
 - Negative inventory balances are prohibited by Inventory Management domain rules.
 - Inventory reservation happens at fulfilment release; inventory consumption happens at fulfilment completion.
 
@@ -99,6 +112,7 @@ Use technical folders only when they support a clear boundary that cuts across m
 - [ ] Controllers and Razor Page models stay thin.
 - [ ] Domain rules do not depend on infrastructure.
 - [ ] UI services have no database access.
-- [ ] API services own persistence and migrations.
-- [ ] Controlled actions enforce RBAC, segregation of duties, audit, and idempotency where relevant.
-- [ ] Cross-module references use external IDs.
+- [ ] Application API services have no database access.
+- [ ] Domain API services own persistence and migrations.
+- [ ] Controlled actions enforce RBAC, segregation of duties, audit, and idempotency in domain APIs where relevant.
+- [ ] Cross-domain references use external IDs.

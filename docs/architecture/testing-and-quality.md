@@ -21,12 +21,12 @@ This document defines automated testing, analyzer, formatting, build, validation
 | Vertical slice tests | Feature command/query behavior with realistic dependencies substituted or in-memory where appropriate | Goods receipt mismatch handling, buyer request intake, sales order validation |
 | API tests | Controller routing, authorization, validation, error responses, OpenAPI behavior | Required field validation, forbidden self-approval, idempotency replay |
 | Integration tests | SQL Server, EF Core migrations, service clients, Authentik/Gravitee integration where feasible | Migration application, repository transaction behavior, service-to-service contract handling |
-| Contract tests | Cross-module API and event payload compatibility | Sales release payload consumed by Fulfilment, Purchasing PO payload consumed by Inventory |
-| Smoke tests | Built services in local Kubernetes | `/healthz`, `/readyz`, `/openapi/v1.json`, module placeholder routes |
+| Contract tests | Cross-domain API and event payload compatibility | Sales release payload consumed by Fulfilment, Purchasing PO payload consumed by Inventory |
+| Smoke tests | Built services in local Kubernetes | `/healthz`, `/readyz`, `/openapi/v1.json`, domain and application placeholder routes |
 
 ## Required Business Coverage
 
-Each module must include tests for its controlling business rules.
+Each domain must include tests for its controlling business rules. Each application must include tests for its orchestration and route-level behavior.
 
 Sales:
 
@@ -65,7 +65,7 @@ Cross-cutting:
 - Segregation-of-duties self-approval prevention.
 - Audit records for controlled actions.
 - Service account scope and failed authorization behavior.
-- Correlation ID and idempotency behavior for cross-module mutations.
+- Correlation ID and idempotency behavior for cross-domain and application-to-domain mutations.
 
 ## Quality Gates
 
@@ -96,14 +96,14 @@ CI should fail on build errors, test failures, analyzer warnings configured as e
 
 - Every API exposes OpenAPI 3.0 JSON.
 - Mutating endpoints document idempotency key behavior.
-- Cross-module payloads document external ID ownership.
+- Cross-domain payloads document external ID ownership.
 - Error responses distinguish validation, authorization, conflict, retryable integration failure, and unrecoverable failure.
-- Contract tests guard cross-module payloads used by Sales, Purchasing, Inventory Management, and Order Fulfilment.
+- Contract tests guard cross-domain payloads used by Sales, Purchasing, Inventory Management, and Order Fulfilment.
 
 ## Test Data Rules
 
 - Test data must use deterministic IDs where assertions depend on identity.
-- Test data ownership follows module ownership: Inventory product/SKU data, Sales customer data, Purchasing supplier data, Authentik/security identity and role data.
+- Test data ownership follows domain ownership: Inventory product/SKU data, Sales customer data, Purchasing supplier data, Authentik/security identity and role data.
 - Tests must not depend on the execution order of unrelated tests.
 - Tests that mutate SQL Server state must isolate databases, schemas, transactions, or data identifiers.
 
@@ -114,6 +114,6 @@ CI should fail on build errors, test failures, analyzer warnings configured as e
 - [ ] Nullable reference types and analyzers are enabled.
 - [ ] Warnings-as-errors are used where feasible.
 - [ ] Business rules have focused unit or slice tests.
-- [ ] Cross-module payloads have contract coverage.
+- [ ] Cross-domain payloads have contract coverage.
 - [ ] Local validation checks Kubernetes platform and application readiness.
 - [ ] Smoke tests verify health, readiness, and OpenAPI endpoints.

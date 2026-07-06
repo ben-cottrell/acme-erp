@@ -19,48 +19,62 @@ build/
   scripts/
 docs/
   architecture/
-  cross-cutting/
-  inventory-management/
-  order-fulfilment/
-  purchasing/
-  sales/
+  application/
+  domain/
+  cross-cutting/              # legacy source requirements during migration
+  inventory-management/       # legacy source requirements during migration
+  order-fulfilment/           # legacy source requirements during migration
+  purchasing/                 # legacy source requirements during migration
+  sales/                      # legacy source requirements during migration
 src/
-  InventoryManagement/
-  OrderFulfilment/
-  Purchasing/
-  Sales/
+  Applications/
+  Domain/
 tests/
 ```
 
-The top-level `Acme.Erp.slnx` is the only solution file. Do not create per-module solution files.
+The top-level `Acme.Erp.slnx` is the only solution file. Do not create per-domain or per-application solution files.
 
 ## Project Conventions
 
-| Module | API project | UI project | Image names | Routes |
+| Domain | API project | Image name | Route |
+|---|---|---|---|
+| Sales | `src/Domain/Sales/Acme.Erp.Sales.Api` | `acme-erp/sales-api` | `/domain/sales/api` |
+| Purchasing | `src/Domain/Purchasing/Acme.Erp.Purchasing.Api` | `acme-erp/purchasing-api` | `/domain/purchasing/api` |
+| Inventory Management | `src/Domain/InventoryManagement/Acme.Erp.InventoryManagement.Api` | `acme-erp/inventory-management-api` | `/domain/inventory/api` |
+| Order Fulfilment | `src/Domain/OrderFulfilment/Acme.Erp.OrderFulfilment.Api` | `acme-erp/order-fulfilment-api` | `/domain/fulfilment/api` |
+
+| Application | API project | UI project | Image names | Routes |
 |---|---|---|---|---|
-| Sales | `src/Sales/Acme.Erp.Sales.Api` | `src/Sales/Acme.Erp.Sales.Ui` | `acme-erp/sales-api`, `acme-erp/sales-ui` | `/sales/api`, `/sales/ui` |
-| Purchasing | `src/Purchasing/Acme.Erp.Purchasing.Api` | `src/Purchasing/Acme.Erp.Purchasing.Ui` | `acme-erp/purchasing-api`, `acme-erp/purchasing-ui` | `/purchasing/api`, `/purchasing/ui` |
-| Inventory Management | `src/InventoryManagement/Acme.Erp.InventoryManagement.Api` | `src/InventoryManagement/Acme.Erp.InventoryManagement.Ui` | `acme-erp/inventory-management-api`, `acme-erp/inventory-management-ui` | `/inventory/api`, `/inventory/ui` |
-| Order Fulfilment | `src/OrderFulfilment/Acme.Erp.OrderFulfilment.Api` | `src/OrderFulfilment/Acme.Erp.OrderFulfilment.Ui` | `acme-erp/order-fulfilment-api`, `acme-erp/order-fulfilment-ui` | `/fulfilment/api`, `/fulfilment/ui` |
+| Sales Assistant | `src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Api` | `src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Ui` | `acme-erp/sales-assistant-api`, `acme-erp/sales-assistant-ui` | `/apps/sales-assistant/api`, `/apps/sales-assistant/ui` |
+| Customer Ordering | `src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Api` | `src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Ui` | `acme-erp/customer-ordering-api`, `acme-erp/customer-ordering-ui` | `/apps/customer-ordering/api`, `/apps/customer-ordering/ui` |
+| Buyer | `src/Applications/Buyer/Acme.Erp.Buyer.Api` | `src/Applications/Buyer/Acme.Erp.Buyer.Ui` | `acme-erp/buyer-api`, `acme-erp/buyer-ui` | `/apps/buyer/api`, `/apps/buyer/ui` |
+| Warehouse Operator | `src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Api` | `src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui` | `acme-erp/warehouse-operator-api`, `acme-erp/warehouse-operator-ui` | `/apps/warehouse-operator/api`, `/apps/warehouse-operator/ui` |
+| Fulfilment Operator | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api` | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui` | `acme-erp/fulfilment-operator-api`, `acme-erp/fulfilment-operator-ui` | `/apps/fulfilment-operator/api`, `/apps/fulfilment-operator/ui` |
+| Inventory Supervisor | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api` | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui` | `acme-erp/inventory-supervisor-api`, `acme-erp/inventory-supervisor-ui` | `/apps/inventory-supervisor/api`, `/apps/inventory-supervisor/ui` |
+| Fulfilment Supervisor | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui` | `acme-erp/fulfilment-supervisor-api`, `acme-erp/fulfilment-supervisor-ui` | `/apps/fulfilment-supervisor/api`, `/apps/fulfilment-supervisor/ui` |
+| Security Administration | `src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api` | `src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui` | `acme-erp/security-administration-api`, `acme-erp/security-administration-ui` | `/apps/security-administration/api`, `/apps/security-administration/ui` |
+| Audit Reporting | `src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api` | `src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui` | `acme-erp/audit-reporting-api`, `acme-erp/audit-reporting-ui` | `/apps/audit-reporting/api`, `/apps/audit-reporting/ui` |
 
 ## Naming Rules
 
-- Project names use `Acme.Erp.<Module>.<ServiceKind>`.
+- Domain project names use `Acme.Erp.<Domain>.<ServiceKind>`.
+- Application project names use `Acme.Erp.<Application>.<ServiceKind>`.
 - Root namespaces match project names.
 - Kubernetes service names use lower-kebab-case and match image names without the `acme-erp/` prefix.
-- API routes use the module route segment plus `/api`.
-- UI routes use the module route segment plus `/ui`.
+- Domain API routes use `/domain/<domain>/api`.
+- Application API routes use `/apps/<application>/api`.
+- Application UI routes use `/apps/<application>/ui`.
 - Dockerfiles stay beside the project they build.
 - Kubernetes service manifests stay under `build/k8s/services/` and use the route and image conventions above.
 
 ## Source Organization
 
-Module code is organized by bounded context first, then service, then vertical feature slices inside the service.
+Domain code is organized by bounded context first, then service, then vertical feature slices inside the service. Application code is organized by role or workload first, then paired API/UI services.
 
 Recommended API shape:
 
 ```text
-src/<Module>/Acme.Erp.<Module>.Api/
+src/Domain/<Domain>/Acme.Erp.<Domain>.Api/
   <FeatureOrWorkflow>/
     <Feature>Controller.cs
     <Command>.cs
@@ -74,10 +88,22 @@ src/<Module>/Acme.Erp.<Module>.Api/
   appsettings.json
 ```
 
-Recommended UI shape:
+Recommended application API shape:
 
 ```text
-src/<Module>/Acme.Erp.<Module>.Ui/
+src/Applications/<Application>/Acme.Erp.<Application>.Api/
+  <Workflow>/
+    <Workflow>Controller.cs
+    <CommandOrQuery>.cs
+    <DomainClient>.cs
+  Program.cs
+  appsettings.json
+```
+
+Recommended application UI shape:
+
+```text
+src/Applications/<Application>/Acme.Erp.<Application>.Ui/
   Pages/
     <FeatureOrWorkflow>/
       Index.cshtml
@@ -90,11 +116,13 @@ src/<Module>/Acme.Erp.<Module>.Ui/
 
 Avoid broad catch-all folders such as `Models`, `Helpers`, and `Utils` as primary organization. Feature names should describe ERP behavior, such as `SalesOrderEntry`, `GoodsReceipt`, `PurchaseOrderApproval`, or `FulfilmentShipping`.
 
+Application APIs must not contain EF Core `DbContext` types, migrations, repositories, or durable business entities.
+
 ## Shared Code Placement
 
 Shared projects are allowed only for cross-cutting concerns used by multiple services. Candidate shared project families are documented in `docs/architecture/cross-cutting-projects.md`.
 
-Do not move module-specific domain rules, entities, workflow policies, or application services into shared projects. Prefer duplication over an incorrect shared abstraction when behavior belongs to one bounded context.
+Do not move domain-specific rules, entities, workflow policies, or application services into shared projects. Prefer duplication over an incorrect shared abstraction when behavior belongs to one bounded context.
 
 ## Test Layout
 
@@ -104,12 +132,17 @@ Recommended pattern:
 
 ```text
 tests/
-  Sales/
+  Domain/
+    Sales/
     Acme.Erp.Sales.Api.Tests/
       SalesOrderEntry/
-  InventoryManagement/
+    InventoryManagement/
     Acme.Erp.InventoryManagement.Api.Tests/
       GoodsReceipt/
+  Applications/
+    WarehouseOperator/
+      Acme.Erp.WarehouseOperator.Api.Tests/
+        GoodsReceiptWorkflow/
 ```
 
 XUnit v3 is the test framework for all automated tests.
@@ -128,14 +161,14 @@ XUnit v3 is the test framework for all automated tests.
 
 - Keep generated or local-only secrets under ignored local paths such as `build/.local/`.
 - Keep OpenAPI contracts close to the API that owns them, and publish through Gravitee.
-- Keep database migrations close to the API or module-owned persistence project that owns the database.
-- Keep module documentation under `docs/<module>/` and architecture decisions under `docs/architecture/`.
+- Keep database migrations close to the domain API or domain-owned persistence project that owns the database.
+- Keep domain requirements under `docs/domain/<domain>/`, application requirements under `docs/application/<application>/`, and architecture decisions under `docs/architecture/`.
 
 ## Review Checklist
 
 - [ ] Each service project is included in `Acme.Erp.slnx`.
 - [ ] Each service image appears in `build/skaffold.yaml`.
 - [ ] Each service has a Kubernetes manifest under `build/k8s/services/`.
-- [ ] Namespaces, images, services, and routes follow the module naming table.
-- [ ] New tests mirror the owning module and feature.
-- [ ] Shared code is limited to cross-cutting concerns used by multiple modules.
+- [ ] Namespaces, images, services, and routes follow the domain and application naming tables.
+- [ ] New tests mirror the owning domain/application and feature.
+- [ ] Shared code is limited to cross-cutting concerns used by multiple domains or applications.

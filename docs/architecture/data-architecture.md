@@ -8,22 +8,23 @@ This document defines database ownership, EF Core, identifier, reference, migrat
 
 - SQL Server is the database engine.
 - Entity Framework Core Code-First and migrations are required.
-- Each ERP module has its own separate database.
-- Only WebAPI services may communicate with databases.
+- Each domain bounded context has its own separate database.
+- Only database-owning domain WebAPI services may communicate with SQL Server databases.
+- Application WebAPI services must not own databases, EF Core migrations, or durable business state.
 - Database primary keys use SQL Server `UNIQUEIDENTIFIER` and .NET `System.Guid`.
 - Cross-database foreign keys are prohibited.
-- Cross-module references use external ID columns and integration contracts.
+- Cross-domain references use external ID columns and integration contracts.
 
-## Database Ownership
+## Domain Database Ownership
 
-| Database | Owning service | Main records |
+| Database | Owning domain service | Main records |
 |---|---|---|
 | Sales database | `Acme.Erp.Sales.Api` | Sales orders, order lines, channels, customer account reference data, buyer request links, fulfilment status read models, sales audit records |
 | Purchasing database | `Acme.Erp.Purchasing.Api` | Suppliers, purchase orders, PO lines, buyer requests, approval records, receipt status read models, purchasing audit records |
 | Inventory database | `Acme.Erp.InventoryManagement.Api` | Products, SKUs, barcodes, serial configuration, stock balances, reservations, goods receipts, stock checks, discrepancies, stock movements |
 | Fulfilment database | `Acme.Erp.OrderFulfilment.Api` | Fulfilment tasks, picks, packs, courier shipment purchases, label references, completion records, fulfilment exceptions |
 
-No UI service owns or writes a database.
+No UI service or application API service owns or writes a database.
 
 ## Identifier Rules
 
@@ -35,7 +36,7 @@ No UI service owns or writes a database.
 
 ## External Reference Examples
 
-| Owning record | Referencing module | Column examples |
+| Owning record | Referencing domain | Column examples |
 |---|---|---|
 | Sales order | Order Fulfilment | `ExternalSalesOrderId`, `ExternalSalesOrderLineId` |
 | Sales buyer request | Purchasing | `ExternalSalesBuyerRequestId` |
@@ -46,16 +47,16 @@ No UI service owns or writes a database.
 
 ## EF Core and Migrations
 
-- Each database-owning API has its own `DbContext`.
+- Each database-owning domain API has its own `DbContext`.
 - Migrations are generated and applied per owning service database.
-- A module may use an adjacent module-owned persistence project only when it improves separation without sharing persistence across modules.
+- A domain may use an adjacent domain-owned persistence project only when it improves separation without sharing persistence across domains or applications.
 - Migrations must not create cross-database foreign keys.
 - Migrations must preserve audit and status history tables during schema evolution.
 - Local database initialization and seed data must be deterministic and safe to rerun in the local Kubernetes environment.
 
 ## Consistency Model
 
-Use a local transaction for changes inside one module database. Use integration contracts for cross-module consistency.
+Use a local transaction for changes inside one domain database. Use integration contracts for cross-domain and application-to-domain consistency.
 
 | Workflow | Consistency guidance |
 |---|---|
@@ -65,7 +66,7 @@ Use a local transaction for changes inside one module database. Use integration 
 | Fulfilment completion | Fulfilment completes after pick, pack, shipping purchase, and label generation or approved exception; Inventory consumes stock at completion; Sales receives completion status. |
 | Buyer request | Sales sends non-routinely stocked product request to Purchasing; Purchasing owns buyer queue status and returns status feedback. |
 
-Cross-module writes must be idempotent. Replayed commands or events must not create duplicate orders, reservations, stock movements, shipments, or audit records.
+Cross-service writes must be idempotent. Replayed commands or events must not create duplicate orders, reservations, stock movements, shipments, or audit records.
 
 ## Inventory State Rules
 
@@ -103,16 +104,17 @@ Retention categories:
 ## Data Seeding
 
 - MVP seed data may include ACME's initial users/roles, 1,000-product catalog baseline, 10 to 20 suppliers, one warehouse, configured bins where needed, and approximately 100 B2B customer accounts.
-- Seed data must be owned by the appropriate module: Inventory owns product/SKU/barcode/stocking data, Sales owns customer reference data, Purchasing owns supplier reference data, and Authentik/Security Administration owns identity and access configuration.
+- Seed data must be owned by the appropriate domain or platform service: Inventory owns product/SKU/barcode/stocking data, Sales owns customer reference data, Purchasing owns supplier reference data, and Authentik/Security Administration owns identity and access configuration.
 - Seed data must not introduce hidden cross-database dependencies.
 
 ## Review Checklist
 
-- [ ] Every module has a separate SQL Server database.
-- [ ] Only API services connect to databases.
+- [ ] Every domain bounded context has a separate SQL Server database.
+- [ ] Only database-owning domain API services connect to databases.
+- [ ] Application API services do not own databases or EF Core migrations.
 - [ ] Primary keys are `Guid`/`UNIQUEIDENTIFIER`.
 - [ ] No migration creates a cross-database foreign key.
-- [ ] Cross-module references use external ID columns.
-- [ ] EF Core migrations are owned by the database-owning module.
+- [ ] Cross-domain references use external ID columns.
+- [ ] EF Core migrations are owned by the database-owning domain.
 - [ ] Audit and status history are retained according to policy.
 - [ ] Inventory reservation and consumption timing matches requirements.

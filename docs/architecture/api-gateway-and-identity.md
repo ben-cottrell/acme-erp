@@ -20,17 +20,20 @@ sequenceDiagram
     participant User as User or client
     participant Gateway as Gravitee
     participant IdP as Authentik
-    participant UI as Razor Pages UI
-    participant API as Module WebAPI
+    participant UI as Application Razor Pages UI
+    participant AppAPI as Application WebAPI
+    participant DomainAPI as Domain WebAPI
 
-    User->>Gateway: Request module route
+    User->>Gateway: Request application or domain route
     Gateway->>IdP: Authenticate or validate OAuth/OIDC session/token
     IdP-->>Gateway: Identity claims and token result
     Gateway->>UI: Forward authorized UI request
-    UI->>Gateway: Call module API route
-    Gateway->>API: Forward token, correlation ID, and request metadata
-    API->>API: Enforce RBAC, SoD, validation, audit, and workflow rules
-    API-->>Gateway: Response
+    UI->>Gateway: Call paired application API route
+    Gateway->>AppAPI: Forward token, correlation ID, and request metadata
+    AppAPI->>DomainAPI: Call domain API with user or service context
+    DomainAPI->>DomainAPI: Enforce RBAC, SoD, validation, audit, persistence, and domain rules
+    DomainAPI-->>AppAPI: Domain response
+    AppAPI-->>Gateway: Application response
     Gateway-->>User: Response
 ```
 
@@ -40,14 +43,28 @@ Internal Kubernetes service calls are permitted after ingress for trusted ERP se
 
 | Service | Public route | Health endpoints | Contract endpoint |
 |---|---|---|---|
-| Sales API | `/sales/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
-| Sales UI | `/sales/ui` | `/healthz`, `/readyz` | Not applicable |
-| Purchasing API | `/purchasing/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
-| Purchasing UI | `/purchasing/ui` | `/healthz`, `/readyz` | Not applicable |
-| Inventory Management API | `/inventory/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
-| Inventory Management UI | `/inventory/ui` | `/healthz`, `/readyz` | Not applicable |
-| Order Fulfilment API | `/fulfilment/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
-| Order Fulfilment UI | `/fulfilment/ui` | `/healthz`, `/readyz` | Not applicable |
+| Sales Domain API | `/domain/sales/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Purchasing Domain API | `/domain/purchasing/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Inventory Management Domain API | `/domain/inventory/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Order Fulfilment Domain API | `/domain/fulfilment/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Sales Assistant API | `/apps/sales-assistant/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Sales Assistant UI | `/apps/sales-assistant/ui` | `/healthz`, `/readyz` | Not applicable |
+| Customer Ordering API | `/apps/customer-ordering/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Customer Ordering UI | `/apps/customer-ordering/ui` | `/healthz`, `/readyz` | Not applicable |
+| Buyer API | `/apps/buyer/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Buyer UI | `/apps/buyer/ui` | `/healthz`, `/readyz` | Not applicable |
+| Warehouse Operator API | `/apps/warehouse-operator/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Warehouse Operator UI | `/apps/warehouse-operator/ui` | `/healthz`, `/readyz` | Not applicable |
+| Fulfilment Operator API | `/apps/fulfilment-operator/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Fulfilment Operator UI | `/apps/fulfilment-operator/ui` | `/healthz`, `/readyz` | Not applicable |
+| Inventory Supervisor API | `/apps/inventory-supervisor/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Inventory Supervisor UI | `/apps/inventory-supervisor/ui` | `/healthz`, `/readyz` | Not applicable |
+| Fulfilment Supervisor API | `/apps/fulfilment-supervisor/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Fulfilment Supervisor UI | `/apps/fulfilment-supervisor/ui` | `/healthz`, `/readyz` | Not applicable |
+| Security Administration API | `/apps/security-administration/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Security Administration UI | `/apps/security-administration/ui` | `/healthz`, `/readyz` | Not applicable |
+| Audit Reporting API | `/apps/audit-reporting/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
+| Audit Reporting UI | `/apps/audit-reporting/ui` | `/healthz`, `/readyz` | Not applicable |
 
 ## Gravitee Responsibilities
 
@@ -59,7 +76,7 @@ Internal Kubernetes service calls are permitted after ingress for trusted ERP se
 - Apply rate limits or request policies where needed for internal stability.
 - Record gateway access logs and route-level failures.
 
-Gravitee does not replace module authorization. A request allowed by Gravitee can still be rejected by the target API.
+Gravitee does not replace domain authorization. A request allowed by Gravitee can still be rejected by the target API.
 
 ## Authentik Responsibilities
 
@@ -71,21 +88,21 @@ Gravitee does not replace module authorization. A request allowed by Gravitee ca
 
 ## API Authorization Responsibilities
 
-Every API enforces:
+Every domain API enforces:
 
 - Required authenticated identity or service account identity.
-- Module-level permission checks.
-- Data-scope restrictions by role, module, channel, location, supplier, customer, or assignment where configured.
+- Domain-level permission checks.
+- Data-scope restrictions by role, domain, application, channel, location, supplier, customer, or assignment where configured.
 - Segregation-of-duties rules, including self-approval prevention for controlled actions.
 - Configurable approval thresholds and approval authority.
 - Customer data privacy restrictions.
 - Audit logging for controlled actions, denied actions where policy requires, and data exports.
 
-API authorization must fail closed when authorization status cannot be determined.
+Domain API authorization must fail closed when authorization status cannot be determined. Application APIs also fail closed for route and workflow authorization, but they must not replace domain authorization decisions.
 
 ## Role and Claim Mapping
 
-Authentik supplies identity and coarse role/group claims. ERP services map claims to module permissions and data scopes according to security configuration.
+Authentik supplies identity and coarse role/group claims. ERP services map claims to domain and application permissions and data scopes according to security configuration.
 
 Initial global roles include Customer, Sales Assistant, Sales Supervisor, Buyer, Purchasing Manager, Warehouse Operator, Inventory Supervisor, Fulfilment Operator, Fulfilment Supervisor, Finance/AP User, Finance/AR User, Security Administrator, System Administrator, Auditor, Support User, and Integration Service Account.
 
@@ -94,6 +111,9 @@ System Administrator access does not imply business approval authority. Business
 ## Service-to-Service Communication
 
 - Service calls use authenticated service identities or delegated user context where the workflow requires user traceability.
+- Application APIs call domain APIs using delegated user context or scoped service identity according to the workflow contract.
+- Application UIs call only their paired application APIs.
+- Domain APIs do not call application APIs.
 - Mutating calls carry idempotency keys.
 - All calls carry correlation IDs.
 - Called APIs validate caller authorization and current business state before changing local data.
@@ -101,10 +121,10 @@ System Administrator access does not imply business approval authority. Business
 
 ## OpenAPI Rules
 
-- Every WebAPI service publishes OpenAPI 3.0 JSON.
+- Every domain and application WebAPI service publishes OpenAPI 3.0 JSON.
 - Contracts document authentication, authorization, correlation ID, idempotency key, validation errors, and business error responses.
 - Public endpoints use route names that reflect feature behavior rather than database entities alone.
-- OpenAPI descriptions include external ID fields where payloads cross module boundaries.
+- OpenAPI descriptions include external ID fields where payloads cross domain boundaries.
 - Breaking contract changes require explicit architecture or API review.
 
 ## Review Checklist
@@ -112,7 +132,7 @@ System Administrator access does not imply business approval authority. Business
 - [ ] All inbound user and external client traffic is routed through Gravitee.
 - [ ] Authentik is the OAuth/OIDC identity provider.
 - [ ] Gravitee performs gateway policy but APIs enforce business authorization.
-- [ ] APIs publish OpenAPI 3.0 contracts.
+- [ ] Domain and application APIs publish OpenAPI 3.0 contracts.
 - [ ] Correlation IDs flow from gateway to services and across service calls.
 - [ ] Service accounts are scoped and non-interactive.
-- [ ] SoD and approval authority are enforced in APIs, not only in UI or gateway policy.
+- [ ] SoD and approval authority are enforced in domain APIs, not only in UI, application APIs, or gateway policy.
