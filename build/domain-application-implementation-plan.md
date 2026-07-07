@@ -11,7 +11,6 @@ The task is complete only when all of the following are true:
 - The old placeholder project folders under `src/Sales`, `src/Purchasing`, `src/InventoryManagement`, and `src/OrderFulfilment` are removed.
 - The old Kubernetes service manifests for module UIs and module APIs are removed.
 - `Acme.Erp.slnx` contains only the new domain API projects and application API/UI projects.
-- `Acme.Erp.slnx`, Dockerfiles, Kubernetes manifests, Skaffold configuration, CI workflows, and tests do not include shared cross-cutting projects unless a later explicit architecture decision reintroduces them.
 - Domain APIs exist for Sales, Purchasing, Inventory Management, and Order Fulfilment.
 - Application API/UI pairs exist for Sales Assistant, Customer Ordering, Buyer, Warehouse Operator, Fulfilment Operator, Inventory Supervisor, and Fulfilment Supervisor.
 - Domain APIs have database connection string configuration for their owned SQL Server database.
@@ -427,4 +426,3 @@ Then, if the local cluster is available and the user wants runtime validation:
 - Do not preserve old placeholder projects; replace them with the new project inventory.
 - Do not update SQL Server bootstrap to create application databases.
 - Do not add services outside the active four-domain and seven-application inventory. Authentication and identity remain Authentik/Gravitee platform concerns, while access permissions are owned by each application workflow and paired domain API.
-- Do not scaffold shared cross-cutting projects, shared test projects, or shared package families. Common OpenAPI, health, logging, diagnostics, correlation, idempotency, authorization, and operational-history behavior stays inside the owning service unless a later explicit architecture decision reintroduces shared projects.

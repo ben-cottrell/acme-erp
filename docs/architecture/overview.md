@@ -172,7 +172,6 @@ This baseline is expanded by these architecture documents:
 | `api-gateway-and-identity.md` | Gravitee, Authentik, OAuth/OIDC, OpenAPI, and ingress conventions |
 | `local-kubernetes-runtime.md` | Docker Desktop, Kubernetes, Skaffold, local dependencies, and developer flow |
 | `testing-and-quality.md` | XUnit v3, analyzers, validation gates, and smoke tests |
-| `cross-cutting-projects.md` | Retired note for shared cross-cutting project scope |
 | `decisions-and-open-questions.md` | Architecture decisions, assumptions, risks, and unresolved policy decisions |
 
 ## Architecture Decisions
@@ -183,7 +182,6 @@ This baseline is expanded by these architecture documents:
 - Authentik shall provide password-only authentication for the initial protected-network release. MFA is deferred unless ACME later exposes the ERP outside the protected network or requires privileged-user MFA.
 - Sessions shall use a 60 minute idle timeout and an 8 hour absolute timeout. Account lockout shall be enforced through Authentik after repeated failed login attempts.
 - The MVP does not include a Security and Audit bounded context, Security Administration application, Audit Reporting application, or active auditing/compliance workflows. Operational history remains owned by the domain that owns the business state.
-- The MVP documentation no longer defines or requires shared cross-cutting projects. Platform responsibilities remain documented in the architecture areas that own them, and each service implements its own OpenAPI, health, logging, diagnostics, correlation, idempotency, authorization, and operational-history behavior.
 - Local self-approval rules shall prevent users from approving controlled business actions that they created or requested. Users may hold multiple operational roles when each owning domain allows the resulting permissions.
 - All user and external client ingress shall pass through Gravitee. Internal Kubernetes service calls are permitted after ingress for trusted application-to-domain and domain-to-domain APIs where contracts, service identity, correlation, authorization, and operational-history requirements are enforced by the called API.
 
