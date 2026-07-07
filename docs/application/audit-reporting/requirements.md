@@ -1,40 +1,13 @@
-# Application Requirements: Audit Reporting
+# Retired Application Scope: Audit Reporting
 
-## Purpose
+Audit Reporting is removed from MVP scope. This file is retained only as a de-scoping note and must not be used to generate active application requirements.
 
-The Audit Reporting application supports auditors, security administrators, and business control owners who review audit trails, approvals, exceptions, access reports, security events, and controlled business activity across domains.
+No API project, UI project, route, Kubernetes manifest, Docker image, test project, report workflow, export workflow, or application service should be generated for Audit Reporting.
 
-## Application Boundary
+Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee using OAuth2/OIDC. Access permissions belong in each remaining role-focused UI/application workflow and its paired application API.
 
-| Item | Value |
-|---|---|
-| UI | `Acme.Erp.AuditReporting.Ui` |
-| API | `Acme.Erp.AuditReporting.Api` |
-| Primary users | Auditor, Security Administrator, business control owners |
-| Database | None |
-| Domain APIs consumed | Security and Audit services, Sales, Purchasing, Inventory Management, Order Fulfilment |
+Auditing, audit-ready exports, audit evidence review, access reviews, privileged access reporting, segregation-of-duties reporting, security-event review, and central audit report/query contracts are de-scoped for MVP. Ordinary operational logging, diagnostics, health checks, and correlation IDs remain in scope for operating services.
 
-The Audit Reporting UI calls only the Audit Reporting API. The Audit Reporting API does not own durable state, does not use EF Core, and does not connect to SQL Server.
+The `Auditor`, `System Administrator`, and `Security Administrator` roles are removed from MVP scope.
 
-## User-Facing Scope
-
-- Display audit records, status history, approval decisions, exception records, and export events from domain APIs and audit services.
-- Provide user access review, privileged access, failed authentication, SoD conflict, approval exception, service account activity, customer data export, and security configuration change reports.
-- Provide operational audit reports for sales orders, purchase orders, inventory movements, goods receipt exceptions, fulfilment completion, courier transactions, and label events.
-- Support CSV, spreadsheet, PDF, or audit-ready export formats where specified by the source report requirements.
-- Record audit export actions through security/audit services.
-
-## Functional Requirements
-
-| ID | Requirement |
-|---|---|
-| ARP-APP-001 | The application shall provide read-only access to audit and control reports for authorized users. |
-| ARP-APP-002 | The application shall request audit and report data from domain APIs or audit services without storing report data locally. |
-| ARP-APP-003 | The application shall enforce report filters by user role, business scope, module/domain, date range, status, exception type, and privacy restrictions. |
-| ARP-APP-004 | The application shall record export actions for operational, audit, personal, or sensitive data. |
-| ARP-APP-005 | The application shall protect customer personal data in reports according to role, purpose, and data scope. |
-| ARP-APP-006 | The application shall provide accessible report review and export workflows. |
-
-## Security and Audit
-
-The application must never grant report access by presentation logic alone. Security and Audit services and the source domain APIs remain authoritative for authorization, export logging, privacy restrictions, and audit retention.
+Code removal for `Acme.Erp.AuditReporting.Api`, `Acme.Erp.AuditReporting.Ui`, `src/Applications/AuditReporting/`, `audit-reporting-api`, `audit-reporting-ui`, and `/apps/audit-reporting/*` is intentionally deferred to the later code-removal implementation pass.

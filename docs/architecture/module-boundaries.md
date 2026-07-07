@@ -15,7 +15,7 @@ The architecture no longer treats each ERP module as a full-stack `API + UI + da
 - Application UIs call only their paired application APIs.
 - Application APIs do not own databases, EF Core migrations, or durable business state.
 - Application APIs call one or more domain APIs to read or mutate durable business state.
-- Domain APIs remain authoritative for business authorization, validation, persistence, domain invariants, audit decisions, and segregation-of-duties enforcement.
+- Domain APIs remain authoritative for business authorization, validation, persistence, domain invariants, operational history, and local self-approval rules.
 
 ## Domain Boundary Matrix
 
@@ -25,7 +25,6 @@ The architecture no longer treats each ERP module as a full-stack `API + UI + da
 | Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, buyer request queue state, purchasing approvals, PO status | Buyer UI, goods receipt booking, inventory balances, sales order entry, finance postings |
 | Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, stock checks, stock movements | Warehouse UI, purchase order authoring, sales order authoring, courier shipment purchase |
 | Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, picking, packing, courier shipment records, label references, completion, exceptions | Fulfilment application UI, sales order creation, product master ownership, stock balance authority |
-| Security and Audit | Explicit platform/domain services when introduced | Separate storage only where a service is explicitly introduced | Identity integration conventions, authorization policy support, audit, access review, service account policy | Domain-specific workflow behaviour |
 
 ## Application Boundary Matrix
 
@@ -38,8 +37,6 @@ The architecture no longer treats each ERP module as a full-stack `API + UI + da
 | Fulfilment Operator | `Acme.Erp.FulfilmentOperator.Api` | `Acme.Erp.FulfilmentOperator.Ui` | Fulfilment Operator | Order Fulfilment, Sales, Inventory Management | None |
 | Inventory Supervisor | `Acme.Erp.InventorySupervisor.Api` | `Acme.Erp.InventorySupervisor.Ui` | Inventory Supervisor | Inventory Management, Purchasing, Order Fulfilment | None |
 | Fulfilment Supervisor | `Acme.Erp.FulfilmentSupervisor.Api` | `Acme.Erp.FulfilmentSupervisor.Ui` | Fulfilment Supervisor | Order Fulfilment, Sales, Inventory Management | None |
-| Security Administration | `Acme.Erp.SecurityAdministration.Api` | `Acme.Erp.SecurityAdministration.Ui` | Security Administrator, System Administrator | Security and Audit services, Authentik integration, domain metadata APIs | None |
-| Audit Reporting | `Acme.Erp.AuditReporting.Api` | `Acme.Erp.AuditReporting.Ui` | Auditor, Security Administrator, business control owners | Security and Audit services, domain audit/reporting APIs | None |
 
 ## Boundary Diagram
 

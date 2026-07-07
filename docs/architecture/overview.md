@@ -19,7 +19,7 @@ The architecture is derived from these requirement sources:
 - ACME works with approximately 10 to 20 active suppliers.
 - ACME serves approximately 100 business customers.
 - The ERP is an internal system on a protected network.
-- Authentication is provided by Authentik with password-only login for the initial release.
+- Authentication and identity are provided by Authentik with password-only login for the initial release and Gravitee OAuth/OIDC ingress integration.
 
 ## Fixed Technology Stack
 
@@ -55,19 +55,20 @@ The architecture is derived from these requirement sources:
 - Cross-database references must use external ID columns rather than cross-database foreign keys.
 - Layered architecture is required inside services.
 - File and class organization must remain feature-oriented and vertical-slice friendly.
-- Cross-cutting concerns used by multiple APIs/services must be placed in separate shared projects.
+- Common platform concerns must be documented as conventions and implemented inside the owning service unless a later explicit architecture decision reintroduces shared projects.
 
 ## Initial Boundary Model
 
 Domain bounded contexts own durable business state and expose WebAPI contracts. User-facing workloads are separate application services with a paired UI and API.
 
+The MVP no longer includes a Security and Audit bounded context, Security Administration application, Audit Reporting application, or active auditing/compliance workflows. Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee through OAuth2/OIDC. Each role-focused UI/application owns its own access-permission experience and its paired API enforces workflow authorization before calling domain APIs. Domain APIs remain authoritative for their own business rules, state transitions, data ownership, and domain-specific authorization checks.
+
 | Domain bounded context | Domain API responsibility | Database ownership | UI ownership |
 |---|---|---|---|
-| Sales | Sales order state, customer account reference data for MVP, order channels, buyer request state, release-to-fulfilment decisions, sales audit records | Sales database | None |
+| Sales | Sales order state, customer account reference data for MVP, order channels, buyer request state, release-to-fulfilment decisions, sales operational history | Sales database | None |
 | Purchasing | Supplier reference data for MVP, purchase orders, buyer request queue state, purchasing approvals, purchase order receipt visibility | Purchasing database | None |
 | Inventory Management | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, stock checks, stock movements | Inventory database | None |
 | Order Fulfilment | Fulfilment task state, pick/pack/ship/completion rules, courier shipment records, label references, fulfilment exceptions | Fulfilment database | None |
-| Security and Audit | Identity integration conventions, authorization policy support, audit, correlation, access review, service account policy, and reporting data where explicitly implemented | Separate storage only where a service is explicitly introduced | None |
 
 | Application | Application API responsibility | Application UI responsibility | Database ownership |
 |---|---|---|---|
@@ -78,8 +79,6 @@ Domain bounded contexts own durable business state and expose WebAPI contracts. 
 | Fulfilment Operator | Orchestrates Order Fulfilment, Sales, and Inventory Management for pick, pack, ship, label, and completion work | Fulfilment operator workflows | None |
 | Inventory Supervisor | Orchestrates Inventory Management, Purchasing, and Order Fulfilment for discrepancy and receipt exception review | Inventory supervisor workflows | None |
 | Fulfilment Supervisor | Orchestrates Order Fulfilment, Sales, and Inventory Management for fulfilment exception review | Fulfilment supervisor workflows | None |
-| Security Administration | Orchestrates security/audit services, Authentik integration, and domain metadata APIs | Security administration workflows | None |
-| Audit Reporting | Orchestrates audit/reporting APIs across security and domain services | Audit and control reporting workflows | None |
 
 ## Traffic and Identity Baseline
 
@@ -123,7 +122,7 @@ flowchart LR
 
 Gateway responsibilities include ingress, route publication, authentication integration, coarse-grained access policy, API subscription policy where needed, request correlation, and OpenAPI exposure.
 
-Domain API services remain responsible for business authorization, segregation-of-duties enforcement, validation, persistence, and audit decisions. Application APIs may enforce workflow and route authorization for user experience, but they do not replace domain API authorization.
+Domain API services remain responsible for business authorization, local self-approval rules, validation, persistence, and operational history. Application APIs enforce workflow and route authorization for user experience before calling domain APIs, but they do not replace domain API authorization.
 
 ## Data Ownership Baseline
 
@@ -173,7 +172,7 @@ This baseline is expanded by these architecture documents:
 | `api-gateway-and-identity.md` | Gravitee, Authentik, OAuth/OIDC, OpenAPI, and ingress conventions |
 | `local-kubernetes-runtime.md` | Docker Desktop, Kubernetes, Skaffold, local dependencies, and developer flow |
 | `testing-and-quality.md` | XUnit v3, analyzers, validation gates, and smoke tests |
-| `cross-cutting-projects.md` | Shared projects for concerns that affect multiple APIs/services |
+| `cross-cutting-projects.md` | Retired note for shared cross-cutting project scope |
 | `decisions-and-open-questions.md` | Architecture decisions, assumptions, risks, and unresolved policy decisions |
 
 ## Architecture Decisions
@@ -183,9 +182,10 @@ This baseline is expanded by these architecture documents:
 - Partial fulfilment shall be allowed. Unfulfilled stocked items remain on backorder, and non-routinely stocked items are routed through the buyer request process.
 - Authentik shall provide password-only authentication for the initial protected-network release. MFA is deferred unless ACME later exposes the ERP outside the protected network or requires privileged-user MFA.
 - Sessions shall use a 60 minute idle timeout and an 8 hour absolute timeout. Account lockout shall be enforced through Authentik after repeated failed login attempts.
-- Audit retention shall be 7 years for sales, purchasing, approval, and financially relevant business events; 3 years for inventory and fulfilment operational events; 1 year for authentication, authorization, and integration events unless linked to an incident; and 7 years for security incident evidence.
-- Segregation of duties shall prevent users from approving transactions or access changes that they created or requested. Users may hold multiple operational roles only when the resulting role set does not violate configured conflict rules.
-- All user and external client ingress shall pass through Gravitee. Internal Kubernetes service calls are permitted after ingress for trusted application-to-domain and domain-to-domain APIs where contracts, service identity, correlation, authorization, and audit requirements are enforced by the called API.
+- The MVP does not include a Security and Audit bounded context, Security Administration application, Audit Reporting application, or active auditing/compliance workflows. Operational history remains owned by the domain that owns the business state.
+- The MVP documentation no longer defines or requires shared cross-cutting projects. Platform responsibilities remain documented in the architecture areas that own them, and each service implements its own OpenAPI, health, logging, diagnostics, correlation, idempotency, authorization, and operational-history behavior.
+- Local self-approval rules shall prevent users from approving controlled business actions that they created or requested. Users may hold multiple operational roles when each owning domain allows the resulting permissions.
+- All user and external client ingress shall pass through Gravitee. Internal Kubernetes service calls are permitted after ingress for trusted application-to-domain and domain-to-domain APIs where contracts, service identity, correlation, authorization, and operational-history requirements are enforced by the called API.
 
 ## MVP Scope Decisions
 

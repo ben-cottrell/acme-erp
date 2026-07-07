@@ -37,8 +37,6 @@ dotnet build ..\Acme.Erp.slnx
 | Fulfilment Operator API/UI | `../src/Applications/FulfilmentOperator/` | `acme-erp/fulfilment-operator-api`, `acme-erp/fulfilment-operator-ui` | `/apps/fulfilment-operator/api`, `/apps/fulfilment-operator/ui` |
 | Inventory Supervisor API/UI | `../src/Applications/InventorySupervisor/` | `acme-erp/inventory-supervisor-api`, `acme-erp/inventory-supervisor-ui` | `/apps/inventory-supervisor/api`, `/apps/inventory-supervisor/ui` |
 | Fulfilment Supervisor API/UI | `../src/Applications/FulfilmentSupervisor/` | `acme-erp/fulfilment-supervisor-api`, `acme-erp/fulfilment-supervisor-ui` | `/apps/fulfilment-supervisor/api`, `/apps/fulfilment-supervisor/ui` |
-| Security Administration API/UI | `../src/Applications/SecurityAdministration/` | `acme-erp/security-administration-api`, `acme-erp/security-administration-ui` | `/apps/security-administration/api`, `/apps/security-administration/ui` |
-| Audit Reporting API/UI | `../src/Applications/AuditReporting/` | `acme-erp/audit-reporting-api`, `acme-erp/audit-reporting-ui` | `/apps/audit-reporting/api`, `/apps/audit-reporting/ui` |
 
 Each service exposes `/healthz` and `/readyz`. API services also expose `/openapi/v1.json`. Domain APIs own SQL Server connection string configuration. Application APIs and UIs do not own database configuration.
 
@@ -85,7 +83,7 @@ skaffold run -f .\build\skaffold.yaml -p all
 
 The `platform` profile applies namespaces, SQL Server, Authentik bootstrap config, and Gravitee route config. Authentik and Gravitee Helm releases are installed by `bootstrap-local.ps1` because their chart values need generated local secrets.
 
-The `apps` profile builds and deploys the 22 ASP.NET Core service images.
+The `apps` profile builds and deploys the 18 ASP.NET Core service images.
 
 ## Helm Local Tuning
 

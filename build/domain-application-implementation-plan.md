@@ -11,8 +11,9 @@ The task is complete only when all of the following are true:
 - The old placeholder project folders under `src/Sales`, `src/Purchasing`, `src/InventoryManagement`, and `src/OrderFulfilment` are removed.
 - The old Kubernetes service manifests for module UIs and module APIs are removed.
 - `Acme.Erp.slnx` contains only the new domain API projects and application API/UI projects.
+- `Acme.Erp.slnx`, Dockerfiles, Kubernetes manifests, Skaffold configuration, CI workflows, and tests do not include shared cross-cutting projects unless a later explicit architecture decision reintroduces them.
 - Domain APIs exist for Sales, Purchasing, Inventory Management, and Order Fulfilment.
-- Application API/UI pairs exist for Sales Assistant, Customer Ordering, Buyer, Warehouse Operator, Fulfilment Operator, Inventory Supervisor, Fulfilment Supervisor, Security Administration, and Audit Reporting.
+- Application API/UI pairs exist for Sales Assistant, Customer Ordering, Buyer, Warehouse Operator, Fulfilment Operator, Inventory Supervisor, and Fulfilment Supervisor.
 - Domain APIs have database connection string configuration for their owned SQL Server database.
 - Application APIs and UIs have no database connection string, EF Core migration, or SQL Server access configuration.
 - Gravitee route configuration uses `/domain/<domain>/api` for domain APIs and `/apps/<application>/api|ui` for application services.
@@ -49,8 +50,6 @@ Each application has exactly one API and exactly one UI. Application UIs call on
 | Fulfilment Operator | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api` | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui` | `acme-erp/fulfilment-operator-api` | `acme-erp/fulfilment-operator-ui` | `fulfilment-operator-api` | `fulfilment-operator-ui` | `/apps/fulfilment-operator/api` | `/apps/fulfilment-operator/ui` |
 | Inventory Supervisor | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api` | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui` | `acme-erp/inventory-supervisor-api` | `acme-erp/inventory-supervisor-ui` | `inventory-supervisor-api` | `inventory-supervisor-ui` | `/apps/inventory-supervisor/api` | `/apps/inventory-supervisor/ui` |
 | Fulfilment Supervisor | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui` | `acme-erp/fulfilment-supervisor-api` | `acme-erp/fulfilment-supervisor-ui` | `fulfilment-supervisor-api` | `fulfilment-supervisor-ui` | `/apps/fulfilment-supervisor/api` | `/apps/fulfilment-supervisor/ui` |
-| Security Administration | `src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api` | `src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui` | `acme-erp/security-administration-api` | `acme-erp/security-administration-ui` | `security-administration-api` | `security-administration-ui` | `/apps/security-administration/api` | `/apps/security-administration/ui` |
-| Audit Reporting | `src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api` | `src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui` | `acme-erp/audit-reporting-api` | `acme-erp/audit-reporting-ui` | `audit-reporting-api` | `audit-reporting-ui` | `/apps/audit-reporting/api` | `/apps/audit-reporting/ui` |
 
 ## Phase 1: Preflight
 
@@ -163,10 +162,6 @@ Recommended placeholder route behavior:
 /src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui
 /src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api
 /src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui
-/src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api
-/src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui
-/src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api
-/src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui
 ```
 
 Validation after this phase:
@@ -240,15 +235,11 @@ inventory-supervisor-api.yaml
 inventory-supervisor-ui.yaml
 fulfilment-supervisor-api.yaml
 fulfilment-supervisor-ui.yaml
-security-administration-api.yaml
-security-administration-ui.yaml
-audit-reporting-api.yaml
-audit-reporting-ui.yaml
 ```
 
 ## Phase 7: Skaffold
 
-Replace `build/skaffold.yaml` artifacts with all 22 replacement images.
+Replace `build/skaffold.yaml` artifacts with all 18 replacement images.
 
 Rules:
 
@@ -274,7 +265,7 @@ Primary workflow to update:
 .github/workflows/ci-docker-images.yml
 ```
 
-This workflow currently contains the old eight-image matrix. Replace that matrix with all 22 replacement images and Dockerfile paths:
+This workflow currently contains the old eight-image matrix. Replace that matrix with all 18 replacement images and Dockerfile paths:
 
 | Image | Dockerfile |
 |---|---|
@@ -296,10 +287,6 @@ This workflow currently contains the old eight-image matrix. Replace that matrix
 | `inventory-supervisor-ui` | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui/Dockerfile` |
 | `fulfilment-supervisor-api` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api/Dockerfile` |
 | `fulfilment-supervisor-ui` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui/Dockerfile` |
-| `security-administration-api` | `src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api/Dockerfile` |
-| `security-administration-ui` | `src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui/Dockerfile` |
-| `audit-reporting-api` | `src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api/Dockerfile` |
-| `audit-reporting-ui` | `src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui/Dockerfile` |
 
 Review these workflows for old path or image references and update only where needed:
 
@@ -373,8 +360,8 @@ Required changes:
 - Replace all old route checks such as `http://sales-api/sales/api` with domain route checks such as `http://sales-api/domain/sales/api`.
 - Remove all old module UI service checks.
 - Add health, readiness, and route-root checks for all 4 domain APIs.
-- Add health, readiness, and route-root checks for all 9 application APIs.
-- Add health, readiness, and route-root checks for all 9 application UIs.
+- Add health, readiness, and route-root checks for all 7 application APIs.
+- Add health, readiness, and route-root checks for all 7 application UIs.
 - Add OpenAPI checks for all domain APIs and application APIs: `http://<service>/openapi/v1.json`.
 - Keep Authentik and Gravitee platform checks.
 
@@ -414,14 +401,14 @@ skaffold diagnose -f build/skaffold.yaml
 ./build/scripts/validate-local.ps1
 ```
 
-If Docker is available locally, build at least one domain API image and one application UI image using the same Dockerfiles referenced by the pipeline before relying on CI for the full 22-image matrix:
+If Docker is available locally, build at least one domain API image and one application UI image using the same Dockerfiles referenced by the pipeline before relying on CI for the full 18-image matrix:
 
 ```powershell
 docker build --file src/Domain/Sales/Acme.Erp.Sales.Api/Dockerfile --tag acme-erp/sales-api:local-ci-check .
 docker build --file src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui/Dockerfile --tag acme-erp/warehouse-operator-ui:local-ci-check .
 ```
 
-The full 22-image build, inspect, and publish behavior is validated by `.github/workflows/ci-docker-images.yml` in GitHub Actions.
+The full 18-image build, inspect, and publish behavior is validated by `.github/workflows/ci-docker-images.yml` in GitHub Actions.
 
 Then, if the local cluster is available and the user wants runtime validation:
 
@@ -439,4 +426,5 @@ Then, if the local cluster is available and the user wants runtime validation:
 - Do not keep old `/sales/api`, `/sales/ui`, `/inventory/api`, `/inventory/ui`, `/purchasing/api`, `/purchasing/ui`, `/fulfilment/api`, or `/fulfilment/ui` routes.
 - Do not preserve old placeholder projects; replace them with the new project inventory.
 - Do not update SQL Server bootstrap to create application databases.
-- Do not add a Security and Audit domain API unless a separate implementation decision explicitly introduces one. The current replacement scaffold includes Security Administration and Audit Reporting applications only.
+- Do not add services outside the active four-domain and seven-application inventory. Authentication and identity remain Authentik/Gravitee platform concerns, while access permissions are owned by each application workflow and paired domain API.
+- Do not scaffold shared cross-cutting projects, shared test projects, or shared package families. Common OpenAPI, health, logging, diagnostics, correlation, idempotency, authorization, and operational-history behavior stays inside the owning service unless a later explicit architecture decision reintroduces shared projects.

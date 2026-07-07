@@ -11,7 +11,7 @@ This document defines Gravitee ingress, Authentik OAuth/OIDC integration, OpenAP
 - The initial release uses password-only login on ACME's protected internal network.
 - APIs use ASP.NET Core WebAPI Controllers.
 - API contracts use OpenAPI 3.0.
-- APIs remain responsible for business authorization and segregation-of-duties enforcement.
+- APIs remain responsible for business authorization, local self-approval rules, and business invariants.
 
 ## Ingress Topology
 
@@ -31,13 +31,13 @@ sequenceDiagram
     UI->>Gateway: Call paired application API route
     Gateway->>AppAPI: Forward token, correlation ID, and request metadata
     AppAPI->>DomainAPI: Call domain API with user or service context
-    DomainAPI->>DomainAPI: Enforce RBAC, SoD, validation, audit, persistence, and domain rules
+    DomainAPI->>DomainAPI: Enforce local permissions, self-approval rules, validation, persistence, history, and domain rules
     DomainAPI-->>AppAPI: Domain response
     AppAPI-->>Gateway: Application response
     Gateway-->>User: Response
 ```
 
-Internal Kubernetes service calls are permitted after ingress for trusted ERP service-to-service communication when the called API enforces service identity, authorization, correlation, contract validation, and audit requirements.
+Internal Kubernetes service calls are permitted after ingress for trusted ERP service-to-service communication when the called API enforces service identity, authorization, correlation, contract validation, and operational-history requirements.
 
 ## Route Conventions
 
@@ -61,10 +61,6 @@ Internal Kubernetes service calls are permitted after ingress for trusted ERP se
 | Inventory Supervisor UI | `/apps/inventory-supervisor/ui` | `/healthz`, `/readyz` | Not applicable |
 | Fulfilment Supervisor API | `/apps/fulfilment-supervisor/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
 | Fulfilment Supervisor UI | `/apps/fulfilment-supervisor/ui` | `/healthz`, `/readyz` | Not applicable |
-| Security Administration API | `/apps/security-administration/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
-| Security Administration UI | `/apps/security-administration/ui` | `/healthz`, `/readyz` | Not applicable |
-| Audit Reporting API | `/apps/audit-reporting/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
-| Audit Reporting UI | `/apps/audit-reporting/ui` | `/healthz`, `/readyz` | Not applicable |
 
 ## Gravitee Responsibilities
 
@@ -80,7 +76,7 @@ Gravitee does not replace domain authorization. A request allowed by Gravitee ca
 
 ## Authentik Responsibilities
 
-- Authenticate internal users, administrators, auditors, support users, service identities, and customer users where customer account access exists.
+- Authenticate internal users, support users where enabled, service identities, and customer users where customer account access exists.
 - Provide OAuth/OIDC tokens and claims consumed by Gravitee and downstream APIs.
 - Enforce initial password-only login, 60 minute idle timeout, 8 hour absolute timeout, and account lockout policy.
 - Support MFA later if ACME changes exposure or privileged-user policy.
@@ -93,20 +89,20 @@ Every domain API enforces:
 - Required authenticated identity or service account identity.
 - Domain-level permission checks.
 - Data-scope restrictions by role, domain, application, channel, location, supplier, customer, or assignment where configured.
-- Segregation-of-duties rules, including self-approval prevention for controlled actions.
+- Local self-approval prevention for controlled actions.
 - Configurable approval thresholds and approval authority.
 - Customer data privacy restrictions.
-- Audit logging for controlled actions, denied actions where policy requires, and data exports.
+- Operational history for controlled actions and denied actions where the owning domain requires it.
 
 Domain API authorization must fail closed when authorization status cannot be determined. Application APIs also fail closed for route and workflow authorization, but they must not replace domain authorization decisions.
 
 ## Role and Claim Mapping
 
-Authentik supplies identity and coarse role/group claims. ERP services map claims to domain and application permissions and data scopes according to security configuration.
+Authentik supplies identity and coarse role/group claims. ERP services map claims to domain and application permissions and data scopes according to each owning application or domain requirement.
 
-Initial global roles include Customer, Sales Assistant, Sales Supervisor, Buyer, Purchasing Manager, Warehouse Operator, Inventory Supervisor, Fulfilment Operator, Fulfilment Supervisor, Finance/AP User, Finance/AR User, Security Administrator, System Administrator, Auditor, Support User, and Integration Service Account.
+Initial MVP personas and identity subjects are Customer, Sales Assistant, Sales Supervisor, Buyer, Purchasing Manager, Warehouse Operator, Inventory Supervisor, Fulfilment Operator, Fulfilment Supervisor, Support User where enabled, and Integration Service Account where required.
 
-System Administrator access does not imply business approval authority. Business approval authority must be explicitly assigned and audited.
+Platform administration access does not imply business approval authority. Business approval authority must be explicitly assigned in the owning application/domain requirements and recorded in local operational history when used.
 
 ## Service-to-Service Communication
 
@@ -135,4 +131,4 @@ System Administrator access does not imply business approval authority. Business
 - [ ] Domain and application APIs publish OpenAPI 3.0 contracts.
 - [ ] Correlation IDs flow from gateway to services and across service calls.
 - [ ] Service accounts are scoped and non-interactive.
-- [ ] SoD and approval authority are enforced in domain APIs, not only in UI, application APIs, or gateway policy.
+- [ ] Self-approval rules and approval authority are enforced in domain APIs, not only in UI, application APIs, or gateway policy.
