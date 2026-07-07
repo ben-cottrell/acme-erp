@@ -316,8 +316,6 @@ try {
     Invoke-NativeCommand kubectl get configmap --namespace $Namespace --selector "managed-by=gravitee.io,gio-type=apidefinitions.gravitee.io"
     Invoke-NativeCommand kubectl get configmap gravitee-acme-erp-route-sales-api gravitee-acme-erp-route-fulfilment-supervisor-ui --namespace $Namespace
 
-    Invoke-NativeCommand helm list --namespace $Namespace
-
     Invoke-NativeCommand kubectl rollout status deployment/authentik-server --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status deployment/authentik-worker --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status statefulset/authentik-postgresql --namespace $Namespace --timeout=300s

@@ -83,8 +83,7 @@ build:
 manifests:
   rawYaml:
     - build/k8s/namespaces/*.yaml
-    - build/k8s/sqlserver/*.yaml
-    - build/k8s/authentik/blueprint-configmap.yaml
+    - build/k8s/gravitee/routes/*.yaml
     - build/k8s/services/*.yaml
 deploy:
   kubectl: {}
@@ -100,11 +99,29 @@ profiles:
           - build/k8s/namespaces/*.yaml
           - build/k8s/sqlserver/*.yaml
           - build/k8s/authentik/blueprint-configmap.yaml
+          - build/k8s/gravitee/routes/*.yaml
+      - op: add
+        path: /manifests/helm
+        value:
+          releases:
+            - name: authentik
+              namespace: erp-local
+              remoteChart: authentik
+              repo: https://charts.goauthentik.io
+              valuesFiles:
+                - build/k8s/authentik/values.local.yaml
+                - build/.local/authentik.generated-values.yaml
+            - name: gravitee
+              namespace: erp-local
+              remoteChart: apim
+              repo: https://helm.gravitee.io
+              valuesFiles:
+                - build/k8s/gravitee/values.local.yaml
   - name: apps
     patches:
       - op: replace
         path: /manifests/rawYaml
         value:
           - build/k8s/namespaces/*.yaml
+          - build/k8s/gravitee/routes/*.yaml
           - build/k8s/services/*.yaml
-  - name: all

@@ -60,23 +60,23 @@ flowchart TB
 
 | Profile | Purpose | Assets |
 |---|---|---|
-| `platform` | Deploy shared local platform prerequisites | Namespaces, SQL Server, Authentik bootstrap ConfigMap, Gravitee route ConfigMap |
-| `apps` | Build and deploy ERP domain and application services | Domain API images, application API images, application UI images, and service manifests |
-| `all` | Deploy platform and applications together | Platform and app manifests |
+| `platform` | Deploy shared local platform prerequisites | Namespaces, SQL Server, Authentik bootstrap ConfigMap, Gravitee route ConfigMaps, and Skaffold-rendered Authentik/Gravitee Helm charts |
+| `apps` | Build and deploy ERP domain and application services | Domain API images, application API images, application UI images, service manifests, and Gravitee route ConfigMaps |
 
-`bootstrap-local.ps1` installs Authentik and Gravitee Helm releases because their local values require generated secrets. Skaffold manages raw manifests and app image builds.
+`bootstrap-local.ps1` prepares local secret state, Kubernetes Secrets, and generated Authentik values, then invokes Skaffold. Skaffold owns raw manifests, app image builds, Authentik chart rendering, Gravitee chart rendering, and Gravitee route ConfigMaps.
+`bootstrap-local.ps1 -DeploymentScope all` runs the `platform` profile, waits for platform readiness, then runs the `apps` profile.
 
 ## Deployment Units
 
 | Unit | Location | Notes |
 |---|---|---|
-| Skaffold config | `build/skaffold.yaml` | Builds local images with `push: false` and applies Kubernetes manifests. |
+| Skaffold config | `build/skaffold.yaml` | Builds local images with `push: false`, renders local Helm charts, and applies Kubernetes manifests. |
 | App manifests | `build/k8s/services/*.yaml` | Workloads and services for API/UI projects. |
 | Namespace manifest | `build/k8s/namespaces/erp-local.yaml` | Local ERP namespace setup. |
 | SQL Server manifests | `build/k8s/sqlserver/*` | SQL Server deployment and bootstrap job. |
 | Authentik assets | `build/k8s/authentik/*` | Local values and bootstrap blueprint ConfigMap. |
-| Gravitee assets | `build/k8s/gravitee/*` | Local values and route configuration. |
-| Bootstrap script | `build/scripts/bootstrap-local.ps1` | Prerequisites, secrets, Helm, Skaffold, readiness. |
+| Gravitee assets | `build/k8s/gravitee/*` | Local values and route ConfigMaps. |
+| Bootstrap script | `build/scripts/bootstrap-local.ps1` | Prerequisites, secrets, generated values, Skaffold, readiness. |
 | Validation script | `build/scripts/validate-local.ps1` | Build and local runtime checks. |
 
 ## Local Secret and Configuration Rules
@@ -99,7 +99,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 Use `-DeploymentScope all` when a full local deployment is desired in one operation. Use `-SkipDeploy` when prerequisites and secrets should be generated without deployment.
 
-The bootstrap script validates tools, Kubernetes context, namespace creation, local secrets, platform workloads, Helm releases, Skaffold deployment, and SQL Server bootstrap readiness.
+The bootstrap script validates tools, Kubernetes context, namespace creation, local secrets, generated Authentik values, Skaffold deployment, platform workloads, and SQL Server bootstrap readiness. It does not install Authentik, install Gravitee, or apply Gravitee routes directly; those resources are driven through Skaffold configuration.
 
 ## Validation Flow
 
@@ -123,7 +123,7 @@ kubectl get service gravitee-apim-gateway -n erp-local
 
 The validation script does not create gateway exposure. It checks `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, `/apps/fulfilment-operator/ui`, `/apps/inventory-supervisor/ui`, and `/apps/fulfilment-supervisor/ui` through `http://localhost:8082`.
 
-Gravitee route publication is configuration-driven. The database-less gateway watches Kubernetes ConfigMaps labeled `managed-by=gravitee.io` and `gio-type=apidefinitions.gravitee.io`; the local route definitions live in `build/k8s/gravitee/route-config.yaml`. If external UI validation cannot reach the gateway or returns `404` for every UI route, validation fails because gateway exposure or ConfigMap synchronization is missing or incorrect.
+Gravitee route publication is configuration-driven. The database-less gateway watches Kubernetes ConfigMaps labeled `managed-by=gravitee.io` and `gio-type=apidefinitions.gravitee.io`; the local route definitions live in `build/k8s/gravitee/routes/*.yaml`. If external UI validation cannot reach the gateway or returns `404` for every UI route, validation fails because gateway exposure or ConfigMap synchronization is missing or incorrect.
 
 ## Health and Readiness
 

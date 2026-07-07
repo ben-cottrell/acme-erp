@@ -322,7 +322,7 @@ Expected result: no active workflow or agent references to old project paths, ol
 
 ## Phase 9: Gravitee Routes
 
-Replace the route list in `build/k8s/gravitee/route-config.yaml`.
+Replace or add the route ConfigMaps in `build/k8s/gravitee/routes/*.yaml`.
 
 Domain API route entries:
 

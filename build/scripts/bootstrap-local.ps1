@@ -214,14 +214,26 @@ function Initialize-LocalSecrets {
     Write-Host "Local secret state written to $SecretsPath"
 }
 
-function Install-Authentik {
+function Write-AuthentikGeneratedValues {
     $state = Read-SecretState
-        if (-not (Test-Path $LocalStatePath)) {
-                New-Item -ItemType Directory -Path $LocalStatePath | Out-Null
-        }
+    $requiredSecretNames = @(
+        'authentik-secret-key',
+        'authentik-postgresql-password',
+        'authentik-bootstrap-password'
+    )
 
-        $generatedValuesPath = Join-Path $LocalStatePath 'authentik.generated-values.yaml'
-        @"
+    foreach ($secretName in $requiredSecretNames) {
+        if (-not $state.ContainsKey($secretName) -or [string]::IsNullOrWhiteSpace($state[$secretName])) {
+            throw "Missing local secret state '$secretName'. Run bootstrap without -SkipSecrets, or restore $SecretsPath."
+        }
+    }
+
+    if (-not (Test-Path $LocalStatePath)) {
+        New-Item -ItemType Directory -Path $LocalStatePath | Out-Null
+    }
+
+    $generatedValuesPath = Join-Path $LocalStatePath 'authentik.generated-values.yaml'
+    @"
 authentik:
     secret_key: $(ConvertTo-QuotedYamlValue -Value $state['authentik-secret-key'])
     postgresql:
@@ -233,32 +245,7 @@ postgresql:
         password: $(ConvertTo-QuotedYamlValue -Value $state['authentik-postgresql-password'])
 "@ | Set-Content -Path $generatedValuesPath -Encoding UTF8
 
-    Invoke-NativeCommand kubectl apply -f (Join-Path $BuildRoot 'k8s/authentik/blueprint-configmap.yaml')
-    Invoke-NativeCommand helm repo add authentik https://charts.goauthentik.io
-    Invoke-NativeCommand helm repo update
-        $arguments = @(
-                'upgrade', '--install', 'authentik', 'authentik/authentik',
-                '--namespace', $Namespace,
-                '-f', (Join-Path $BuildRoot 'k8s/authentik/values.local.yaml'),
-                '-f', $generatedValuesPath
-        )
-        Invoke-NativeCommand helm @arguments
-}
-
-function Apply-GraviteeRoutes {
-    Invoke-NativeCommand kubectl apply -f (Join-Path $BuildRoot 'k8s/gravitee/route-config.yaml')
-}
-
-function Install-Gravitee {
-    Apply-GraviteeRoutes
-    Invoke-NativeCommand helm repo add graviteeio https://helm.gravitee.io
-    Invoke-NativeCommand helm repo update
-    $arguments = @(
-        'upgrade', '--install', 'gravitee', 'graviteeio/apim',
-        '--namespace', $Namespace,
-        '-f', (Join-Path $BuildRoot 'k8s/gravitee/values.local.yaml')
-    )
-    Invoke-NativeCommand helm @arguments
+    Write-Host "Authentik generated Helm values written to $generatedValuesPath"
 }
 
 function Wait-ForPlatform {
@@ -284,7 +271,7 @@ if (-not $SkipDeploy) {
     Test-RequiredCommand skaffold 'Install Skaffold from https://skaffold.dev/docs/install/.'
 }
 if (($DeploymentScope -eq 'platform' -or $DeploymentScope -eq 'all') -and -not $SkipDeploy) {
-    Test-RequiredCommand helm 'Install Helm from https://helm.sh/docs/intro/install/.'
+    Test-RequiredCommand helm 'Install Helm from https://helm.sh/docs/intro/install/. Skaffold uses Helm to render local platform charts.'
 }
 
 Push-Location $RepoRoot
@@ -296,24 +283,22 @@ try {
         Initialize-LocalSecrets
     }
 
+    if ($DeploymentScope -eq 'all' -or $DeploymentScope -eq 'platform') {
+        Write-AuthentikGeneratedValues
+    }
+
     if (-not $SkipDeploy) {
         if ($DeploymentScope -eq 'all') {
             Invoke-SkaffoldProfile -SkaffoldProfile 'platform'
-            Install-Authentik
-            Install-Gravitee
             Wait-ForPlatform
             Invoke-SkaffoldProfile -SkaffoldProfile 'apps'
-            Apply-GraviteeRoutes
         }
         elseif ($DeploymentScope -eq 'platform') {
             Invoke-SkaffoldProfile -SkaffoldProfile 'platform'
-            Install-Authentik
-            Install-Gravitee
             Wait-ForPlatform
         }
         else {
             Invoke-SkaffoldProfile -SkaffoldProfile 'apps'
-            Apply-GraviteeRoutes
         }
     }
 }

@@ -52,7 +52,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 The execution policy command affects only the current PowerShell process and is needed on machines that block local script execution by default.
 
-Use `-DeploymentScope all` to deploy both layers in one run. Use `-SkipDeploy` to generate/apply prerequisites and secrets without invoking Skaffold or Helm.
+Use `-DeploymentScope all` to deploy both layers in one run. Use `-SkipDeploy` to generate/apply prerequisites, secrets, and generated local values without invoking Skaffold.
 
 The bootstrap script creates local secret material under `build/.local/secrets.json`, which is ignored by Git. Existing secrets are preserved by default. Use `-RotateSecrets` only when you intentionally want new local credentials.
 
@@ -63,8 +63,8 @@ The script automates:
 - namespace creation
 - local SQL Server, Authentik, Gravitee, OIDC, and service credential generation
 - Kubernetes Secret creation
-- Skaffold deployment for platform/app manifests
-- Authentik and Gravitee Helm installation using local values files
+- generated Authentik Helm values creation under `build/.local/`
+- Skaffold deployment for platform/app manifests, including local Helm chart rendering
 - SQL Server bootstrap job readiness checks
 
 Manual setup still required:
@@ -78,12 +78,13 @@ Manual setup still required:
 ```powershell
 skaffold run -f .\build\skaffold.yaml -p platform
 skaffold run -f .\build\skaffold.yaml -p apps
-skaffold run -f .\build\skaffold.yaml -p all
 ```
 
-The `platform` profile applies namespaces, SQL Server, and Authentik bootstrap config. Authentik and Gravitee Helm releases are installed by `bootstrap-local.ps1` because their chart values need generated local secrets; the script also applies the Gravitee route ConfigMaps before installing the gateway.
+The `platform` profile applies namespaces, SQL Server, the Authentik bootstrap ConfigMap, Gravitee route ConfigMaps, and Skaffold-rendered Authentik and Gravitee Helm charts. `bootstrap-local.ps1` prepares the generated Authentik values file before invoking Skaffold.
 
-The `apps` profile builds and deploys the 18 ASP.NET Core service images.
+The `apps` profile builds and deploys the 18 ASP.NET Core service images and includes the Gravitee route ConfigMaps so app deployments keep route ownership declarative.
+
+Use `bootstrap-local.ps1 -DeploymentScope all` when platform and apps should be deployed together; the script runs the profiles in dependency order.
 
 ## Helm Local Tuning
 
@@ -92,7 +93,7 @@ The local Helm values are tuned for a single-node Docker Desktop cluster:
 - Authentik runs one server, one worker, PostgreSQL, and Redis.
 - Gravitee runs in database-less gateway-only mode for local development.
 - Gravitee Management API, portal, UI, MongoDB, and Elasticsearch are not deployed locally.
-- Gravitee route definitions are synchronized from Kubernetes ConfigMaps in `build/k8s/gravitee/route-config.yaml`.
+- Gravitee route definitions are synchronized from Kubernetes ConfigMaps in `build/k8s/gravitee/routes/*.yaml`.
 
 The Gravitee gateway service is configured as a local Docker Desktop `LoadBalancer` on port `8082`, giving the workstation the canonical gateway URL `http://localhost:8082` without DNS or HOSTS changes. These settings are development-only and live in `build/k8s/authentik/values.local.yaml` and `build/k8s/gravitee/values.local.yaml`.
 
