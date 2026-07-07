@@ -57,14 +57,6 @@ jobs:
             dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api/Dockerfile
           - image: fulfilment-supervisor-ui
             dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui/Dockerfile
-          - image: security-administration-api
-            dockerfile: src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api/Dockerfile
-          - image: security-administration-ui
-            dockerfile: src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui/Dockerfile
-          - image: audit-reporting-api
-            dockerfile: src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api/Dockerfile
-          - image: audit-reporting-ui
-            dockerfile: src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v4

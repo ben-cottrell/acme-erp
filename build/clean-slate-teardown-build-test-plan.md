@@ -156,7 +156,7 @@ Bootstrap the platform first. Use `-RotateSecrets` only if `build/.local` was no
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\build\scripts\bootstrap-local.ps1 -Profile platform
+.\build\scripts\bootstrap-local.ps1 -DeploymentScope platform
 ```
 
 Wait and verify platform readiness before building apps:
@@ -182,7 +182,7 @@ kubectl rollout status statefulset/graviteeio-apim-mongodb-replicaset -n erp-loc
 Then build and deploy the app layer from scratch:
 
 ```powershell
-.\build\scripts\bootstrap-local.ps1 -Profile apps
+.\build\scripts\bootstrap-local.ps1 -DeploymentScope apps
 ```
 
 Confirm the local images exist again:

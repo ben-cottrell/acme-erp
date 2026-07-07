@@ -26,9 +26,5 @@
     <Project Path="src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui/Acme.Erp.InventorySupervisor.Ui.csproj" />
     <Project Path="src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api/Acme.Erp.FulfilmentSupervisor.Api.csproj" />
     <Project Path="src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui/Acme.Erp.FulfilmentSupervisor.Ui.csproj" />
-    <Project Path="src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api/Acme.Erp.SecurityAdministration.Api.csproj" />
-    <Project Path="src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui/Acme.Erp.SecurityAdministration.Ui.csproj" />
-    <Project Path="src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api/Acme.Erp.AuditReporting.Api.csproj" />
-    <Project Path="src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui/Acme.Erp.AuditReporting.Ui.csproj" />
   </Folder>
 </Solution>

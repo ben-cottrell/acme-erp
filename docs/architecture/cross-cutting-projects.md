@@ -8,4 +8,4 @@ Authentik and Gravitee remain the documented owners for authentication, identity
 
 Service conventions for OpenAPI, health checks, logging, diagnostics, correlation IDs, idempotency, service identity, authorization, and operational history remain documented in owning service, architecture, and requirement files. Implementations should keep those responsibilities inside the owning service unless a later explicit architecture decision reintroduces shared projects.
 
-Source code, solution entries, package references, deployment manifests, CI entries, and tests for any existing shared-project scope are intentionally left for the later code-removal implementation pass.
+Shared-project source code, solution entries, package references, deployment manifests, CI entries, and tests must remain absent unless a later explicit architecture decision reintroduces shared projects.

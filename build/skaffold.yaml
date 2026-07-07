@@ -80,22 +80,6 @@ build:
       context: .
       docker:
         dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui/Dockerfile
-    - image: acme-erp/security-administration-api
-      context: .
-      docker:
-        dockerfile: src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api/Dockerfile
-    - image: acme-erp/security-administration-ui
-      context: .
-      docker:
-        dockerfile: src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui/Dockerfile
-    - image: acme-erp/audit-reporting-api
-      context: .
-      docker:
-        dockerfile: src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api/Dockerfile
-    - image: acme-erp/audit-reporting-ui
-      context: .
-      docker:
-        dockerfile: src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui/Dockerfile
 manifests:
   rawYaml:
     - build/k8s/namespaces/*.yaml

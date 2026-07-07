@@ -29,10 +29,6 @@ data:
         { "name": "inventory-supervisor-api", "path": "/apps/inventory-supervisor/api", "target": "http://inventory-supervisor-api.erp-local.svc.cluster.local/apps/inventory-supervisor/api", "openApi": "http://inventory-supervisor-api.erp-local.svc.cluster.local/openapi/v1.json" },
         { "name": "inventory-supervisor-ui", "path": "/apps/inventory-supervisor/ui", "target": "http://inventory-supervisor-ui.erp-local.svc.cluster.local/apps/inventory-supervisor/ui" },
         { "name": "fulfilment-supervisor-api", "path": "/apps/fulfilment-supervisor/api", "target": "http://fulfilment-supervisor-api.erp-local.svc.cluster.local/apps/fulfilment-supervisor/api", "openApi": "http://fulfilment-supervisor-api.erp-local.svc.cluster.local/openapi/v1.json" },
-        { "name": "fulfilment-supervisor-ui", "path": "/apps/fulfilment-supervisor/ui", "target": "http://fulfilment-supervisor-ui.erp-local.svc.cluster.local/apps/fulfilment-supervisor/ui" },
-        { "name": "security-administration-api", "path": "/apps/security-administration/api", "target": "http://security-administration-api.erp-local.svc.cluster.local/apps/security-administration/api", "openApi": "http://security-administration-api.erp-local.svc.cluster.local/openapi/v1.json" },
-        { "name": "security-administration-ui", "path": "/apps/security-administration/ui", "target": "http://security-administration-ui.erp-local.svc.cluster.local/apps/security-administration/ui" },
-        { "name": "audit-reporting-api", "path": "/apps/audit-reporting/api", "target": "http://audit-reporting-api.erp-local.svc.cluster.local/apps/audit-reporting/api", "openApi": "http://audit-reporting-api.erp-local.svc.cluster.local/openapi/v1.json" },
-        { "name": "audit-reporting-ui", "path": "/apps/audit-reporting/ui", "target": "http://audit-reporting-ui.erp-local.svc.cluster.local/apps/audit-reporting/ui" }
+        { "name": "fulfilment-supervisor-ui", "path": "/apps/fulfilment-supervisor/ui", "target": "http://fulfilment-supervisor-ui.erp-local.svc.cluster.local/apps/fulfilment-supervisor/ui" }
       ]
     }

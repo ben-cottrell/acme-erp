@@ -413,8 +413,8 @@ The full 18-image build, inspect, and publish behavior is validated by `.github/
 Then, if the local cluster is available and the user wants runtime validation:
 
 ```powershell
-./build/scripts/bootstrap-local.ps1 -Profile platform
-./build/scripts/bootstrap-local.ps1 -Profile apps
+./build/scripts/bootstrap-local.ps1 -DeploymentScope platform
+./build/scripts/bootstrap-local.ps1 -DeploymentScope apps
 ./build/scripts/validate-local.ps1
 ```
 

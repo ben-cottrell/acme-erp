@@ -38,15 +38,6 @@ data:
           name: Fulfilment Supervisor
       - model: authentik_core.group
         identifiers:
-          name: Security Administrator
-      - model: authentik_core.group
-        identifiers:
-          name: System Administrator
-      - model: authentik_core.group
-        identifiers:
-          name: Auditor
-      - model: authentik_core.group
-        identifiers:
           name: Support User
       - model: authentik_core.group
         identifiers:

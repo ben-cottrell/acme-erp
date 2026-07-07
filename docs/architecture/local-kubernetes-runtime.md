@@ -93,11 +93,11 @@ From the repository root:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\build\scripts\bootstrap-local.ps1 -Profile platform
-.\build\scripts\bootstrap-local.ps1 -Profile apps
+.\build\scripts\bootstrap-local.ps1 -DeploymentScope platform
+.\build\scripts\bootstrap-local.ps1 -DeploymentScope apps
 ```
 
-Use `-Profile all` when a full local deployment is desired in one operation. Use `-SkipDeploy` when prerequisites and secrets should be generated without deployment.
+Use `-DeploymentScope all` when a full local deployment is desired in one operation. Use `-SkipDeploy` when prerequisites and secrets should be generated without deployment.
 
 The bootstrap script validates tools, Kubernetes context, namespace creation, local secrets, platform workloads, Helm releases, Skaffold deployment, and SQL Server bootstrap readiness.
 
@@ -124,6 +124,6 @@ Current limitation: Gravitee route publication through the Management API is not
 - [ ] SQL Server, Authentik, Gravitee, domain APIs, application APIs, and application UIs are included.
 - [ ] Skaffold builds all configured local service images.
 - [ ] Local secrets are generated and ignored by Git.
-- [ ] Bootstrap works for `platform`, `apps`, and `all` profiles.
+- [ ] Bootstrap works for `platform`, `apps`, and `all` deployment scopes.
 - [ ] Validation builds the solution and verifies platform and app readiness.
 - [ ] App traffic is designed for Gravitee ingress, with the known local route-publication limitation documented.

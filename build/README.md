@@ -46,13 +46,13 @@ Run this from the repository root:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\build\scripts\bootstrap-local.ps1 -Profile platform
-.\build\scripts\bootstrap-local.ps1 -Profile apps
+.\build\scripts\bootstrap-local.ps1 -DeploymentScope platform
+.\build\scripts\bootstrap-local.ps1 -DeploymentScope apps
 ```
 
 The execution policy command affects only the current PowerShell process and is needed on machines that block local script execution by default.
 
-Use `-Profile all` to deploy both layers in one run. Use `-SkipDeploy` to generate/apply prerequisites and secrets without invoking Skaffold or Helm.
+Use `-DeploymentScope all` to deploy both layers in one run. Use `-SkipDeploy` to generate/apply prerequisites and secrets without invoking Skaffold or Helm.
 
 The bootstrap script creates local secret material under `build/.local/secrets.json`, which is ignored by Git. Existing secrets are preserved by default. Use `-RotateSecrets` only when you intentionally want new local credentials.
 

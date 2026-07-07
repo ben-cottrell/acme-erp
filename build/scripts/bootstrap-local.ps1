@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('platform', 'apps', 'all')]
-    [string]$Profile = 'all',
+    [string]$DeploymentScope = 'all',
 
     [switch]$SkipDeploy,
     [switch]$SkipSecrets,
@@ -33,7 +33,7 @@ function Invoke-NativeCommand {
     }
 }
 
-function Require-Command {
+function Test-RequiredCommand {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Name,
@@ -109,7 +109,7 @@ function New-SecretValue {
     return $builder.ToString()
 }
 
-function Ensure-SecretValue {
+function Set-SecretValue {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$State,
@@ -161,19 +161,25 @@ function Test-DockerDesktopContext {
     }
 }
 
+function Initialize-Namespace {
+    Invoke-NativeCommand kubectl apply -f (Join-Path $BuildRoot 'k8s/namespaces/erp-local.yaml')
+    Invoke-NativeCommand kubectl wait '--for=jsonpath={.status.phase}=Active' "namespace/$Namespace" '--timeout=60s'
+    Invoke-NativeCommand kubectl get namespace $Namespace
+}
+
 function Initialize-LocalSecrets {
     $state = Read-SecretState
 
-    Ensure-SecretValue -State $state -Name 'sql-sa-password' -Length 32
-    Ensure-SecretValue -State $state -Name 'sales-db-password' -Length 32
-    Ensure-SecretValue -State $state -Name 'purchasing-db-password' -Length 32
-    Ensure-SecretValue -State $state -Name 'inventory-db-password' -Length 32
-    Ensure-SecretValue -State $state -Name 'fulfilment-db-password' -Length 32
-    Ensure-SecretValue -State $state -Name 'authentik-secret-key' -Length 64
-    Ensure-SecretValue -State $state -Name 'authentik-postgresql-password' -Length 32
-    Ensure-SecretValue -State $state -Name 'authentik-bootstrap-password' -Length 32
-    Ensure-SecretValue -State $state -Name 'gravitee-admin-password' -Length 32
-    Ensure-SecretValue -State $state -Name 'gravitee-oidc-client-secret' -Length 48
+    Set-SecretValue -State $state -Name 'sql-sa-password' -Length 32
+    Set-SecretValue -State $state -Name 'sales-db-password' -Length 32
+    Set-SecretValue -State $state -Name 'purchasing-db-password' -Length 32
+    Set-SecretValue -State $state -Name 'inventory-db-password' -Length 32
+    Set-SecretValue -State $state -Name 'fulfilment-db-password' -Length 32
+    Set-SecretValue -State $state -Name 'authentik-secret-key' -Length 64
+    Set-SecretValue -State $state -Name 'authentik-postgresql-password' -Length 32
+    Set-SecretValue -State $state -Name 'authentik-bootstrap-password' -Length 32
+    Set-SecretValue -State $state -Name 'gravitee-admin-password' -Length 32
+    Set-SecretValue -State $state -Name 'gravitee-oidc-client-secret' -Length 48
 
     Write-SecretState -State $state
 
@@ -267,34 +273,34 @@ function Invoke-SkaffoldProfile {
     Invoke-NativeCommand -FilePath skaffold -Arguments $arguments
 }
 
-Require-Command dotnet 'Install the .NET 10 SDK.'
-Require-Command docker 'Install Docker Desktop.'
-Require-Command kubectl 'Install kubectl or enable the Docker Desktop Kubernetes CLI integration.'
+Test-RequiredCommand dotnet 'Install the .NET 10 SDK.'
+Test-RequiredCommand docker 'Install Docker Desktop.'
+Test-RequiredCommand kubectl 'Install kubectl or enable the Docker Desktop Kubernetes CLI integration.'
 if (-not $SkipDeploy) {
-    Require-Command skaffold 'Install Skaffold from https://skaffold.dev/docs/install/.'
+    Test-RequiredCommand skaffold 'Install Skaffold from https://skaffold.dev/docs/install/.'
 }
-if (($Profile -eq 'platform' -or $Profile -eq 'all') -and -not $SkipDeploy) {
-    Require-Command helm 'Install Helm from https://helm.sh/docs/intro/install/.'
+if (($DeploymentScope -eq 'platform' -or $DeploymentScope -eq 'all') -and -not $SkipDeploy) {
+    Test-RequiredCommand helm 'Install Helm from https://helm.sh/docs/intro/install/.'
 }
 
 Push-Location $RepoRoot
 try {
     Test-DockerDesktopContext
-    Invoke-NativeCommand kubectl apply -f (Join-Path $BuildRoot 'k8s/namespaces/erp-local.yaml')
+    Initialize-Namespace
 
     if (-not $SkipSecrets) {
         Initialize-LocalSecrets
     }
 
     if (-not $SkipDeploy) {
-        if ($Profile -eq 'all') {
+        if ($DeploymentScope -eq 'all') {
             Invoke-SkaffoldProfile -SkaffoldProfile 'platform'
             Install-Authentik
             Install-Gravitee
             Wait-ForPlatform
             Invoke-SkaffoldProfile -SkaffoldProfile 'apps'
         }
-        elseif ($Profile -eq 'platform') {
+        elseif ($DeploymentScope -eq 'platform') {
             Invoke-SkaffoldProfile -SkaffoldProfile 'platform'
             Install-Authentik
             Install-Gravitee

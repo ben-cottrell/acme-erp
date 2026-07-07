@@ -63,6 +63,32 @@ function Invoke-ClusterHttpCheck {
     }
 }
 
+function Remove-ValidationPod {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Namespace,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PodName
+    )
+
+    & kubectl delete pod $PodName --namespace $Namespace --ignore-not-found --wait=false | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Failed to request deletion for validation pod $PodName. Attempting force delete."
+    }
+
+    & kubectl wait --for=delete pod/$PodName --namespace $Namespace --timeout=30s | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        return
+    }
+
+    Write-Warning "Validation pod $PodName did not terminate within 30 seconds. Forcing deletion."
+    & kubectl delete pod $PodName --namespace $Namespace --ignore-not-found --force --grace-period=0 --wait=false | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Failed to force delete validation pod $PodName. Manual cleanup may be required."
+    }
+}
+
 Push-Location $RepoRoot
 try {
     Invoke-NativeCommand dotnet sln Acme.Erp.slnx list
@@ -108,10 +134,6 @@ try {
     Invoke-NativeCommand kubectl rollout status deployment/inventory-supervisor-ui --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status deployment/fulfilment-supervisor-api --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status deployment/fulfilment-supervisor-ui --namespace $Namespace --timeout=300s
-    Invoke-NativeCommand kubectl rollout status deployment/security-administration-api --namespace $Namespace --timeout=300s
-    Invoke-NativeCommand kubectl rollout status deployment/security-administration-ui --namespace $Namespace --timeout=300s
-    Invoke-NativeCommand kubectl rollout status deployment/audit-reporting-api --namespace $Namespace --timeout=300s
-    Invoke-NativeCommand kubectl rollout status deployment/audit-reporting-ui --namespace $Namespace --timeout=300s
 
     $clusterChecks = @(
         @{ Url = 'http://sales-api/healthz'; Status = 200 },
@@ -179,20 +201,6 @@ try {
         @{ Url = 'http://fulfilment-supervisor-ui/healthz'; Status = 200 },
         @{ Url = 'http://fulfilment-supervisor-ui/readyz'; Status = 200 },
         @{ Url = 'http://fulfilment-supervisor-ui/apps/fulfilment-supervisor/ui'; Status = 200 },
-        @{ Url = 'http://security-administration-api/healthz'; Status = 200 },
-        @{ Url = 'http://security-administration-api/readyz'; Status = 200 },
-        @{ Url = 'http://security-administration-api/apps/security-administration/api'; Status = 200 },
-        @{ Url = 'http://security-administration-api/openapi/v1.json'; Status = 200 },
-        @{ Url = 'http://security-administration-ui/healthz'; Status = 200 },
-        @{ Url = 'http://security-administration-ui/readyz'; Status = 200 },
-        @{ Url = 'http://security-administration-ui/apps/security-administration/ui'; Status = 200 },
-        @{ Url = 'http://audit-reporting-api/healthz'; Status = 200 },
-        @{ Url = 'http://audit-reporting-api/readyz'; Status = 200 },
-        @{ Url = 'http://audit-reporting-api/apps/audit-reporting/api'; Status = 200 },
-        @{ Url = 'http://audit-reporting-api/openapi/v1.json'; Status = 200 },
-        @{ Url = 'http://audit-reporting-ui/healthz'; Status = 200 },
-        @{ Url = 'http://audit-reporting-ui/readyz'; Status = 200 },
-        @{ Url = 'http://audit-reporting-ui/apps/audit-reporting/ui'; Status = 200 },
         @{ Url = 'http://authentik-server/-/health/live/'; Status = 200 },
         @{ Url = 'http://gravitee-apim-api:83/management/organizations/DEFAULT/environments/DEFAULT/'; Status = 401 },
         @{ Url = 'http://gravitee-apim-gateway:8082/'; Status = 404 }
@@ -208,7 +216,7 @@ try {
         }
     }
     finally {
-        & kubectl delete pod $curlPod --namespace $Namespace --ignore-not-found | Out-Null
+        Remove-ValidationPod -Namespace $Namespace -PodName $curlPod
     }
 }
 finally {
