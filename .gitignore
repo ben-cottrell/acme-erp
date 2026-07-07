@@ -421,6 +421,9 @@ FodyWeavers.xsd
 # Built Visual Studio Code Extensions
 *.vsix
 
+# Local bootstrap state
+build/.local/
+
 # Windows Installer files from build outputs
 *.cab
 *.msi

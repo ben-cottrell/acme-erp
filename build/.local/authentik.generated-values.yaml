@@ -1,9 +1,0 @@
-﻿authentik:
-    secret_key: '2ykr%GCYqb!-%MsWdki=skq6Z?L=XKSsqZnx6VR*oPhwbMsxrbF6$c=4fnH=?YMq'
-    postgresql:
-        password: 'oJd6nmH%4#ozF#u=%UM25DzF5!9i5RuF'
-    bootstrap_password: 'h%WiJuaWuj-6Z-w-W4xh$**tjjeEbKCt'
-    bootstrap_email: 'admin@erp.local.test'
-postgresql:
-    auth:
-        password: 'oJd6nmH%4#ozF#u=%UM25DzF5!9i5RuF'
