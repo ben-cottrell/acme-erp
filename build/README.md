@@ -61,8 +61,8 @@ The script automates:
 - prerequisite checks for `dotnet`, Docker, `kubectl`, Skaffold, and Helm
 - Docker Desktop Kubernetes context validation
 - namespace creation
-- local SQL Server, Authentik, Gravitee, OIDC, and service credential generation
-- Kubernetes Secret creation
+- local SQL Server, Authentik, and service credential generation
+- Kubernetes Secret creation for SQL Server and service connection strings
 - generated Authentik Helm values creation under `build/.local/`
 - Skaffold deployment for platform/app manifests, including local Helm chart rendering
 - SQL Server bootstrap job readiness checks

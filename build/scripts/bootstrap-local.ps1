@@ -125,6 +125,20 @@ function Set-SecretValue {
     }
 }
 
+function Remove-SecretValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$State,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if ($State.ContainsKey($Name)) {
+        $State.Remove($Name)
+    }
+}
+
 function Set-KubernetesSecret {
     param(
         [Parameter(Mandatory = $true)]
@@ -148,6 +162,15 @@ function Set-KubernetesSecret {
     if ($LASTEXITCODE -ne 0) {
         throw "kubectl apply for secret '$Name' failed with exit code $LASTEXITCODE"
     }
+}
+
+function Remove-KubernetesSecret {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    Invoke-NativeCommand kubectl delete secret $Name --namespace $Namespace --ignore-not-found
 }
 
 function Test-DockerDesktopContext {
@@ -178,8 +201,8 @@ function Initialize-LocalSecrets {
     Set-SecretValue -State $state -Name 'authentik-secret-key' -Length 64
     Set-SecretValue -State $state -Name 'authentik-postgresql-password' -Length 32
     Set-SecretValue -State $state -Name 'authentik-bootstrap-password' -Length 32
-    Set-SecretValue -State $state -Name 'gravitee-admin-password' -Length 32
-    Set-SecretValue -State $state -Name 'gravitee-oidc-client-secret' -Length 48
+    Remove-SecretValue -State $state -Name 'gravitee-admin-password'
+    Remove-SecretValue -State $state -Name 'gravitee-oidc-client-secret'
 
     Write-SecretState -State $state
 
@@ -199,17 +222,8 @@ function Initialize-LocalSecrets {
         fulfilment = "Server=$sqlHost;Database=fulfilment_db;User Id=fulfilment_app;Password=$($state['fulfilment-db-password']);Encrypt=True;TrustServerCertificate=True"
     }
 
-    Set-KubernetesSecret -Name 'authentik-local' -Values @{
-        'secret-key' = $state['authentik-secret-key']
-        'postgresql-password' = $state['authentik-postgresql-password']
-        'bootstrap-password' = $state['authentik-bootstrap-password']
-        'bootstrap-email' = 'admin@localhost.localdomain'
-    }
-
-    Set-KubernetesSecret -Name 'gravitee-local' -Values @{
-        'admin-password' = $state['gravitee-admin-password']
-        'oidc-client-secret' = $state['gravitee-oidc-client-secret']
-    }
+    Remove-KubernetesSecret -Name 'authentik-local'
+    Remove-KubernetesSecret -Name 'gravitee-local'
 
     Write-Host "Local secret state written to $SecretsPath"
 }

@@ -154,7 +154,7 @@ XUnit v3 is the test framework for all automated tests.
 - `build/k8s/sqlserver/*` contains local SQL Server and database bootstrap assets.
 - `build/k8s/authentik/*` contains local Authentik configuration assets.
 - `build/k8s/gravitee/*` contains local Gravitee route and API management configuration assets.
-- `build/scripts/bootstrap-local.ps1` bootstraps local secrets, platform dependencies, Helm releases, and app deployment.
+- `build/scripts/bootstrap-local.ps1` prepares local secrets and generated values, then invokes Skaffold-managed platform and app deployment.
 - `build/scripts/validate-local.ps1` validates the local stack.
 
 ## Recommendations

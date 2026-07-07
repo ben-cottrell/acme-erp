@@ -9,7 +9,6 @@ The runtime dependencies are assumed to be installed and available on the comman
 The local runtime owns these resources:
 
 - Kubernetes namespace: `erp-local`
-- Helm releases in `erp-local`: `authentik`, `gravitee`
 - Skaffold config: `build/skaffold.yaml`
 - Local app images:
   - `acme-erp/sales-api`
@@ -39,8 +38,9 @@ Do not delete unrelated namespaces, images, volumes, or Docker resources unless 
 The task is complete only when all of the following are true:
 
 - `erp-local` was removed during teardown and recreated during bootstrap.
-- Helm releases `authentik` and `gravitee` are newly deployed and Ready.
+- Skaffold-rendered Authentik and Gravitee gateway workloads are deployed and Ready.
 - SQL Server is Ready and `sqlserver-bootstrap` completed.
+- All 18 Gravitee route ConfigMaps exist with database-less sync labels.
 - All 18 ASP.NET Core deployments are Ready.
 - All 18 local `acme-erp/*` images were rebuilt after deletion.
 - `dotnet build Acme.Erp.slnx` succeeds.
@@ -74,22 +74,14 @@ Capture the current state before deleting anything:
 ```powershell
 kubectl get namespaces
 kubectl get all,pvc,secrets,configmaps -n erp-local
-helm list -n erp-local
 docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | Select-String '^acme-erp/'
 ```
 
-It is acceptable for some commands to report that `erp-local` or the releases do not exist; teardown must remain idempotent.
+It is acceptable for some commands to report that `erp-local` does not exist; teardown must remain idempotent.
 
 ## Phase 2: Full Runtime Teardown
 
-Stop or close any port-forward, watcher, or long-running Skaffold process before deleting resources. Then uninstall Helm releases first so Helm release metadata is cleaned up cleanly.
-
-```powershell
-helm uninstall gravitee -n erp-local
-helm uninstall authentik -n erp-local
-```
-
-If either release does not exist, record that and continue.
+Stop or close any port-forward, watcher, or long-running Skaffold process before deleting resources. Current platform components are rendered through Skaffold and applied as Kubernetes manifests. If an older local namespace still contains legacy `authentik` or `gravitee` Helm releases from a previous bootstrap model, record that and uninstall those releases before continuing; otherwise skip Helm uninstall.
 
 Delete Skaffold-managed Kubernetes resources. This is useful when the namespace still exists and gives clearer errors than deleting the namespace first.
 
@@ -168,15 +160,9 @@ kubectl wait --for=condition=complete job/sqlserver-bootstrap -n erp-local --tim
 kubectl rollout status deployment/authentik-server -n erp-local --timeout=600s
 kubectl rollout status deployment/authentik-worker -n erp-local --timeout=600s
 kubectl rollout status statefulset/authentik-postgresql -n erp-local --timeout=600s
-kubectl rollout status deployment/gravitee-apim-api -n erp-local --timeout=600s
 kubectl rollout status deployment/gravitee-apim-gateway -n erp-local --timeout=600s
-kubectl rollout status deployment/gravitee-apim-portal -n erp-local --timeout=600s
-kubectl rollout status deployment/gravitee-apim-ui -n erp-local --timeout=600s
-kubectl rollout status statefulset/graviteeio-apim-elasticsearch-master -n erp-local --timeout=600s
-kubectl rollout status statefulset/graviteeio-apim-elasticsearch-data -n erp-local --timeout=600s
-kubectl rollout status statefulset/graviteeio-apim-elasticsearch-ingest -n erp-local --timeout=600s
-kubectl rollout status statefulset/graviteeio-apim-elasticsearch-coordinating -n erp-local --timeout=600s
-kubectl rollout status statefulset/graviteeio-apim-mongodb-replicaset -n erp-local --timeout=600s
+kubectl get configmap -n erp-local --selector "managed-by=gravitee.io,gio-type=apidefinitions.gravitee.io"
+kubectl get service gravitee-apim-gateway -n erp-local
 ```
 
 Then build and deploy the app layer from scratch:
@@ -204,7 +190,6 @@ This script should build the solution, verify expected secrets and config, wait 
 Also run a final direct readiness snapshot:
 
 ```powershell
-helm list -n erp-local
 kubectl get pods -n erp-local
 kubectl get deployments,statefulsets -n erp-local
 kubectl get jobs -n erp-local
@@ -212,22 +197,20 @@ kubectl get jobs -n erp-local
 
 Expected high-level results:
 
-- `authentik` release: `deployed`
-- `gravitee` release: `deployed`
 - `sqlserver-bootstrap`: `Complete 1/1`
 - all app deployments: `1/1`
 - all Authentik deployments/StatefulSets: `1/1`
-- all Gravitee deployments/StatefulSets: `1/1`
+- Gravitee gateway deployment: `1/1`
+- Gravitee gateway service: `LoadBalancer` on port `8082`
 
 ## Phase 6: Failure Triage Guide
 
-If Helm release installation fails:
+If platform deployment fails:
 
 ```powershell
-helm list -n erp-local
-helm status authentik -n erp-local
-helm status gravitee -n erp-local
+skaffold render -f build/skaffold.yaml -p platform
 kubectl get events -n erp-local --sort-by=.lastTimestamp
+kubectl get configmap -n erp-local --selector "managed-by=gravitee.io,gio-type=apidefinitions.gravitee.io"
 ```
 
 If pods are not Ready:
@@ -240,10 +223,9 @@ kubectl logs -n erp-local <pod-name> --tail=200
 
 Known local chart sensitivities:
 
-- Gravitee Elasticsearch must use one replica per role and zero index replicas for the single-node cluster.
-- Gravitee Elasticsearch must disable the unavailable Bitnami `os-shell` sysctl init image.
-- Gravitee MongoDB must use the `mongodb.enabled` dependency key, not only the `mongo` repository configuration key.
-- Gravitee MongoDB is tuned locally to one replica, no arbiter, and relaxed security contexts for the legacy Bitnami image.
+- Authentik Helm rendering requires the generated `build/.local/authentik.generated-values.yaml` file.
+- Gravitee local mode is database-less gateway-only; Management API, portal, UI, MongoDB, and Elasticsearch should not be expected locally.
+- Gravitee db-less route synchronization requires route ConfigMaps labeled `managed-by=gravitee.io` and `gio-type=apidefinitions.gravitee.io`.
 
 If image deletion or rebuild fails:
 

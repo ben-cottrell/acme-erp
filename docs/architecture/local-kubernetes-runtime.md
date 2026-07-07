@@ -63,7 +63,7 @@ flowchart TB
 | `platform` | Deploy shared local platform prerequisites | Namespaces, SQL Server, Authentik bootstrap ConfigMap, Gravitee route ConfigMaps, and Skaffold-rendered Authentik/Gravitee Helm charts |
 | `apps` | Build and deploy ERP domain and application services | Domain API images, application API images, application UI images, service manifests, and Gravitee route ConfigMaps |
 
-`bootstrap-local.ps1` prepares local secret state, Kubernetes Secrets, and generated Authentik values, then invokes Skaffold. Skaffold owns raw manifests, app image builds, Authentik chart rendering, Gravitee chart rendering, and Gravitee route ConfigMaps.
+`bootstrap-local.ps1` prepares local secret state, required Kubernetes Secrets, and generated Authentik values, then invokes Skaffold. Skaffold owns raw manifests, app image builds, Authentik chart rendering, Gravitee chart rendering, and Gravitee route ConfigMaps.
 `bootstrap-local.ps1 -DeploymentScope all` runs the `platform` profile, waits for platform readiness, then runs the `apps` profile.
 
 ## Deployment Units
@@ -84,7 +84,7 @@ flowchart TB
 - Generated local secrets live under `build/.local/` and are ignored by Git.
 - Existing local secrets are preserved by default.
 - Use `-RotateSecrets` only when intentionally replacing local credentials.
-- Kubernetes Secrets hold local SQL Server, Authentik, Gravitee, OIDC, and service credential material.
+- Kubernetes Secrets hold SQL Server credentials and domain service connection strings. Authentik chart secrets are passed through generated local Helm values; local Gravitee runs database-less without generated admin or OIDC secrets.
 - Do not commit generated passwords, client secrets, local tokens, or machine-specific kubeconfig data.
 
 ## Bootstrap Flow
