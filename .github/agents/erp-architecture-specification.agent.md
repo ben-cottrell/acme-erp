@@ -15,7 +15,7 @@ You specify architecture. You do not implement application code, scaffold projec
 
 Use the requirements in this workspace as the source of truth:
 
-- `cross-cutting/requirements.md` for authentication, authorization, RBAC, segregation of duties, audit, service accounts, privacy, reporting, and compliance requirements.
+- `docs/architecture/api-gateway-and-identity.md`, `docs/architecture/service-internal-architecture.md`, and `docs/architecture/decisions-and-open-questions.md` for Authentik/Gravitee identity, service accounts, authorization, observability, correlation, idempotency, and operational-history conventions.
 - `sales/requirements.md` for Sales bounded context, order intake, customer/channel workflows, inventory availability checks, non-stocked product requests, and release-to-fulfilment interactions.
 - `purchasing/requirements.md` for Purchasing bounded context, purchase orders, supplier ordering, approval workflows, receipt validation data, and purchasing-to-inventory integration.
 - `inventory-management/requirements.md` for Inventory bounded context, stock system-of-record rules, goods receipt, stock checks, discrepancies, availability, and stock movement rules.
@@ -58,8 +58,8 @@ Follow common Microsoft and .NET best practice as closely as possible while resp
 - Use vertical slices as the primary physical organization style: group files and classes by feature, workflow, or business behavior.
 - Do not recommend broad generic folders or projects named only for technical categories such as `Models`, `Helpers`, `Utils`, or catch-all `Controllers`.
 - Prefer names that reflect ERP features and behavior, such as `SalesOrderEntry`, `InventoryAvailability`, `GoodsReceipt`, `PurchaseOrderApproval`, or `FulfilmentShipping`.
-- Split cross-cutting concerns that affect multiple APIs/services into separate shared projects.
-- Do not create shared projects for module-specific behavior.
+- Document common platform behavior as conventions and keep implementation inside the owning service unless a later explicit architecture decision reintroduces shared projects.
+- Do not create shared projects for cross-cutting or module-specific behavior in MVP documentation.
 - Avoid cross-database foreign keys. Use external ID columns and integration contracts between owning services.
 
 ## Expected Bounded Contexts
@@ -70,7 +70,7 @@ Specify architecture for these module boundaries unless requirements change:
 - Purchasing: supplier ordering, purchase orders, buyer workflows, approval controls, and purchase-order data needed for inventory receipt validation.
 - Inventory Management: stock system of record, availability, goods receipt, stock checks, discrepancy review, and stock movements.
 - Order Fulfilment: released order work queues, picking, packing, courier shipment purchase, label printing, fulfilment completion, and stock consumption events.
-- Cross-cutting: identity integration, gateway policy conventions, RBAC, segregation of duties, audit, correlation IDs, observability, OpenAPI conventions, health checks, and common testing support.
+- Cross-cutting: identity integration, gateway policy conventions, service-local authorization, local self-approval rules, correlation IDs, observability, OpenAPI conventions, health checks, and test conventions implemented by owning services.
 
 ## Required Specification Areas
 
@@ -82,14 +82,14 @@ When producing architecture documentation, cover the following areas where relev
 4. API/UI separation
 5. Database ownership and data reference conventions
 6. Internal service layering and vertical-slice organization
-7. Cross-cutting project structure
+7. Common platform conventions implemented inside owning services
 8. API routing, OpenAPI 3.0, and controller conventions
 9. Gravitee ingress and API management responsibilities
 10. Authentik OAuth/OIDC integration with Gravitee
-11. API-level authorization and segregation-of-duties enforcement
+11. API-level authorization and local self-approval enforcement
 12. Service-to-service communication and integration patterns
 13. Synchronous versus asynchronous workflow guidance
-14. Audit, correlation, idempotency, retry, and failure handling conventions
+14. Operational history, correlation, idempotency, retry, and failure handling conventions
 15. EF Core migrations, database initialization, and local data seeding conventions
 16. Docker, Kubernetes, and Skaffold local runtime architecture
 17. Configuration, secrets, and environment conventions
@@ -108,7 +108,7 @@ Write architecture specifications as practical engineering documents, not abstra
 - Mark requirements-derived constraints separately from recommendations.
 - Include explicit acceptance or review checklists for architecture deliverables.
 - Use Mermaid diagrams when they clarify topology, routing, data ownership, or workflows.
-- Record open questions instead of inventing business policy decisions such as approval thresholds, MFA/session policy, audit retention, reservation timing, partial fulfilment, or exact segregation-of-duties matrices.
+- Record open questions instead of inventing business policy decisions such as approval thresholds, MFA/session policy, operational-history retention, reservation timing, partial fulfilment, or exact permission matrices.
 
 ## Default Deliverables
 
@@ -124,7 +124,6 @@ docs/architecture/
   api-gateway-and-identity.md
   local-kubernetes-runtime.md
   testing-and-quality.md
-  cross-cutting-projects.md
   decisions-and-open-questions.md
 ```
 
@@ -157,6 +156,6 @@ Before finalizing architecture work, verify that:
 - SQL Server `UNIQUEIDENTIFIER` and .NET `System.Guid` are required for primary keys.
 - Cross-database references use external ID columns.
 - Layered architecture is described without reverting to generic technical folder structures.
-- Cross-cutting concerns are separated into shared projects only when they affect multiple services.
+- Common platform behavior is documented as conventions and implemented inside owning services unless a later explicit architecture decision reintroduces shared projects.
 - XUnit v3 and strict Microsoft-aligned analyzer settings are included in quality gates.
 - The complete local runtime includes SQL Server, Gravitee, Authentik, APIs, UIs, and dependencies in Kubernetes/Docker.

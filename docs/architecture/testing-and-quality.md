@@ -41,7 +41,7 @@ Purchasing:
 - Required PO fields: supplier, item, SKU, barcode where available, quantity, unit cost, purchase date, expected arrival date.
 - Purchase orders over 10,000 require Purchasing Manager approval.
 - Buyers cannot approve their own purchase orders.
-- Post-submission amendments require audit reason and approval where configured.
+- Post-submission amendments require business reason and approval where configured.
 
 Inventory Management:
 
@@ -61,9 +61,9 @@ Order Fulfilment:
 
 Cross-cutting:
 
-- RBAC categories for read, create, update, approve, cancel, export, configure, and administer.
-- Segregation-of-duties self-approval prevention.
-- Audit records for controlled actions.
+- Authorization categories for read, create, update, approve, cancel, and workflow-owned export.
+- Local self-approval prevention.
+- Operational history records for controlled actions.
 - Service account scope and failed authorization behavior.
 - Correlation ID and idempotency behavior for cross-domain and application-to-domain mutations.
 
@@ -103,7 +103,7 @@ CI should fail on build errors, test failures, analyzer warnings configured as e
 ## Test Data Rules
 
 - Test data must use deterministic IDs where assertions depend on identity.
-- Test data ownership follows domain ownership: Inventory product/SKU data, Sales customer data, Purchasing supplier data, Authentik/security identity and role data.
+- Test data ownership follows domain ownership: Inventory product/SKU data, Sales customer data, Purchasing supplier data, and Authentik identity and role-claim data.
 - Tests must not depend on the execution order of unrelated tests.
 - Tests that mutate SQL Server state must isolate databases, schemas, transactions, or data identifiers.
 

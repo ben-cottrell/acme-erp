@@ -52,8 +52,8 @@ The top-level `Acme.Erp.slnx` is the only solution file. Do not create per-domai
 | Fulfilment Operator | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api` | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui` | `acme-erp/fulfilment-operator-api`, `acme-erp/fulfilment-operator-ui` | `/apps/fulfilment-operator/api`, `/apps/fulfilment-operator/ui` |
 | Inventory Supervisor | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api` | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui` | `acme-erp/inventory-supervisor-api`, `acme-erp/inventory-supervisor-ui` | `/apps/inventory-supervisor/api`, `/apps/inventory-supervisor/ui` |
 | Fulfilment Supervisor | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui` | `acme-erp/fulfilment-supervisor-api`, `acme-erp/fulfilment-supervisor-ui` | `/apps/fulfilment-supervisor/api`, `/apps/fulfilment-supervisor/ui` |
-| Security Administration | `src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Api` | `src/Applications/SecurityAdministration/Acme.Erp.SecurityAdministration.Ui` | `acme-erp/security-administration-api`, `acme-erp/security-administration-ui` | `/apps/security-administration/api`, `/apps/security-administration/ui` |
-| Audit Reporting | `src/Applications/AuditReporting/Acme.Erp.AuditReporting.Api` | `src/Applications/AuditReporting/Acme.Erp.AuditReporting.Ui` | `acme-erp/audit-reporting-api`, `acme-erp/audit-reporting-ui` | `/apps/audit-reporting/api`, `/apps/audit-reporting/ui` |
+
+The active MVP contains four domain API projects and seven application API/UI pairs. Security Administration and Audit Reporting are retired for MVP and must not be scaffolded from this structure.
 
 ## Naming Rules
 
@@ -118,11 +118,11 @@ Avoid broad catch-all folders such as `Models`, `Helpers`, and `Utils` as primar
 
 Application APIs must not contain EF Core `DbContext` types, migrations, repositories, or durable business entities.
 
-## Shared Code Placement
+## Common Convention Placement
 
-Shared projects are allowed only for cross-cutting concerns used by multiple services. Candidate shared project families are documented in `docs/architecture/cross-cutting-projects.md`.
+The MVP documentation does not define shared cross-cutting projects. Common behavior such as OpenAPI publication, health checks, correlation IDs, idempotency, logging, diagnostics, service identity, and authorization is documented as conventions and implemented inside the owning service.
 
-Do not move domain-specific rules, entities, workflow policies, or application services into shared projects. Prefer duplication over an incorrect shared abstraction when behavior belongs to one bounded context.
+Do not move domain-specific rules, entities, workflow policies, or application services into common infrastructure. Prefer local implementation over an incorrect abstraction when behavior belongs to one bounded context.
 
 ## Test Layout
 
@@ -171,4 +171,4 @@ XUnit v3 is the test framework for all automated tests.
 - [ ] Each service has a Kubernetes manifest under `build/k8s/services/`.
 - [ ] Namespaces, images, services, and routes follow the domain and application naming tables.
 - [ ] New tests mirror the owning domain/application and feature.
-- [ ] Shared code is limited to cross-cutting concerns used by multiple domains or applications.
+- [ ] Common platform conventions are implemented inside the owning service unless a later explicit architecture decision reintroduces shared projects.

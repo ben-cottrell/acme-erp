@@ -2,7 +2,7 @@
 
 ## Status
 
-This document defines database ownership, EF Core, identifier, reference, migration, audit, and consistency conventions.
+This document defines database ownership, EF Core, identifier, reference, migration, operational history, and consistency conventions.
 
 ## Fixed Decisions
 
@@ -19,8 +19,8 @@ This document defines database ownership, EF Core, identifier, reference, migrat
 
 | Database | Owning domain service | Main records |
 |---|---|---|
-| Sales database | `Acme.Erp.Sales.Api` | Sales orders, order lines, channels, customer account reference data, buyer request links, fulfilment status read models, sales audit records |
-| Purchasing database | `Acme.Erp.Purchasing.Api` | Suppliers, purchase orders, PO lines, buyer requests, approval records, receipt status read models, purchasing audit records |
+| Sales database | `Acme.Erp.Sales.Api` | Sales orders, order lines, channels, customer account reference data, buyer request links, fulfilment status read models, sales operational history |
+| Purchasing database | `Acme.Erp.Purchasing.Api` | Suppliers, purchase orders, PO lines, buyer requests, approval records, receipt status read models, purchasing operational history |
 | Inventory database | `Acme.Erp.InventoryManagement.Api` | Products, SKUs, barcodes, serial configuration, stock balances, reservations, goods receipts, stock checks, discrepancies, stock movements |
 | Fulfilment database | `Acme.Erp.OrderFulfilment.Api` | Fulfilment tasks, picks, packs, courier shipment purchases, label references, completion records, fulfilment exceptions |
 
@@ -51,7 +51,7 @@ No UI service or application API service owns or writes a database.
 - Migrations are generated and applied per owning service database.
 - A domain may use an adjacent domain-owned persistence project only when it improves separation without sharing persistence across domains or applications.
 - Migrations must not create cross-database foreign keys.
-- Migrations must preserve audit and status history tables during schema evolution.
+- Migrations must preserve status and activity history tables during schema evolution.
 - Local database initialization and seed data must be deterministic and safe to rerun in the local Kubernetes environment.
 
 ## Consistency Model
@@ -66,7 +66,7 @@ Use a local transaction for changes inside one domain database. Use integration 
 | Fulfilment completion | Fulfilment completes after pick, pack, shipping purchase, and label generation or approved exception; Inventory consumes stock at completion; Sales receives completion status. |
 | Buyer request | Sales sends non-routinely stocked product request to Purchasing; Purchasing owns buyer queue status and returns status feedback. |
 
-Cross-service writes must be idempotent. Replayed commands or events must not create duplicate orders, reservations, stock movements, shipments, or audit records.
+Cross-service writes must be idempotent. Replayed commands or events must not create duplicate orders, reservations, stock movements, shipments, or operational history records.
 
 ## Inventory State Rules
 
@@ -78,33 +78,21 @@ Cross-service writes must be idempotent. Replayed commands or events must not cr
 - Reservations reduce available-to-promise quantity at fulfilment release.
 - Fulfilment consumption creates stock movement records at fulfilment completion.
 
-## Audit Data
+## Operational History Data
 
-Audit records must include enough information to identify identity, time, source, action, outcome, reference record, and correlation identifier.
+Operational history records must include enough information to identify identity, time, source, action, outcome, reference record, and correlation identifier for the owning business workflow.
 
-Minimum audit coverage:
+Minimum operational history coverage:
 
-- Authentication and authorization events.
-- Access grants, removals, role changes, permission changes, and SoD rule changes.
 - Sales order creation, amendments, cancellation, release, and buyer request submission.
 - Purchase order creation, submission, approval, amendment, cancellation, and receipt status changes.
 - Inventory stock counts, discrepancies, approvals, receipts, adjustments, stock movements, and reversals.
 - Fulfilment picking, packing, shipping purchase, label printing, completion, partial fulfilment, exceptions, and reversals.
-- Data exports and security configuration changes.
-
-Retention categories:
-
-| Category | Retention |
-|---|---|
-| Sales, purchasing, approval, and financially relevant business events | 7 years |
-| Inventory and fulfilment operational events | 3 years |
-| Authentication, authorization, and integration events | 1 year unless linked to an incident |
-| Security incident evidence | 7 years |
 
 ## Data Seeding
 
-- MVP seed data may include ACME's initial users/roles, 1,000-product catalog baseline, 10 to 20 suppliers, one warehouse, configured bins where needed, and approximately 100 B2B customer accounts.
-- Seed data must be owned by the appropriate domain or platform service: Inventory owns product/SKU/barcode/stocking data, Sales owns customer reference data, Purchasing owns supplier reference data, and Authentik/Security Administration owns identity and access configuration.
+- MVP seed data may include ACME's initial business personas/role claims, 1,000-product catalog baseline, 10 to 20 suppliers, one warehouse, configured bins where needed, and approximately 100 B2B customer accounts.
+- Seed data must be owned by the appropriate domain or platform service: Inventory owns product/SKU/barcode/stocking data, Sales owns customer reference data, Purchasing owns supplier reference data, and identity/access configuration is owned by Authentik, Gravitee, and the owning application/domain requirements.
 - Seed data must not introduce hidden cross-database dependencies.
 
 ## Review Checklist
@@ -116,5 +104,5 @@ Retention categories:
 - [ ] No migration creates a cross-database foreign key.
 - [ ] Cross-domain references use external ID columns.
 - [ ] EF Core migrations are owned by the database-owning domain.
-- [ ] Audit and status history are retained according to policy.
+- [ ] Status and activity history are retained according to the owning domain's operational data policy.
 - [ ] Inventory reservation and consumption timing matches requirements.

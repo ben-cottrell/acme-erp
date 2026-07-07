@@ -15,19 +15,22 @@ This document defines the target split between domain bounded contexts and user-
 - Application UIs call only their paired application API.
 - Application APIs do not own databases, EF Core migrations, or durable business state.
 - Application APIs orchestrate role workflows by calling one or more domain APIs.
+- Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee using OAuth2/OIDC.
+- Authorization and access permissions are owned by each UI/application workflow and paired application API, with domain APIs enforcing business authorization, validation, state transitions, data-scope checks, and business invariants for their bounded context.
 - All user and external client traffic enters through Gravitee and uses Authentik-backed identity.
 
 ## Domain Bounded Contexts
 
 | Domain bounded context | Domain API | Database | Owns | Does not own |
 |---|---|---|---|---|
-| Sales | `Acme.Erp.Sales.Api` | Sales database | Customer account reference data for MVP, sales orders, order channels, buyer request state, release-to-fulfilment decisions, sales status history, sales audit records | User interface flows, picking, packing, shipping, purchase order authoring, stock balance updates |
-| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, purchase order approval state, buyer request queue state, purchase order receipt visibility, purchasing audit records | User interface flows, goods receipt booking, inventory balances, sales order entry, finance postings |
-| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, reservations, goods receipts, stock checks, stock movements, discrepancy state, inventory audit records | User interface flows, purchase order authoring, sales order authoring, courier shipment purchase |
-| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, pick/pack/ship/completion rules, courier shipment purchase records, label references, fulfilment exceptions, fulfilment audit records | User interface flows, sales order creation, product master ownership, stock balance authority |
-| Security and Audit | Explicit platform/domain services when introduced | Separate storage only where a service is explicitly introduced | RBAC policy state, SoD policy state, audit event storage, access review state, service account policy where implemented inside ERP services | Domain-specific business workflow rules |
+| Sales | `Acme.Erp.Sales.Api` | Sales database | Customer account reference data for MVP, sales orders, order channels, buyer request state, release-to-fulfilment decisions, sales status history, sales operational history | User interface flows, picking, packing, shipping, purchase order authoring, stock balance updates |
+| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, purchase order approval state, buyer request queue state, purchase order receipt visibility, purchasing operational history | User interface flows, goods receipt booking, inventory balances, sales order entry, finance postings |
+| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, reservations, goods receipts, stock checks, stock movements, discrepancy state, inventory operational history | User interface flows, purchase order authoring, sales order authoring, courier shipment purchase |
+| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, pick/pack/ship/completion rules, courier shipment purchase records, label references, fulfilment exceptions, fulfilment operational history | User interface flows, sales order creation, product master ownership, stock balance authority |
 
 ## Application Services
+
+The MVP no longer includes a Security and Audit bounded context, Security Administration application, Audit Reporting application, or active auditing/compliance workflows. Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee through OAuth2/OIDC. Each role-focused UI/application owns its own access-permission experience and its paired API enforces workflow authorization before calling domain APIs. Domain APIs remain authoritative for their own business rules, state transitions, data ownership, and domain-specific authorization checks.
 
 | Application | Application UI | Application API | Primary users | Domain APIs consumed | Database |
 |---|---|---|---|---|---|
@@ -38,8 +41,6 @@ This document defines the target split between domain bounded contexts and user-
 | Fulfilment Operator | `Acme.Erp.FulfilmentOperator.Ui` | `Acme.Erp.FulfilmentOperator.Api` | Fulfilment Operator | Order Fulfilment, Sales, Inventory Management | None |
 | Inventory Supervisor | `Acme.Erp.InventorySupervisor.Ui` | `Acme.Erp.InventorySupervisor.Api` | Inventory Supervisor | Inventory Management, Purchasing, Order Fulfilment | None |
 | Fulfilment Supervisor | `Acme.Erp.FulfilmentSupervisor.Ui` | `Acme.Erp.FulfilmentSupervisor.Api` | Fulfilment Supervisor | Order Fulfilment, Sales, Inventory Management | None |
-| Security Administration | `Acme.Erp.SecurityAdministration.Ui` | `Acme.Erp.SecurityAdministration.Api` | Security Administrator, System Administrator | Security and Audit services, Authentik integration, domain metadata APIs | None |
-| Audit Reporting | `Acme.Erp.AuditReporting.Ui` | `Acme.Erp.AuditReporting.Api` | Auditor, Security Administrator, business control owners | Security and Audit services, domain audit/reporting APIs | None |
 
 ## Boundary Diagram
 
@@ -88,6 +89,6 @@ flowchart LR
 - [ ] Every application UI calls only its paired application API.
 - [ ] Application APIs do not connect to SQL Server or own EF Core migrations.
 - [ ] Application APIs communicate with domain APIs for all durable business state changes.
-- [ ] Domain APIs remain responsible for business authorization, validation, persistence, audit decisions, and domain invariants.
+- [ ] Domain APIs remain responsible for business authorization, validation, persistence, operational history, and domain invariants.
 - [ ] Cross-domain references use external ID columns and integration contracts.
 - [ ] All ingress is routed through Gravitee with Authentik-backed identity.
