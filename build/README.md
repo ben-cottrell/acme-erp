@@ -71,7 +71,7 @@ Manual setup still required:
 
 - enable Kubernetes in Docker Desktop
 - install Skaffold and Helm if missing
-- optionally map `erp.local.test` to `127.0.0.1` in the hosts file for browser testing
+- wait for the Docker Desktop LoadBalancer endpoint before browser testing or external UI validation
 
 ## Skaffold Profiles
 
@@ -81,7 +81,7 @@ skaffold run -f .\build\skaffold.yaml -p apps
 skaffold run -f .\build\skaffold.yaml -p all
 ```
 
-The `platform` profile applies namespaces, SQL Server, Authentik bootstrap config, and Gravitee route config. Authentik and Gravitee Helm releases are installed by `bootstrap-local.ps1` because their chart values need generated local secrets.
+The `platform` profile applies namespaces, SQL Server, and Authentik bootstrap config. Authentik and Gravitee Helm releases are installed by `bootstrap-local.ps1` because their chart values need generated local secrets; the script also applies the Gravitee route ConfigMaps before installing the gateway.
 
 The `apps` profile builds and deploys the 18 ASP.NET Core service images.
 
@@ -90,11 +90,11 @@ The `apps` profile builds and deploys the 18 ASP.NET Core service images.
 The local Helm values are tuned for a single-node Docker Desktop cluster:
 
 - Authentik runs one server, one worker, PostgreSQL, and Redis.
-- Gravitee runs one API, gateway, portal, and UI pod.
-- Gravitee's bundled Elasticsearch runs one pod for each role, disables the unavailable Bitnami `os-shell` sysctl init image, and uses zero index replicas for local single-node health.
-- Gravitee's bundled MongoDB runs as a one-member replica set without an arbiter and disables strict container security contexts required by the current legacy Bitnami image.
+- Gravitee runs in database-less gateway-only mode for local development.
+- Gravitee Management API, portal, UI, MongoDB, and Elasticsearch are not deployed locally.
+- Gravitee route definitions are synchronized from Kubernetes ConfigMaps in `build/k8s/gravitee/route-config.yaml`.
 
-These settings are development-only and live in `build/k8s/authentik/values.local.yaml` and `build/k8s/gravitee/values.local.yaml`.
+The Gravitee gateway service is configured as a local Docker Desktop `LoadBalancer` on port `8082`, giving the workstation the canonical gateway URL `http://localhost:8082` without DNS or HOSTS changes. These settings are development-only and live in `build/k8s/authentik/values.local.yaml` and `build/k8s/gravitee/values.local.yaml`.
 
 ## Validation
 
@@ -104,6 +104,22 @@ Run:
 .\build\scripts\validate-local.ps1
 ```
 
-The validation script builds the solution, checks expected Kubernetes secrets/resources, waits for SQL Server bootstrap completion, waits for Authentik and Gravitee workloads, verifies the route ConfigMap exists, and performs in-cluster HTTP checks against all domain APIs, application APIs, application UIs, Authentik, and Gravitee endpoints. Gravitee route publication through the Management API is not implemented yet, so app routes are validated directly through their ClusterIP services.
+The validation script builds the solution, checks expected Kubernetes secrets/resources, waits for SQL Server bootstrap completion, waits for Authentik and the Gravitee gateway workload, verifies the Gravitee route ConfigMaps exist, and performs in-cluster HTTP checks against all domain APIs, application APIs, application UIs, Authentik, and Gravitee endpoints through the Kubernetes service proxy. It does not create validation pods or gateway exposure.
+
+To confirm Gravitee is exposed to the developer workstation through Docker Desktop, run:
+
+```powershell
+kubectl get service gravitee-apim-gateway -n erp-local
+```
+
+The service should be `LoadBalancer` and expose port `8082` on localhost once the platform deployment is ready.
+
+To also verify the application UIs from the developer workstation through the local Gravitee gateway, run:
+
+```powershell
+.\build\scripts\validate-local.ps1 -IncludeExternalUi
+```
+
+`-IncludeExternalUi` checks these public UI routes through `http://localhost:8082`: `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, `/apps/fulfilment-operator/ui`, `/apps/inventory-supervisor/ui`, and `/apps/fulfilment-supervisor/ui`. The script does not create gateway exposure; the Gravitee gateway service is exposed by the local Helm values as a Docker Desktop `LoadBalancer`. If the gateway is unreachable, or if all UI routes return `404`, validation fails because the database-less gateway did not synchronize the route ConfigMaps or the gateway exposure is incorrect.
 
 For a destructive clean-slate rebuild and validation handoff, use `clean-slate-teardown-build-test-plan.md`.

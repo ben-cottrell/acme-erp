@@ -107,9 +107,23 @@ The bootstrap script validates tools, Kubernetes context, namespace creation, lo
 .\build\scripts\validate-local.ps1
 ```
 
-Validation builds the solution, checks expected Kubernetes resources, waits for SQL Server bootstrap completion, waits for Authentik and Gravitee workloads, validates route configuration, and performs in-cluster HTTP checks for placeholder services and platform endpoints.
+Validation builds the solution, checks expected Kubernetes resources, waits for SQL Server bootstrap completion, waits for Authentik and Gravitee workloads, validates route configuration, and performs in-cluster HTTP checks through the Kubernetes service proxy. It does not create validation pods or gateway exposure.
 
-Current limitation: Gravitee route publication through the Management API is not implemented yet, so app routes are validated directly through their ClusterIP services.
+Host-level UI reachability can be checked through the same script:
+
+```powershell
+.\build\scripts\validate-local.ps1 -IncludeExternalUi
+```
+
+This mode expects the local Gravitee gateway to be reachable at `http://localhost:8082`. The local Gravitee Helm values configure Gravitee in database-less gateway-only mode and expose only the gateway service as a Docker Desktop `LoadBalancer` on port `8082`. Gravitee Management API, portal, UI, MongoDB, and Elasticsearch are not deployed locally. Authentik, SQL Server, and ERP service endpoints remain internal `ClusterIP` services unless otherwise documented. Confirm the endpoint after platform deployment:
+
+```powershell
+kubectl get service gravitee-apim-gateway -n erp-local
+```
+
+The validation script does not create gateway exposure. It checks `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, `/apps/fulfilment-operator/ui`, `/apps/inventory-supervisor/ui`, and `/apps/fulfilment-supervisor/ui` through `http://localhost:8082`.
+
+Gravitee route publication is configuration-driven. The database-less gateway watches Kubernetes ConfigMaps labeled `managed-by=gravitee.io` and `gio-type=apidefinitions.gravitee.io`; the local route definitions live in `build/k8s/gravitee/route-config.yaml`. If external UI validation cannot reach the gateway or returns `404` for every UI route, validation fails because gateway exposure or ConfigMap synchronization is missing or incorrect.
 
 ## Health and Readiness
 
@@ -125,5 +139,5 @@ Current limitation: Gravitee route publication through the Management API is not
 - [ ] Skaffold builds all configured local service images.
 - [ ] Local secrets are generated and ignored by Git.
 - [ ] Bootstrap works for `platform`, `apps`, and `all` deployment scopes.
-- [ ] Validation builds the solution and verifies platform and app readiness.
-- [ ] App traffic is designed for Gravitee ingress, with the known local route-publication limitation documented.
+- [ ] Validation builds the solution, verifies platform and app readiness, and can optionally verify host-level UI reachability.
+- [ ] App traffic is designed for Gravitee ingress, with local routes synchronized from database-less Gravitee ConfigMaps.

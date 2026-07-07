@@ -203,7 +203,7 @@ function Initialize-LocalSecrets {
         'secret-key' = $state['authentik-secret-key']
         'postgresql-password' = $state['authentik-postgresql-password']
         'bootstrap-password' = $state['authentik-bootstrap-password']
-        'bootstrap-email' = 'admin@erp.local.test'
+        'bootstrap-email' = 'admin@localhost.localdomain'
     }
 
     Set-KubernetesSecret -Name 'gravitee-local' -Values @{
@@ -227,7 +227,7 @@ authentik:
     postgresql:
         password: $(ConvertTo-QuotedYamlValue -Value $state['authentik-postgresql-password'])
     bootstrap_password: $(ConvertTo-QuotedYamlValue -Value $state['authentik-bootstrap-password'])
-    bootstrap_email: 'admin@erp.local.test'
+    bootstrap_email: 'admin@localhost.localdomain'
 postgresql:
     auth:
         password: $(ConvertTo-QuotedYamlValue -Value $state['authentik-postgresql-password'])
@@ -245,8 +245,12 @@ postgresql:
         Invoke-NativeCommand helm @arguments
 }
 
-function Install-Gravitee {
+function Apply-GraviteeRoutes {
     Invoke-NativeCommand kubectl apply -f (Join-Path $BuildRoot 'k8s/gravitee/route-config.yaml')
+}
+
+function Install-Gravitee {
+    Apply-GraviteeRoutes
     Invoke-NativeCommand helm repo add graviteeio https://helm.gravitee.io
     Invoke-NativeCommand helm repo update
     $arguments = @(
@@ -299,6 +303,7 @@ try {
             Install-Gravitee
             Wait-ForPlatform
             Invoke-SkaffoldProfile -SkaffoldProfile 'apps'
+            Apply-GraviteeRoutes
         }
         elseif ($DeploymentScope -eq 'platform') {
             Invoke-SkaffoldProfile -SkaffoldProfile 'platform'
@@ -308,6 +313,7 @@ try {
         }
         else {
             Invoke-SkaffoldProfile -SkaffoldProfile 'apps'
+            Apply-GraviteeRoutes
         }
     }
 }

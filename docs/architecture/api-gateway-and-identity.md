@@ -39,6 +39,8 @@ sequenceDiagram
 
 Internal Kubernetes service calls are permitted after ingress for trusted ERP service-to-service communication when the called API enforces service identity, authorization, correlation, contract validation, and operational-history requirements.
 
+The local developer gateway URL is `http://localhost:8082`. The Kubernetes Gravitee gateway service is exposed to the workstation by the local Helm values as a Docker Desktop `LoadBalancer` on port `8082`; non-gateway platform and ERP services remain internal to the `erp-local` namespace. Local Gravitee runs in database-less gateway-only mode, synchronizing API definitions from Kubernetes ConfigMaps instead of deploying the APIM Management API, portal, UI, MongoDB, or Elasticsearch. Authentik OAuth/OIDC redirect URIs and allowed origins for local development must use `http://localhost:8082` when OAuth application bootstrap is automated.
+
 ## Route Conventions
 
 | Service | Public route | Health endpoints | Contract endpoint |

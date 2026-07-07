@@ -2,17 +2,40 @@ global:
   security:
     allowInsecureImages: true
 
+apim:
+  dbLess: true
+
+management:
+  type: none
+
+ratelimit:
+  type: none
+
 api:
+  enabled: false
   replicaCount: 1
   service:
     type: ClusterIP
 
 gateway:
+  dbLess: true
   replicaCount: 1
   service:
-    type: ClusterIP
+    type: LoadBalancer
     externalPort: 8082
     internalPort: 8082
+  services:
+    sync:
+      enabled: true
+      kubernetes:
+        enabled: true
+        namespaces:
+          - erp-local
+  reporters:
+    elasticsearch:
+      enabled: false
+    file:
+      enabled: false
   env:
     - name: gravitee_http_header_correlation_enabled
       value: "true"
@@ -20,20 +43,22 @@ gateway:
       value: X-Correlation-ID
 
 portal:
+  enabled: false
   replicaCount: 1
   service:
     type: ClusterIP
 
 ui:
+  enabled: false
   replicaCount: 1
   service:
     type: ClusterIP
 
 mongo:
-  enabled: true
+  enabled: false
 
 mongodb:
-  enabled: true
+  enabled: false
   replicaCount: 1
   podSecurityContext:
     enabled: false
@@ -43,11 +68,12 @@ mongodb:
     enabled: false
 
 es:
+  enabled: false
   settings:
     number_of_replicas: 0
 
 elasticsearch:
-  enabled: true
+  enabled: false
   sysctlImage:
     enabled: false
   master:

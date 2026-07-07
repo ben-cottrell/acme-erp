@@ -85,7 +85,6 @@ manifests:
     - build/k8s/namespaces/*.yaml
     - build/k8s/sqlserver/*.yaml
     - build/k8s/authentik/blueprint-configmap.yaml
-    - build/k8s/gravitee/route-config.yaml
     - build/k8s/services/*.yaml
 deploy:
   kubectl: {}
@@ -101,7 +100,6 @@ profiles:
           - build/k8s/namespaces/*.yaml
           - build/k8s/sqlserver/*.yaml
           - build/k8s/authentik/blueprint-configmap.yaml
-          - build/k8s/gravitee/route-config.yaml
   - name: apps
     patches:
       - op: replace
