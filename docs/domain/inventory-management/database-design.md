@@ -456,26 +456,7 @@ Unique constraint: `(StockCheckId, LineNumber)`. The arithmetic relationship is 
 | `Reason` | `nvarchar(1000)` | Yes | Required for reject/deny |
 | `DecidedAt` | `datetimeoffset(7)` | No | UTC |
 
-## Business Exceptions and Operational History
-
-### `InventoryExceptions`
-
-Persists reservation, consumption, or reversal business exceptions that are not receipt or discrepancy exceptions.
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `ExceptionType` | `nvarchar(64)` | No | Bounded workflow type |
-| `Status` | `nvarchar(16)` | No | `Open`, `Resolved`, `Cancelled` |
-| `SkuId` | `uniqueidentifier` | Yes | Optional FK to `Skus.Id` |
-| `ReservationId` | `uniqueidentifier` | Yes | Optional FK to `Reservations.Id` |
-| `ExternalSalesOrderId` | `uniqueidentifier` | Yes | Sales reference |
-| `ExternalFulfilmentTaskId` | `uniqueidentifier` | Yes | Fulfilment reference |
-| `Summary` | `nvarchar(500)` | No | Operator-safe summary |
-| `DetailsJson` | `nvarchar(max)` | Yes | Valid sanitized JSON |
-| `OpenedAt` | `datetimeoffset(7)` | No | UTC |
-| `ResolvedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Concurrency token |
+## Operational History
 
 ### `InventoryActivityHistory`
 
@@ -502,7 +483,7 @@ Persists reservation, consumption, or reversal business exceptions that are not 
 | Area | Allowed values |
 |---|---|
 | Stock state | `Available`, `Reserved`, `Quarantine`, `Damaged`, `Rejected`, `NonAvailable` |
-| Reservation | `Requested`, `Reserved`, `PartiallyReserved`, `Rejected`, `Consumed`, `Released`, `Reversed`, `Exception` |
+| Reservation | `Requested`, `Reserved`, `PartiallyReserved`, `Rejected`, `Consumed`, `Released`, `Reversed` |
 | Goods receipt | `Open`, `Matched`, `PartiallyMatched`, `ExceptionPendingReview`, `Booked`, `Rejected`, `Closed` |
 | Stock check | `Open`, `Counted`, `NoVariance`, `DiscrepancyPendingReview`, `AdjustmentApproved`, `AdjustmentRejected`, `Closed` |
 
@@ -531,7 +512,6 @@ Key local relationship groups are catalog to SKU, warehouse to location, SKU/loc
 | `IX_GoodsReceipts_ExternalPurchaseOrderId` on `(ExternalPurchaseOrderId, Status, Id)` | PO receipt lookup |
 | `IX_ReceiptExceptions_Status_OpenedAt` on `(Status, OpenedAt, Id)` | Receipt exception queue |
 | `IX_StockDiscrepancies_Status_OpenedAt` on `(Status, OpenedAt, Id)` | Discrepancy queue |
-| `IX_InventoryExceptions_Status_Type_OpenedAt` on `(Status, ExceptionType, OpenedAt, Id)` | Reservation/consumption exceptions |
 | `IX_InventoryActivityHistory_Sku_OccurredAt` on `(SkuId, OccurredAt DESC, Id)` | SKU operational history |
 | `IX_InventoryActivityHistory_Actor_Action_OccurredAt` on `(ActorSubject, Action, OccurredAt DESC, Id)` | Supervisor reporting |
 
@@ -569,7 +549,7 @@ Key local relationship groups are catalog to SKU, warehouse to location, SKU/loc
 | `INV-DOM-006` | Non-negative balance checks plus transaction/concurrency rules before every decrement |
 | `INV-DOM-007` | Indexed balance states, stocked configuration, and authoritative Inventory query source |
 | `INV-DOM-008` | Reservation header, allocations, serials, external Sales/Fulfilment IDs, and Available-to-Reserved transfer |
-| `INV-DOM-009` | Reservation consumption/release/reversal quantities, immutable movements, external traceability, and visible exceptions |
+| `INV-DOM-009` | Reservation consumption/release/reversal quantities, immutable movements, and accepted external references |
 | `INV-DOM-010` | Product, balance, movement, reservation, discrepancy, receipt exception, and history indexes |
 
 Authorization, scanner/form validation, transition decisions, policy evaluation, service calls, pagination, CSV shaping, and serialized cross-row reconciliation remain domain/API responsibilities.

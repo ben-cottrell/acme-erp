@@ -13,7 +13,7 @@ Order Fulfilment exposes WebAPI contracts and owns the Fulfilment database. It i
 - Receipt of released sales order contracts from Sales and creation of fulfilment tasks.
 - Fulfilment task lifecycle from release through picking, packing, shipping purchase, label reference, completion, partial fulfilment, cancellation, and exception state.
 - Component requirement, picked quantity, short pick, substitution, damaged component, and packing validation.
-- MVP courier shipment purchase path, label reference storage, tracking reference, and shipping exception state.
+- MVP courier shipment purchase path, label reference storage, and tracking reference.
 - Inventory reservation, consumption, and reversal request contracts.
 - Fulfilment status updates to Sales and fulfilment history/reporting data.
 
@@ -37,15 +37,14 @@ The MVP outcome is a reliable fulfilment lifecycle where released orders can be 
 | Fulfilment Operator | Warehouse user executing tasks. | Pick, pack, request shipping purchase, print labels through applications, complete tasks, record exceptions. | Update assigned fulfilment task steps where policy allows. |
 | Fulfilment Supervisor | Control role for fulfilment exceptions. | Approve short picks, substitutions, shipping overrides, cancellations after picking starts, and completion reversals. | Approve/reject controlled fulfilment actions and view fulfilment history. |
 | Sales Assistant/Sales Supervisor | Sales users needing fulfilment visibility. | Monitor released order progress and customer-impacting exceptions. | Query fulfilment status through Sales or authorized reporting contracts. |
-| Inventory Supervisor | Inventory control user resolving stock issues. | Review reservation/consumption failures and coordinate inventory exceptions. | Query fulfilment-linked inventory exception context. |
 
 ## 5. Domain Capabilities and Workflows
 
 - **Fulfilment intake** starts when Sales sends a released order contract. It ends with a fulfilment task created or the release rejected as invalid.
 - **Pick workflow** starts when an operator begins a task. It ends with required quantities picked, short pick/substitution/damage exception raised, or task returned to queue.
-- **Pack and ship workflow** starts after pick validation. It ends with packing confirmed, courier shipping purchased, label reference stored, or shipping exception recorded.
+- **Pack and ship workflow** starts after pick validation. It ends with packing confirmed and accepted courier shipment, tracking, and label references stored.
 - **Completion workflow** starts after pick, pack, shipping, and label conditions are met or an approved manual exception exists. It ends with accepted Inventory consumption and Sales status updates, or approved partial fulfilment/backorder.
-- **Exception workflow** starts when validation, stock, label, cancellation, or reversal issue occurs. It ends with supervisor approval, rejection, cancellation, or correction.
+- **Exception workflow** starts when a pick, packing, cancellation, reversal, or policy issue requires a controlled decision. It ends with supervisor approval, rejection, cancellation, or correction.
 
 ## 6. Functional Requirements
 
@@ -78,14 +77,14 @@ The MVP outcome is a reliable fulfilment lifecycle where released orders can be 
 
 | State | Allowed Transitions | Triggering Events | Guards / Notes |
 |---|---|---|---|
-| Released | Picking, Cancelled, Exception | Sales release accepted, cancellation, validation issue | Task created from Sales contract. |
+| Released | Picking, Cancelled, Exception | Sales release accepted, cancellation, business validation issue | Task created from Sales contract. |
 | Picking | Picked, Pick Exception, Cancelled, Exception | Pick action, mismatch, damage, cancellation | Cancellation after picking starts requires approval. |
 | Pick Exception | Picking, Picked, Partially Fulfilled, Cancelled, Exception | Supervisor decision | Short pick/substitution needs approval. |
 | Picked | Packing, Exception | Pick confirmation | Requires validated quantities or approved exception. |
 | Packing | Packed, Exception | Pack confirmation | Packing failure remains recoverable. |
-| Packed | Shipping Purchased, Exception | Courier purchase accepted or business exception raised | Shipping may be skipped only by approved manual exception. |
-| Shipping Purchased | Label Printed, Exception | Label generated/stored | Label reference required unless approved exception. |
-| Label Printed | Completed, Partially Fulfilled, Exception | Completion request | Inventory consumption and Sales update required. |
+| Packed | Shipping Purchased | Courier purchase accepted | Shipping may be skipped only by an approved policy decision made before this transition. |
+| Shipping Purchased | Label Printed | Accepted label generated/stored | Label reference required. |
+| Label Printed | Completed, Partially Fulfilled | Completion request | Inventory consumption and Sales update must be accepted. |
 | Partially Fulfilled | Completed, Exception | Remaining fulfilment or correction | Backorder reported to Sales. |
 | Completed | Exception | Correction/reversal | Terminal for normal path. |
 | Cancelled | Exception | Approved cancellation | Terminal unless correction is approved. |
@@ -117,7 +116,7 @@ The MVP outcome is a reliable fulfilment lifecycle where released orders can be 
 | Report / Query | Audience | Purpose | Filters | Export Needs |
 |---|---|---|---|---|
 | Fulfilment Task Queue | Operators, Supervisors | Prioritize released work. | Status, age, channel, SKU, priority, operator. | CSV optional for workload review. |
-| Exception Queue | Fulfilment Supervisor | Resolve pick, pack, ship, label, completion, and cancellation issues. | Exception type, age, SKU, courier, operator, sales order. | CSV for supervisor review. |
+| Exception Queue | Fulfilment Supervisor | Resolve short picks, substitutions, damage, packing issues, cancellations, reversals, and policy decisions. | Exception type, age, SKU, operator, sales order. | CSV for supervisor review. |
 | Shipment and Label References | Fulfilment Supervisor | Trace courier purchases and labels. | Courier, tracking, date, order, status. | CSV for operational review. |
 | Partial Fulfilment/Backorder Report | Sales, Fulfilment Supervisor | Track remaining quantities. | Customer, order, SKU, date, status. | CSV optional. |
 | Completion History | Fulfilment Supervisor | Review completed or reversed tasks. | Date, actor, order, SKU, exception, approval. | CSV for operational review. |
@@ -143,7 +142,7 @@ Operational history records shall include actor/service, source application/doma
 ## 15. Dependencies
 
 - Sales for released order contracts and accepted customer-visible status updates.
-- Inventory Management for product/component validation, reservation, consumption, reversal, and stock exception state.
+- Inventory Management for product/component validation and accepted reservation, consumption, and reversal references.
 - Courier service for accepted MVP shipment purchase, label references, and tracking.
 - Gravitee and Authentik for authenticated ingress and service identity.
 

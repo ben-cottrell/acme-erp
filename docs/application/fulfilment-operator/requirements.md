@@ -123,7 +123,7 @@ The application shall pass operator identity, source app, and command context to
 
 - Order Fulfilment for task lifecycle, shipping, labels, completion, exceptions, and operational history.
 - Sales for released order/customer delivery context and accepted fulfilment status updates.
-- Inventory Management for product validation, reservations, consumption, and stock exceptions.
+- Inventory Management for product validation and accepted reservation and consumption references.
 - Authentik and Gravitee for identity, ingress, role claims, and route policy.
 
 ## 16. Assumptions and MVP Defaults

@@ -339,7 +339,7 @@ Filtered unique index on `ExternalPurchasingBuyerRequestId` when non-null.
 |---|---|
 | Sales order | `Draft`, `Submitted`, `Confirmed`, `PendingInventory`, `PendingBuyerRequest`, `ReleasedToFulfilment`, `PartiallyFulfilled`, `Backordered`, `Completed`, `Cancelled`, `Exception` |
 | Sales order line | `Draft`, `Validated`, `PendingInventory`, `PendingBuyerRequest`, `Released`, `PartiallyFulfilled`, `Backordered`, `Completed`, `Cancelled`, `Exception` |
-| Buyer request copy | `PendingSubmission`, `Submitted`, `Accepted`, `LinkedToPurchaseOrder`, `Rejected`, `ReturnedForClarification`, `Closed`, `Exception` |
+| Buyer request copy | `Accepted`, `LinkedToPurchaseOrder`, `Rejected`, `ReturnedForClarification`, `Closed` |
 
 Check constraints limit persisted values; the transition graph remains the one defined in `requirements.md` and is enforced by Sales before persistence.
 

@@ -23,7 +23,7 @@ The Fulfilment Supervisor UI calls only the Fulfilment Supervisor API. The Fulfi
 ### In Scope
 
 - Fulfilment workload and exception queues by status, age, SKU, channel, operator, and exception type.
-- Review of pick exceptions, short picks, substitutions, damaged components, partial fulfilment, cancellation, reversal, and stock business exceptions.
+- Review of pick exceptions, short picks, substitutions, damaged components, packing issues, partial fulfilment, cancellation, reversal, and policy decisions.
 - Approval/rejection of controlled fulfilment exceptions through Order Fulfilment.
 - Review of partial fulfilment/backorder proposals and cancellation after picking starts.
 - Read-only Sales order/customer delivery context and Inventory reservation/consumption context where needed and allowed.
@@ -77,7 +77,7 @@ Fulfilment supervisors need a control surface for resolving blocked warehouse wo
 | Fulfilment task/exception | Order Fulfilment | Review and decisions. | Yes | Show current state and allowed actions. |
 | Pick/pack/ship details | Order Fulfilment | Evidence. | Conditional | Show quantities and accepted shipment, tracking, and label references. |
 | Sales order context | Sales/Order Fulfilment | Customer/order impact. | Conditional | Display minimum necessary customer data. |
-| Inventory context | Inventory Management | Stock impact. | Conditional | Show returned reservation, consumption, and stock exception context. |
+| Inventory context | Inventory Management | Stock impact. | Conditional | Show accepted reservation and stock movement references. |
 | Decision reason | User input to Order Fulfilment | Approval/rejection. | Conditional | Required for controlled decisions. |
 | Operational history | Order Fulfilment | Review traceability. | Conditional | Read-only and role-scoped. |
 
@@ -87,7 +87,7 @@ Fulfilment supervisors need a control surface for resolving blocked warehouse wo
 |---|---|---|---|---|
 | FSU-INT-001 | Load dashboard | Order Fulfilment | Filters and queue/status data. | Show the returned workload and business exception states. |
 | FSU-INT-002 | Load Sales context | Sales/Order Fulfilment | Sales order status and delivery context. | Show returned Sales business context. |
-| FSU-INT-003 | Load Inventory context | Inventory Management | Reservation, consumption, and stock exception context. | Show returned Inventory business context. |
+| FSU-INT-003 | Load Inventory context | Inventory Management | Accepted reservation and stock movement references. | Show returned Inventory business context. |
 | FSU-INT-004 | Submit decision | Order Fulfilment | Approval/rejection, reason, and exception ID. | Show self-approval, authorization, or invalid-state denial. |
 | FSU-INT-005 | Export queue | Order Fulfilment reporting | Filters and report fields. | Show authorization denial or the completed export. |
 
@@ -118,7 +118,7 @@ The application shall display Order Fulfilment-provided task history, exception 
 
 - Order Fulfilment for workload, exceptions, approvals, shipping/label references, lifecycle, and operational history.
 - Sales for order/customer impact and status context.
-- Inventory Management for reservation, consumption, and stock exception context.
+- Inventory Management for accepted reservation and stock movement context.
 - Authentik and Gravitee for identity, ingress, role claims, and route policy.
 
 ## 16. Assumptions and MVP Defaults

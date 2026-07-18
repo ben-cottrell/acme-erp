@@ -25,8 +25,8 @@ The Inventory Supervisor UI calls only the Inventory Supervisor API. The Invento
 - Review stock count discrepancies, variance calculations, adjustment reasons, approval requirements, and self-approval status.
 - Approve, reject, return for investigation, or close inventory adjustments through Inventory Management.
 - Review goods receipt mismatches, under-receipts, over-receipts, damaged goods, quarantine, rejected receipt states, and PO context.
-- View related purchase order data from Purchasing and fulfilment-driven stock exception context from Order Fulfilment/Inventory.
-- Search/filter discrepancy, receipt exception, stock movement, reservation/consumption exception, and pending review dashboards.
+- View related purchase order data from Purchasing and fulfilment task references associated with stock movements.
+- Search/filter discrepancy, receipt exception, stock movement, and pending review dashboards.
 - Accessible supervisor review and approval screens with operational history context and CSV export where appropriate.
 
 ### Out of Scope
@@ -61,7 +61,7 @@ Inventory supervisors need to keep stock trustworthy by reviewing exceptions cre
 | ISU-APP-003 | Adjustment decision | The application shall submit approval, rejection, investigation, or closure outcomes to Inventory Management. | Must | Given a supervisor submits a decision, when Inventory accepts it, then the UI shows updated state and history reference; denial or self-approval conflict is shown. |
 | ISU-APP-004 | Self-approval prevention | The application shall prevent or clearly surface self-approval denials when Inventory Management reports a self-approval conflict. | Must | Given the supervisor recorded the count/exception, when they attempt approval, then the action is denied by Inventory and the UI shows conflict reason. |
 | ISU-APP-005 | Search/filter | The application shall support filtering by age, status, location, SKU, variance, supplier, PO, exception type, recorder, and approver. | Should | Given filters are applied, when results load, then paginated domain results are shown with no local persistence. |
-| ISU-APP-006 | Stock history | The application shall display stock movement history and reservation/consumption exceptions available from Inventory Management. | Should | Given a user opens movement history, when authorized, then movements include source document, quantity, date, actor/service, and reason where available. |
+| ISU-APP-006 | Stock history | The application shall display stock movement history available from Inventory Management. | Should | Given a user opens movement history, when authorized, then movements include source document, quantity, date, actor/service, and reason where available. |
 
 ## 8. UI, Accessibility, and Usability Requirements
 
@@ -79,7 +79,7 @@ Inventory supervisors need to keep stock trustworthy by reviewing exceptions cre
 | Receipt exception | Inventory Management | Receipt resolution. | Conditional | Show exception type, condition, received/expected quantity. |
 | PO context | Purchasing | Receipt decision context. | Conditional | Read-only; show returned supplier, order, line, and quantity context. |
 | Stock movement | Inventory Management | Traceability. | Conditional | Show source document and actor/service. |
-| Fulfilment stock exception | Inventory/Order Fulfilment | Consumption/reservation review. | Conditional | Show task/order references, not mutable locally. |
+| Fulfilment task reference | Inventory/Order Fulfilment | Stock movement traceability. | Conditional | Show task/order references, not mutable locally. |
 | Decision reason | User input to Inventory | Approval/rejection. | Conditional | Required where policy says; preserve on validation failure. |
 
 ## 10. Orchestration and Integration Requirements
@@ -90,7 +90,7 @@ Inventory supervisors need to keep stock trustworthy by reviewing exceptions cre
 | ISU-INT-002 | Load PO context | Purchasing | PO reference and supplier/line context. | Show returned purchase-order business context. |
 | ISU-INT-003 | Submit adjustment decision | Inventory Management | Decision, reason, and exception ID. | Show self-approval, authorization, or validation denial. |
 | ISU-INT-004 | Resolve receipt exception | Inventory Management | Resolution outcome, reason, and condition. | Show the accepted resolution or Inventory validation denial. |
-| ISU-INT-005 | View fulfilment exception | Inventory Management/Order Fulfilment | Reservation, consumption, and task references. | Show returned fulfilment stock context. |
+| ISU-INT-005 | View fulfilment context | Inventory Management/Order Fulfilment | Accepted reservation, stock movement, and task references. | Show returned fulfilment business context. |
 
 ## 11. Reporting, Search, and Dashboard Requirements
 
@@ -100,7 +100,6 @@ Inventory supervisors need to keep stock trustworthy by reviewing exceptions cre
 | Receipt Exception Queue | Inventory Supervisor | Resolve receipt problems. | Supplier, PO, SKU, exception type, age, status. | CSV. |
 | Stock Movement Search | Inventory Supervisor | Trace stock changes. | SKU, location, source, date, actor, movement type. | CSV. |
 | Adjustment Approval History | Inventory Supervisor | Review decisions. | Approver, requester, date, status, variance. | CSV for operational review. |
-| Fulfilment Stock Exceptions | Inventory Supervisor | Resolve reservation/consumption issues. | Task, sales order, SKU, exception type, date. | CSV optional. |
 
 ## 12. Security and Permissions
 
@@ -117,9 +116,9 @@ The application shall display Inventory-provided status and activity history for
 
 ## 15. Dependencies
 
-- Inventory Management for discrepancies, adjustments, receipts, stock movements, reservation/consumption exceptions, self-approval checks, and operational history.
+- Inventory Management for discrepancies, adjustments, receipts, stock movements, self-approval checks, and operational history.
 - Purchasing for purchase order receipt context.
-- Order Fulfilment for fulfilment task context where stock exceptions require it.
+- Order Fulfilment for fulfilment task context linked to accepted stock movements.
 - Authentik and Gravitee for identity, ingress, role claims, and route policy.
 
 ## 16. Assumptions and MVP Defaults

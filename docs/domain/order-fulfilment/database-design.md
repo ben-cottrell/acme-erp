@@ -250,9 +250,9 @@ Unique constraint: `(ShipmentPurchaseId, ProviderLabelId)`.
 | `Id` | `uniqueidentifier` | No | Primary key |
 | `FulfilmentTaskId` | `uniqueidentifier` | No | FK to `FulfilmentTasks.Id` |
 | `FulfilmentTaskLineId` | `uniqueidentifier` | Yes | Optional FK to task line |
-| `ExceptionType` | `nvarchar(32)` | No | `ShortPick`, `Substitution`, `Damaged`, `Packing`, `Stock`, `Label`, `Cancellation`, `Reversal`, or `Policy` |
+| `ExceptionType` | `nvarchar(32)` | No | `ShortPick`, `Substitution`, `Damaged`, `Packing`, `Cancellation`, `Reversal`, or `Policy` |
 | `Status` | `nvarchar(24)` | No | `Open`, `PendingApproval`, `Approved`, `Rejected`, `Resolved`, `Cancelled` |
-| `RecoverableTaskStatus` | `nvarchar(32)` | Yes | State to resume after recovery |
+| `ApprovedResumeStatus` | `nvarchar(32)` | Yes | Optional business state authorized by the decision |
 | `RecordedBySubject` | `nvarchar(200)` | No | Cannot approve related control action |
 | `Reason` | `nvarchar(1000)` | No | Business/operator reason |
 | `DetailsJson` | `nvarchar(max)` | Yes | Valid sanitized JSON |
@@ -384,7 +384,7 @@ All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The
 
 | Column family | Owning system | SQL foreign key |
 |---|---|---:|
-| Sales order/line IDs and source version | Sales | No |
+| Sales order and line IDs | Sales | No |
 | Product, SKU, serial, reservation, and movement IDs | Inventory Management | No |
 | Provider transaction, shipment, tracking, and label IDs | Courier provider | No |
 | Operator, supervisor, actor, and service subjects | Authentik/platform identity | No |
