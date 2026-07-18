@@ -6,6 +6,7 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY Directory.Build.props ./
+COPY .editorconfig .globalconfig ./
 COPY Acme.Erp.slnx ./
 COPY src ./src
 RUN dotnet restore "src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Api/Acme.Erp.WarehouseOperator.Api.csproj"
