@@ -25,7 +25,7 @@ The Fulfilment Operator UI calls only the Fulfilment Operator API. The Fulfilmen
 - Released fulfilment task queue, task detail, and required order/component context.
 - Product, SKU, serial where applicable, quantity, availability/reservation context, and pick validation display.
 - Picked component capture, pack confirmation, shipping purchase request, label print action, completion, and partial fulfilment actions through Order Fulfilment.
-- Pick exception, damaged component, short pick, shipping purchase failure, label failure, and inventory consumption exception presentation.
+- Pick exception, damaged component, short pick, and business validation presentation.
 - Supervisor route for controlled exceptions, completion reversal, cancellation after picking starts, and override approval.
 - Accessible task entry and review screens suitable for keyboard/scanner-assisted operation.
 
@@ -61,8 +61,8 @@ Fulfilment operators need a clear operational workflow for moving released order
 | FOP-APP-001 | Task queue | The application shall display released fulfilment tasks from Order Fulfilment with status, age, order reference, and priority/context fields available from the domain. | Must | Given authorized operator access, when the queue loads, then tasks are paginated and filterable without local persistence. |
 | FOP-APP-002 | Task detail | The application shall show component requirements and Inventory validation data without storing sales or inventory state locally. | Must | Given a task is opened, when data is loaded, then required products/SKUs/quantities and reservation/availability context are displayed. |
 | FOP-APP-003 | Pick capture | The application shall allow operators to record picked components through Order Fulfilment. | Must | Given picked data matches requirements, when submitted, then Order Fulfilment advances the task; mismatches return exception state. |
-| FOP-APP-004 | Pack/ship/label | The application shall allow authorized operators to pack orders, request courier shipping purchase, and print labels using Order Fulfilment responses. | Must | Given shipping purchase succeeds, when the operator opens label action, then the label reference is available for printing; provider failure shows retry/escalation. |
-| FOP-APP-005 | Completion | The application shall allow authorized operators to complete or partially fulfil tasks through Order Fulfilment. | Must | Given completion succeeds, when Order Fulfilment updates Sales and Inventory, then the UI shows completed/partial status; downstream failure shows completion exception. |
+| FOP-APP-004 | Pack/ship/label | The application shall allow authorized operators to pack orders, request courier shipping purchase, and print labels using Order Fulfilment responses. | Must | Given the courier accepts the shipping purchase, when the operator opens label action, then the accepted shipment and label references are available. |
+| FOP-APP-005 | Completion | The application shall allow authorized operators to complete or partially fulfil tasks through Order Fulfilment. | Must | Given Order Fulfilment receives accepted Sales and Inventory results, when completion is recorded, then the UI shows completed or partial status. |
 | FOP-APP-006 | Exception routing | The application shall route exception approval, completion reversal, and cancellation-after-picking approval to supervisor applications. | Must | Given controlled exception exists, when viewed by operator, then approval controls are not available and supervisor-required state is shown. |
 | FOP-APP-007 | Accessibility/scanner use | The application shall provide accessible fulfilment task screens suitable for keyboard and scanner-assisted operation. | Must | Given scanner or keyboard input, when pick fields are used, then focus and validation behave predictably. |
 
@@ -70,7 +70,7 @@ Fulfilment operators need a clear operational workflow for moving released order
 
 - Task queue shall prioritize actionable tasks and clearly show blocked/exception states.
 - Pick forms shall support fast scan/enter flows and show remaining quantity without layout shift.
-- Shipping and label actions shall show provider status, retry availability, and exception route.
+- Shipping and label actions shall show accepted shipment, tracking, and label references.
 - Customer delivery context shall be displayed only when required for fulfilment and allowed by local access rules.
 - Screens shall target WCAG 2.2 AA, with clear focus, labels, and error summaries.
 
@@ -82,19 +82,19 @@ Fulfilment operators need a clear operational workflow for moving released order
 | Sales order reference/delivery context | Sales/Order Fulfilment | Task context. | Conditional | Display minimum necessary customer data. |
 | Product/SKU/serial | Inventory Management/Order Fulfilment | Pick validation. | Yes | Show mismatch/unknown/serial-required errors. |
 | Picked quantity | User input to Order Fulfilment | Pick step. | Yes | Non-negative and no more than required unless exception. |
-| Shipment/label reference | Order Fulfilment/courier | Ship and print. | Conditional | Show provider failure and retry state. |
-| Completion status | Order Fulfilment | Workflow outcome. | Yes | Show partial/backorder/exception state. |
+| Shipment/label reference | Order Fulfilment/courier | Ship and print. | Conditional | Show accepted provider, shipment, tracking, and label references. |
+| Completion status | Order Fulfilment | Workflow outcome. | Yes | Show completed, partial, or backorder state. |
 
 ## 10. Orchestration and Integration Requirements
 
-| ID | Application Action | Domain/API Called | Data Exchanged | Failure Handling | Idempotency / Correlation |
-|---|---|---|---|---|---|
-| FOP-INT-001 | Load task queue | Order Fulfilment | Filters, status, paging. | Show unavailable queue state. | Correlate request. |
-| FOP-INT-002 | Record pick | Order Fulfilment | Task line, product/SKU/serial, quantity. | Show pick exception returned by domain. | Idempotency key for submit. |
-| FOP-INT-003 | Pack task | Order Fulfilment | Pack confirmation, task ID. | Show invalid-state or exception response. | Correlate command. |
-| FOP-INT-004 | Request shipping | Order Fulfilment | Shipment request data. | Show provider failure and retry/escalation. | Idempotency key for shipping request. |
-| FOP-INT-005 | Print label | Order Fulfilment | Label reference request. | Show label unavailable/failure state. | Correlate request. |
-| FOP-INT-006 | Complete task | Order Fulfilment | Completion/partial completion data. | Show Inventory/Sales downstream exception. | Idempotency key for completion. |
+| ID | Application Action | Domain/API Called | Data Exchanged | Validation / Result |
+|---|---|---|---|---|
+| FOP-INT-001 | Load task queue | Order Fulfilment | Filters, status, and paging. | Show the returned task business states. |
+| FOP-INT-002 | Record pick | Order Fulfilment | Task line, product/SKU/serial, and quantity. | Show the accepted pick or business exception returned by the domain. |
+| FOP-INT-003 | Pack task | Order Fulfilment | Pack confirmation and task ID. | Show accepted packing state or invalid-state response. |
+| FOP-INT-004 | Request shipping | Order Fulfilment | Shipment request data. | Show the accepted provider, shipment, and tracking references. |
+| FOP-INT-005 | Print label | Order Fulfilment | Label reference request. | Show the accepted label reference. |
+| FOP-INT-006 | Complete task | Order Fulfilment | Completion or partial-completion data. | Show the accepted completion state or business-rule rejection. |
 
 ## 11. Reporting, Search, and Dashboard Requirements
 
@@ -111,22 +111,20 @@ The application shall enforce Fulfilment Operator route and screen access. Order
 
 ## 13. Operational History and Traceability
 
-The application shall pass operator identity, source app, correlation ID, and command context to Order Fulfilment. Operators may view task history relevant to their workflow, while broader CSV outputs belong to supervisor workflows.
+The application shall pass operator identity, source app, and command context to Order Fulfilment. Operators may view task history relevant to their workflow, while broader CSV outputs belong to supervisor workflows.
 
 ## 14. Non-Functional Requirements
 
-- Queue and task screens shall load paged data and make stale/unavailable states visible.
-- Submission actions shall use idempotency keys where duplicate mutation is possible.
-- The application shall propagate correlation IDs to Order Fulfilment, Sales, and Inventory calls.
+- Queue and task screens shall load paged data and clearly display returned business states.
 - The app shall not cache task data beyond request/session needs.
 - Validation and exception messages shall explain the next operational action.
 
 ## 15. Dependencies
 
 - Order Fulfilment for task lifecycle, shipping, labels, completion, exceptions, and operational history.
-- Sales for released order/customer delivery context and status synchronization through fulfilment contracts.
+- Sales for released order/customer delivery context and accepted fulfilment status updates.
 - Inventory Management for product validation, reservations, consumption, and stock exceptions.
-- Authentik and Gravitee for identity, ingress, role claims, route policy, and correlation metadata.
+- Authentik and Gravitee for identity, ingress, role claims, and route policy.
 
 ## 16. Assumptions and MVP Defaults
 

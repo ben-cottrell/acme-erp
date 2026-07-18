@@ -52,7 +52,7 @@ Sales users need one internal workflow for turning customer requests into valid 
 - **Create internal order**: user searches customer, enters contact/address/reference/channel, adds product lines, reviews availability, submits to Sales, and receives confirmation or validation errors.
 - **Handle unavailable stock**: user sees Inventory availability state, can save/submit pending inventory state, or route non-stocked items through the Sales buyer request path.
 - **Submit buyer request**: user enters requested product details and reason; Sales creates the request and Purchasing status is later shown in the order workspace.
-- **Release to fulfilment**: user requests release only when Sales reports eligibility; release success, failure, or exception is shown with retry/escalation options.
+- **Release to fulfilment**: user requests release only when Sales reports eligibility; the accepted release or business-rule rejection is shown.
 - **Monitor order**: user searches orders, views status history, fulfilment progress, partial fulfilment/backorder state, and customer-impacting exceptions.
 - **Supervisor approval**: supervisor opens queue, reviews reason and change context, approves or rejects controlled action through Sales.
 
@@ -61,7 +61,7 @@ Sales users need one internal workflow for turning customer requests into valid 
 | ID | Workflow | Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|---|
 | SA-APP-001 | Order capture | The application shall allow authorized Sales Assistant users to create and update sales orders by orchestrating Sales and Inventory Management APIs. | Must | Given required fields are complete, when the user submits, then the API sends a Sales command and displays the Sales result; given Sales rejects validation, then field-level errors are shown without local persistence. |
-| SA-APP-002 | Availability | The application shall display Inventory Management availability and product validation results during order entry without storing inventory balances locally. | Must | Given a product is selected, when availability is requested, then the UI shows quantity/status and freshness where returned; stale/unavailable responses are visibly marked. |
+| SA-APP-002 | Availability | The application shall display Inventory Management availability and product validation results during order entry without storing inventory balances locally. | Must | Given a product is selected, when availability is requested, then the UI shows the returned quantity and stock status. |
 | SA-APP-003 | Buyer request | The application shall let sales users submit non-routinely stocked product requests through Sales without directly writing Purchasing data. | Must | Given a line requires buyer action, when the request is submitted, then Sales returns a request reference and the UI shows Pending Buyer Request or validation errors. |
 | SA-APP-004 | Release | The application shall expose release actions only when Sales reports release criteria are satisfied. | Must | Given Sales reports an order is not releasable, when the order is viewed, then release is disabled with a domain-provided reason. |
 | SA-APP-005 | Fulfilment visibility | The application shall show fulfilment status, shipment reference, partial fulfilment, backorder, and exceptions from Sales and Order Fulfilment read contracts. | Must | Given fulfilment updates exist, when the order is opened, then status and exception details are displayed without the app mutating fulfilment state. |
@@ -74,7 +74,7 @@ Sales users need one internal workflow for turning customer requests into valid 
 - Forms shall preserve entered values when domain validation fails and shall map domain validation messages to the relevant field or action banner.
 - Order entry, search, queues, and approval screens shall be usable with keyboard and assistive technology and target WCAG 2.2 AA unless ACME adopts a stricter standard.
 - Long product, customer, and address values shall wrap without overlapping action controls.
-- Releasability, stale data, pending buyer request, and exception states shall be visible in the relevant order summary and detail views.
+- Releasability, pending buyer request, and business exception states shall be visible in the relevant order summary and detail views.
 - The UI shall avoid presenting unavailable actions as successful shortcuts; disabled actions must explain the domain-provided reason.
 
 ## 9. Data Display and Input Requirements
@@ -84,20 +84,20 @@ Sales users need one internal workflow for turning customer requests into valid 
 | Customer/account reference | Sales | Order capture and customer scoping. | Yes | Show active status and domain validation errors. |
 | Billing/shipping/contact details | Sales | Order submission. | Yes | Preserve user input on validation failure. |
 | Product/SKU/barcode | Inventory Management | Line selection and validation. | Yes for stocked lines | Show inactive/unknown/non-stocked state. |
-| Availability | Inventory Management | Release and order-entry guidance. | Conditional | Show freshness/stale indicator where available. |
+| Availability | Inventory Management | Release and order-entry guidance. | Conditional | Show the returned quantity and stock state. |
 | Buyer request status | Sales/Purchasing visibility | Non-stocked workflow. | Conditional | Show reason for rejection/clarification. |
 | Fulfilment status | Sales/Order Fulfilment | Customer and internal status visibility. | Conditional | Show partial/backorder/exception status. |
 
 ## 10. Orchestration and Integration Requirements
 
-| ID | Application Action | Domain/API Called | Data Exchanged | Failure Handling | Idempotency / Correlation |
-|---|---|---|---|---|---|
-| SA-INT-001 | Create/update order | Sales | Customer, channel, lines, addresses, references. | Show validation/authorization errors; no local retry persistence. | Include correlation ID and idempotency key for submit. |
-| SA-INT-002 | Product lookup | Inventory Management via app API | Search text, SKU/barcode, active filters. | Show unavailable/stale message. | Correlate request. |
-| SA-INT-003 | Availability check | Inventory Management via app API | Product/SKU/quantity/customer context where needed. | Show Pending Inventory guidance if unavailable. | Correlate request; no mutation. |
-| SA-INT-004 | Submit buyer request | Sales | Requested product details, quantity, reason, order context. | Show pending/retryable exception from Sales. | Idempotency key for submission. |
-| SA-INT-005 | Release order | Sales | Sales order ID, release request, reason where applicable. | Show release exception and retry/escalation options. | Idempotency key for release. |
-| SA-INT-006 | Approval decision | Sales | Approval action, reason/comment. | Show denial including self-approval conflict. | Correlate approval request. |
+| ID | Application Action | Domain/API Called | Data Exchanged | Validation / Result |
+|---|---|---|---|---|
+| SA-INT-001 | Create/update order | Sales | Customer, channel, lines, addresses, and references. | Show validation and authorization errors. |
+| SA-INT-002 | Product lookup | Inventory Management via app API | Search text, SKU/barcode, and active filters. | Show recognized and active product results. |
+| SA-INT-003 | Availability check | Inventory Management via app API | Product/SKU/quantity and customer context where needed. | Show available quantity or Pending Inventory guidance. |
+| SA-INT-004 | Submit buyer request | Sales | Requested product details, quantity, reason, and order context. | Show the accepted request reference or Sales validation errors. |
+| SA-INT-005 | Release order | Sales | Sales order ID, release request, and reason where applicable. | Show the accepted release or business-rule rejection. |
+| SA-INT-006 | Approval decision | Sales | Approval action and reason/comment. | Show denial including self-approval conflict. |
 
 ## 11. Reporting, Search, and Dashboard Requirements
 
@@ -115,15 +115,14 @@ The application shall enforce route-level and screen-level access for Sales Assi
 
 ## 13. Operational History and Traceability
 
-The application shall display Sales-provided status history, approval history, buyer request history, release attempts, and fulfilment visibility where the user has permission. CSV outputs containing customer/order data shall call authorized Sales report/query endpoints.
+The application shall display Sales-provided status history, approval history, buyer request history, release status, and fulfilment visibility where the user has permission. CSV outputs containing customer/order data shall call authorized Sales report/query endpoints.
 
 ## 14. Non-Functional Requirements
 
-- Order entry interactions shall provide clear feedback for domain validation, stale availability, and downstream failure states.
+- Order entry interactions shall provide clear feedback for domain validation and returned availability state.
 - Search results shall be paginated and avoid blocking the UI on large result sets.
-- The API shall propagate correlation IDs to domain calls and structured logs.
 - The application shall remain stateless apart from user session/request context and shall not introduce application persistence.
-- Error messages shall distinguish validation denial, authorization denial, downstream unavailability, and retryable release exceptions.
+- Error messages shall distinguish validation denial, authorization denial, and business conflict responses.
 
 ## 15. Dependencies
 
@@ -131,7 +130,7 @@ The application shall display Sales-provided status history, approval history, b
 - Inventory Management for product, SKU, barcode, and availability data.
 - Purchasing for buyer request status through Sales/Purchasing contracts.
 - Order Fulfilment for fulfilment visibility through Sales/fulfilment read contracts.
-- Authentik and Gravitee for identity, route access, and correlation metadata.
+- Authentik and Gravitee for identity and route access.
 
 ## 16. Assumptions and MVP Defaults
 

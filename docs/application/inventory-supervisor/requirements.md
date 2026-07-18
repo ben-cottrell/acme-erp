@@ -36,7 +36,7 @@ The Inventory Supervisor UI calls only the Inventory Supervisor API. The Invento
 
 ## 4. Business Context
 
-Inventory supervisors need to keep stock trustworthy by reviewing exceptions created by warehouse activity, receipts, and fulfilment integrations. The application must present enough context for decisions while Inventory Management remains authoritative for adjustments, receipt resolution, self-approval checks, and operational history.
+Inventory supervisors need to keep stock trustworthy by reviewing exceptions created by warehouse activity, receipts, and fulfilment stock activity. The application must present enough context for decisions while Inventory Management remains authoritative for adjustments, receipt resolution, self-approval checks, and operational history.
 
 ## 5. Personas and User Roles
 
@@ -77,20 +77,20 @@ Inventory supervisors need to keep stock trustworthy by reviewing exceptions cre
 |---|---|---|---|---|
 | Discrepancy | Inventory Management | Adjustment review. | Yes | Show recorded/actual/variance, location, recorder, status. |
 | Receipt exception | Inventory Management | Receipt resolution. | Conditional | Show exception type, condition, received/expected quantity. |
-| PO context | Purchasing | Receipt decision context. | Conditional | Read-only; show stale/unavailable state. |
+| PO context | Purchasing | Receipt decision context. | Conditional | Read-only; show returned supplier, order, line, and quantity context. |
 | Stock movement | Inventory Management | Traceability. | Conditional | Show source document and actor/service. |
 | Fulfilment stock exception | Inventory/Order Fulfilment | Consumption/reservation review. | Conditional | Show task/order references, not mutable locally. |
 | Decision reason | User input to Inventory | Approval/rejection. | Conditional | Required where policy says; preserve on validation failure. |
 
 ## 10. Orchestration and Integration Requirements
 
-| ID | Application Action | Domain/API Called | Data Exchanged | Failure Handling | Idempotency / Correlation |
-|---|---|---|---|---|---|
-| ISU-INT-001 | Load discrepancy queue | Inventory Management | Filters, status, paging. | Show unavailable/stale state. | Correlate request. |
-| ISU-INT-002 | Load PO context | Purchasing | PO reference, supplier/line context. | Show stale/unavailable context while preserving exception. | Correlate request. |
-| ISU-INT-003 | Submit adjustment decision | Inventory Management | Decision, reason, exception ID. | Show self-approval/authorization/validation denial. | Idempotency key for decision. |
-| ISU-INT-004 | Resolve receipt exception | Inventory Management | Resolution outcome, reason, condition. | Show exception if booking/rejection fails. | Idempotency key for decision. |
-| ISU-INT-005 | View fulfilment exception | Inventory Management/Order Fulfilment | Reservation/consumption/task references. | Show unavailable linked context. | Correlate query. |
+| ID | Application Action | Domain/API Called | Data Exchanged | Validation / Result |
+|---|---|---|---|---|
+| ISU-INT-001 | Load discrepancy queue | Inventory Management | Filters, status, and paging. | Show returned discrepancy and receipt-exception states. |
+| ISU-INT-002 | Load PO context | Purchasing | PO reference and supplier/line context. | Show returned purchase-order business context. |
+| ISU-INT-003 | Submit adjustment decision | Inventory Management | Decision, reason, and exception ID. | Show self-approval, authorization, or validation denial. |
+| ISU-INT-004 | Resolve receipt exception | Inventory Management | Resolution outcome, reason, and condition. | Show the accepted resolution or Inventory validation denial. |
+| ISU-INT-005 | View fulfilment exception | Inventory Management/Order Fulfilment | Reservation, consumption, and task references. | Show returned fulfilment stock context. |
 
 ## 11. Reporting, Search, and Dashboard Requirements
 
@@ -108,14 +108,11 @@ The application shall enforce Inventory Supervisor route and screen access. Inve
 
 ## 13. Operational History and Traceability
 
-The application shall display Inventory-provided status and activity history for discrepancies, adjustments, receipt exceptions, and movements where authorized. Supervisor decisions shall include user identity, reason, source application, and correlation ID for Inventory operational history. CSV outputs shall use authorized Inventory query endpoints.
+The application shall display Inventory-provided status and activity history for discrepancies, adjustments, receipt exceptions, and movements where authorized. Supervisor decisions shall include user identity, reason, and source application for Inventory operational history. CSV outputs shall use authorized Inventory query endpoints.
 
 ## 14. Non-Functional Requirements
 
 - Review queues shall be paginated, sortable, and filterable.
-- Decision commands shall use idempotency keys to prevent duplicate approvals/rejections.
-- The application shall propagate correlation IDs across Inventory, Purchasing, and Order Fulfilment calls.
-- Linked context unavailability shall not block display of the primary Inventory exception, but it must be visible.
 - The application shall not store local exception, PO, or movement data.
 
 ## 15. Dependencies
@@ -123,7 +120,7 @@ The application shall display Inventory-provided status and activity history for
 - Inventory Management for discrepancies, adjustments, receipts, stock movements, reservation/consumption exceptions, self-approval checks, and operational history.
 - Purchasing for purchase order receipt context.
 - Order Fulfilment for fulfilment task context where stock exceptions require it.
-- Authentik and Gravitee for identity, ingress, role claims, route policy, and correlation metadata.
+- Authentik and Gravitee for identity, ingress, role claims, and route policy.
 
 ## 16. Assumptions and MVP Defaults
 

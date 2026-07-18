@@ -120,7 +120,7 @@ flowchart LR
     FulfilmentApi --> FulfilmentDb[(Fulfilment SQL Server DB)]
 ```
 
-Gateway responsibilities include ingress, route publication, authentication integration, coarse-grained access policy, API subscription policy where needed, request correlation, and OpenAPI exposure.
+Gateway responsibilities include ingress, route publication, authentication integration, coarse-grained access policy, API subscription policy where needed, and OpenAPI exposure.
 
 Domain API services remain responsible for business authorization, local self-approval rules, validation, persistence, and operational history. Application APIs enforce workflow and route authorization for user experience before calling domain APIs, but they do not replace domain API authorization.
 
@@ -168,11 +168,17 @@ This baseline is expanded by these architecture documents:
 | `module-boundaries.md` | Legacy compatibility summary that points to the domain/application boundary model |
 | `monorepo-structure.md` | Repository, project, namespace, Docker image, and deployment asset conventions |
 | `service-internal-architecture.md` | Layering and vertical-slice organization rules |
-| `data-architecture.md` | SQL Server, EF Core, migrations, keys, external IDs, and consistency rules |
+| `data-architecture.md` | Shared SQL Server and EF Core physical conventions, ownership, keys, external IDs, migrations, and consistency rules |
+| `../domain/sales/database-design.md` | Sales database tables, relationships, constraints, indexes, transactions, and requirement traceability |
+| `../domain/purchasing/database-design.md` | Purchasing database tables, relationships, constraints, indexes, transactions, and requirement traceability |
+| `../domain/inventory-management/database-design.md` | Inventory database tables, relationships, constraints, indexes, transactions, and requirement traceability |
+| `../domain/order-fulfilment/database-design.md` | Fulfilment database tables, relationships, constraints, indexes, transactions, and requirement traceability |
 | `api-gateway-and-identity.md` | Gravitee, Authentik, OAuth/OIDC, OpenAPI, and ingress conventions |
 | `local-kubernetes-runtime.md` | Docker Desktop, Kubernetes, Skaffold, local dependencies, and developer flow |
 | `testing-and-quality.md` | XUnit v3, analyzers, validation gates, and smoke tests |
 | `decisions-and-open-questions.md` | Architecture decisions, assumptions, risks, and unresolved policy decisions |
+
+Each domain keeps its implementation-authoritative `database-design.md` beside its `requirements.md`. There is no combined cross-domain schema: `data-architecture.md` defines shared conventions and boundaries, while each domain design defines only its owning database.
 
 ## Architecture Decisions
 
@@ -183,7 +189,7 @@ This baseline is expanded by these architecture documents:
 - Sessions shall use a 60 minute idle timeout and an 8 hour absolute timeout. Account lockout shall be enforced through Authentik after repeated failed login attempts.
 - The MVP does not include a Security and Audit bounded context, Security Administration application, Audit Reporting application, or active auditing/compliance workflows. Operational history remains owned by the domain that owns the business state.
 - Local self-approval rules shall prevent users from approving controlled business actions that they created or requested. Users may hold multiple operational roles when each owning domain allows the resulting permissions.
-- All user and external client ingress shall pass through Gravitee. Internal Kubernetes service calls are permitted after ingress for trusted application-to-domain and domain-to-domain APIs where contracts, service identity, correlation, authorization, and operational-history requirements are enforced by the called API.
+- All user and external client ingress shall pass through Gravitee. Internal Kubernetes service calls are permitted after ingress for trusted application-to-domain and domain-to-domain APIs where contracts, service identity, authorization, and operational-history requirements are enforced by the called API.
 
 ## MVP Scope Decisions
 

@@ -87,13 +87,13 @@ Warehouse users need quick, reliable capture of physical counts and received goo
 
 ## 10. Orchestration and Integration Requirements
 
-| ID | Application Action | Domain/API Called | Data Exchanged | Failure Handling | Idempotency / Correlation |
-|---|---|---|---|---|---|
-| WHO-INT-001 | Open/start count | Inventory Management | Product/location/count context. | Show validation/authorization errors. | Correlate request. |
-| WHO-INT-002 | Submit actual count | Inventory Management | Actual quantity, product/SKU/barcode, location, operator context. | Show discrepancy or failure state. | Idempotency key for submit. |
-| WHO-INT-003 | Lookup PO | Purchasing via app API | PO number/search filters, eligible receipt status. | Show unavailable/stale PO lookup. | Correlate request. |
-| WHO-INT-004 | Submit receipt | Inventory Management | PO reference, received lines, quantities, condition. | Show booked/exception/rejected state. | Idempotency key for receipt submit. |
-| WHO-INT-005 | View exception | Inventory Management | Receipt/discrepancy status. | Show supervisor route; no local approval. | Correlate query. |
+| ID | Application Action | Domain/API Called | Data Exchanged | Validation / Result |
+|---|---|---|---|---|
+| WHO-INT-001 | Open/start count | Inventory Management | Product, location, and count context. | Show validation and authorization errors. |
+| WHO-INT-002 | Submit actual count | Inventory Management | Actual quantity, product/SKU/barcode, location, and operator context. | Show no-variance or discrepancy state. |
+| WHO-INT-003 | Lookup PO | Purchasing via app API | PO number/search filters and eligible receipt status. | Show returned eligible purchase orders. |
+| WHO-INT-004 | Submit receipt | Inventory Management | PO reference, received lines, quantities, and condition. | Show booked, business exception, or rejected state. |
+| WHO-INT-005 | View exception | Inventory Management | Receipt or discrepancy status. | Show supervisor route with no local approval. |
 
 ## 11. Reporting, Search, and Dashboard Requirements
 
@@ -110,21 +110,18 @@ The application shall enforce Warehouse Operator route and screen access. Invent
 
 ## 13. Operational History and Traceability
 
-The application shall send operator identity, source application, correlation ID, and submission context to Inventory Management for count and receipt history. Operators may view submitted status and exception state; broader CSV outputs belong to Inventory Supervisor workflows.
+The application shall send operator identity, source application, and submission context to Inventory Management for count and receipt history. Operators may view submitted status and exception state; broader CSV outputs belong to Inventory Supervisor workflows.
 
 ## 14. Non-Functional Requirements
 
 - Primary count and receipt workflows shall remain usable with intermittent validation failures by preserving unsent input.
-- The API shall propagate correlation IDs to Inventory and Purchasing calls.
-- Submission commands shall use idempotency keys to prevent duplicate counts or receipts from retries.
 - The application shall not maintain a local stock cache or PO cache beyond request/session needs.
-- Scanner input should not trigger duplicate submission when values are sent quickly.
 
 ## 15. Dependencies
 
 - Inventory Management for stock checks, product/location validation, receipts, exceptions, and operational history.
 - Purchasing for PO lookup and receipt eligibility context.
-- Authentik and Gravitee for identity, ingress, route policy, and correlation metadata.
+- Authentik and Gravitee for identity, ingress, and route policy.
 
 ## 16. Assumptions and MVP Defaults
 

@@ -19,7 +19,7 @@ This document defines automated testing, analyzer, formatting, build, validation
 |---|---|---|
 | Unit tests | Domain rules and application workflow decisions without infrastructure | Sales release criteria, PO approval threshold evaluation, inventory negative-balance prevention, fulfilment completion rules |
 | Vertical slice tests | Feature command/query behavior with realistic dependencies substituted or in-memory where appropriate | Goods receipt mismatch handling, buyer request intake, sales order validation |
-| API tests | Controller routing, authorization, validation, error responses, OpenAPI behavior | Required field validation, forbidden self-approval, idempotency replay |
+| API tests | Controller routing, authorization, validation, error responses, OpenAPI behavior | Required field validation, forbidden self-approval, business conflict responses |
 | Integration tests | SQL Server, EF Core migrations, service clients, Authentik/Gravitee integration where feasible | Migration application, repository transaction behavior, service-to-service contract handling |
 | Contract tests | Cross-domain API and event payload compatibility | Sales release payload consumed by Fulfilment, Purchasing PO payload consumed by Inventory |
 | Smoke tests | Built services in local Kubernetes | `/healthz`, `/readyz`, `/openapi/v1.json`, domain and application placeholder routes |
@@ -33,7 +33,6 @@ Sales:
 - Required customer, channel, product, SKU where applicable, and quantity validation.
 - Availability check behavior and release eligibility.
 - Buyer request creation for non-routinely stocked products.
-- Idempotent website order submission.
 - Sales Supervisor approval for controlled amendments and cancellations.
 
 Purchasing:
@@ -57,7 +56,6 @@ Order Fulfilment:
 - Picked components validate against sales order requirements.
 - Shipping purchase and label availability are required before completion unless approved exception exists.
 - Partial fulfilment reports remaining quantities to Sales as backordered.
-- Inventory consumption failure creates a visible exception.
 
 Cross-cutting:
 
@@ -65,7 +63,6 @@ Cross-cutting:
 - Local self-approval prevention.
 - Operational history records for controlled actions.
 - Service account scope and failed authorization behavior.
-- Correlation ID and idempotency behavior for cross-domain and application-to-domain mutations.
 
 ## Quality Gates
 
@@ -95,9 +92,8 @@ CI should fail on build errors, test failures, analyzer warnings configured as e
 ## OpenAPI and Contract Quality
 
 - Every API exposes OpenAPI 3.0 JSON.
-- Mutating endpoints document idempotency key behavior.
 - Cross-domain payloads document external ID ownership.
-- Error responses distinguish validation, authorization, conflict, retryable integration failure, and unrecoverable failure.
+- Error responses distinguish validation, authorization, and business conflict responses.
 - Contract tests guard cross-domain payloads used by Sales, Purchasing, Inventory Management, and Order Fulfilment.
 
 ## Test Data Rules

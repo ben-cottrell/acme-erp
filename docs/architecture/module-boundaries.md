@@ -77,11 +77,10 @@ flowchart LR
 
 ## Integration Contract Rules
 
-- Every cross-service command or event carries a correlation identifier, source service, target service, idempotency key where mutation may be retried, and external record identifiers.
+- Every cross-service command carries the source service, target service, and required external record identifiers.
 - Application APIs may compose domain API calls but must not infer ownership data that domain APIs require.
 - Domain APIs reject incomplete cross-domain payloads rather than inferring missing ownership data.
-- Read models copied from another domain record source, version, update time, and external ID.
-- Status feedback is explicit. A consumer may cache the last known status but must expose stale or failed integration state where it affects user decisions.
+- Read models copied from another domain record their source and external ID.
 - Finance integrations are future scope for the MVP; operational CSV exports and reports provide interim visibility.
 
 ## Review Checklist

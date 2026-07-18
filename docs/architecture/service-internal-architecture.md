@@ -12,7 +12,7 @@ Each service uses layered architecture inside a vertical feature organization. L
 |---|---|---|
 | API boundary | Controllers, request/response contracts, validation mapping, OpenAPI annotations | Application code and service-local API conventions |
 | UI boundary | Razor Pages, page models, view models, API client calls | API client abstractions and UI-specific helpers inside the owning service |
-| Application workflow | Commands, queries, handlers, orchestration, transaction boundaries, idempotency handling | Domain, persistence abstractions, integration clients |
+| Application workflow | Commands, queries, handlers, orchestration, transaction boundaries | Domain, persistence abstractions, integration clients |
 | Domain rules | Entities, value objects, domain services, status transitions, business invariants | No infrastructure dependencies |
 | Persistence | EF Core `DbContext`, configurations, migrations, repositories where useful | Domain and application abstractions |
 | Infrastructure/integrations | HTTP clients, Authentik/Gravitee integration support, courier clients, SQL Server providers, observability exporters | Application interfaces and service-local infrastructure |
@@ -59,8 +59,7 @@ Use technical folders only when they support a clear boundary that cuts across m
 - Domain API services are the only processes that connect to domain databases.
 - EF Core migrations are owned by the database-owning domain API service or an adjacent domain-owned persistence project.
 - Public API contracts use OpenAPI 3.0.
-- Each mutating endpoint accepts or derives an idempotency key when retries can produce duplicate work.
-- Controlled actions record operational history with user/service identity, timestamp, action, outcome, reference record, and correlation ID.
+- Controlled actions record operational history with user/service identity, timestamp, action, outcome, and reference record.
 
 ## Application WebAPI Service Rules
 
@@ -93,17 +92,14 @@ Use technical folders only when they support a clear boundary that cuts across m
 ## Integration Rules
 
 - Integration clients live behind application-owned interfaces so workflows can be tested without real external services.
-- Integration payloads carry correlation IDs and external IDs.
-- Retryable outbound calls include idempotency protection.
+- Integration payloads carry external IDs.
 - Inbound integration handlers validate source, schema, authorization, and current state before mutating local data.
-- Failed integrations produce visible exception states or retry records when they affect user workflow.
 
 ## Error and Failure Handling
 
 - Validation failures return clear client errors and do not mutate state.
 - Authorization failures fail closed and are recorded in operational history when the owning domain requires it.
-- Application workflow failures leave records in a recoverable status or roll back the transaction.
-- Integration failures do not silently complete controlled business steps.
+- Application workflow failures roll back the transaction when the requested business change cannot be completed.
 - Operational-history recording failures are surfaced according to the owning domain's failure policy instead of being ignored.
 
 ## Review Checklist
@@ -114,5 +110,5 @@ Use technical folders only when they support a clear boundary that cuts across m
 - [ ] UI services have no database access.
 - [ ] Application API services have no database access.
 - [ ] Domain API services own persistence and migrations.
-- [ ] Controlled actions enforce local permissions, self-approval rules, operational history, and idempotency in domain APIs where relevant.
+- [ ] Controlled actions enforce local permissions, self-approval rules, and operational history in domain APIs where relevant.
 - [ ] Cross-domain references use external IDs.

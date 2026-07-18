@@ -120,7 +120,7 @@ Application APIs must not contain EF Core `DbContext` types, migrations, reposit
 
 ## Common Convention Placement
 
-Common behavior such as OpenAPI publication, health checks, correlation IDs, idempotency, logging, diagnostics, service identity, and authorization is documented as conventions and implemented inside the owning service.
+Common behavior such as OpenAPI publication, health checks, logging, diagnostics, service identity, and authorization is documented as conventions and implemented inside the owning service.
 
 Do not move domain-specific rules, entities, workflow policies, or application services into common infrastructure. Prefer local implementation over an incorrect abstraction when behavior belongs to one bounded context.
 

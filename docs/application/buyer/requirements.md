@@ -63,7 +63,7 @@ Buyers need a focused workbench for supplier ordering and Sales buyer requests w
 | BYR-APP-002 | Product validation | The application shall display product/SKU/barcode validation results from Inventory Management without storing product master data locally. | Must | Given a SKU is inactive or unknown, when the buyer adds it, then validation state is shown and Purchasing determines whether submission is allowed. |
 | BYR-APP-003 | Approval | The application shall allow Purchasing Managers to review, approve, or reject controlled purchasing actions where Purchasing reports approval is required. | Must | Given a PO requires approval, when an authorized manager approves, then Purchasing records the decision; self-approval is denied and displayed. |
 | BYR-APP-004 | Buyer requests | The application shall allow buyers to process Sales-originated non-stocked product requests through Purchasing. | Must | Given a request is pending, when the buyer accepts/rejects/returns/links it, then Purchasing records the decision and status returned to Sales. |
-| BYR-APP-005 | Receipt visibility | The application shall display receipt status, partial receipt, and receipt exceptions returned through Purchasing. | Must | Given Inventory has reported receipt status, when the PO is opened, then the UI shows copied receipt visibility and stale indicators where present. |
+| BYR-APP-005 | Receipt visibility | The application shall display receipt status, partial receipt, and receipt exceptions returned through Purchasing. | Must | Given Inventory has reported receipt status, when the PO is opened, then the UI shows the copied receipt business state. |
 | BYR-APP-006 | Search | The application shall support search and filtering by PO number, supplier, SKU, barcode, expected arrival date, status, buyer, request state, and receipt exception. | Should | Given filters are supplied, when results load, then the API queries Purchasing/Inventory contracts and returns paginated data. |
 | BYR-APP-007 | Amend/cancel | The application shall support PO amendment and cancellation requests according to Purchasing state and approval requirements. | Must | Given controlled fields change after approval/order, when submitted, then the UI routes to approval or displays a Purchasing denial. |
 
@@ -83,18 +83,18 @@ Buyers need a focused workbench for supplier ordering and Sales buyer requests w
 | Item/SKU/barcode | Inventory Management/Purchasing | PO line validation. | Yes where available | Show unknown/inactive status. |
 | Quantity/unit cost/dates | Purchasing | PO submission. | Yes | Positive quantity; unit cost required; date validation from Purchasing. |
 | Buyer request | Purchasing/Sales context | Non-stocked workflow. | Conditional | Show request state and reason. |
-| Receipt status | Purchasing/Inventory visibility | PO monitoring. | Conditional | Show partial, exception, stale state. |
+| Receipt status | Purchasing/Inventory visibility | PO monitoring. | Conditional | Show partial, received, and business exception state. |
 | Approval history | Purchasing | Control review. | Conditional | Show requester, approver, date, decision, reason. |
 
 ## 10. Orchestration and Integration Requirements
 
-| ID | Application Action | Domain/API Called | Data Exchanged | Failure Handling | Idempotency / Correlation |
-|---|---|---|---|---|---|
-| BYR-INT-001 | Create/update PO | Purchasing | Supplier, lines, quantities, costs, dates, comments. | Show validation/authorization errors. | Correlation ID; idempotency for submit. |
-| BYR-INT-002 | Validate item | Inventory Management via app API/Purchasing | SKU/barcode/item lookup. | Show unavailable or stale validation. | Correlate request. |
-| BYR-INT-003 | Approval decision | Purchasing | Approval/rejection, reason/comment. | Show self-approval or authorization denial. | Correlate decision. |
-| BYR-INT-004 | Process buyer request | Purchasing | Request decision, linked PO, clarification/rejection reason. | Show retryable status update failure. | Idempotency for decision action. |
-| BYR-INT-005 | View receipt status | Purchasing | PO receipt visibility and exception data. | Mark stale if Inventory update is unavailable. | Correlate query. |
+| ID | Application Action | Domain/API Called | Data Exchanged | Validation / Result |
+|---|---|---|---|---|
+| BYR-INT-001 | Create/update PO | Purchasing | Supplier, lines, quantities, costs, dates, comments. | Show validation and authorization errors. |
+| BYR-INT-002 | Validate item | Inventory Management via app API/Purchasing | SKU/barcode/item lookup. | Show recognized, active, and stocked-product results. |
+| BYR-INT-003 | Approval decision | Purchasing | Approval/rejection, reason/comment. | Show self-approval or authorization denial. |
+| BYR-INT-004 | Process buyer request | Purchasing | Request decision, linked PO, clarification/rejection reason. | Show the accepted decision and resulting buyer-request state. |
+| BYR-INT-005 | View receipt status | Purchasing | PO receipt visibility and exception data. | Show the returned receipt and business exception state. |
 
 ## 11. Reporting, Search, and Dashboard Requirements
 
@@ -117,17 +117,15 @@ The application shall display Purchasing-provided PO status history, approval hi
 ## 14. Non-Functional Requirements
 
 - PO workbench and queues shall be paginated and filterable.
-- The API shall propagate correlation IDs to Purchasing, Sales, and Inventory calls.
 - The app shall remain stateless and shall not persist PO drafts beyond request/session behavior unless a domain API owns the draft.
 - Validation and denial messages shall be clear enough for corrective user action.
-- Downstream unavailability shall be shown as unavailable/stale state rather than blank success.
 
 ## 15. Dependencies
 
 - Purchasing for supplier data, PO lifecycle, approvals, buyer request decisions, receipt visibility, and operational history.
 - Inventory Management for product/SKU/barcode validation and receipt status source data.
 - Sales for originating buyer request context through Purchasing/Sales contracts.
-- Authentik and Gravitee for identity, ingress, role claims, and correlation metadata.
+- Authentik and Gravitee for identity, ingress, and role claims.
 
 ## 16. Assumptions and MVP Defaults
 

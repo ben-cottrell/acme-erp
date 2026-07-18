@@ -29,7 +29,7 @@ sequenceDiagram
     IdP-->>Gateway: Identity claims and token result
     Gateway->>UI: Forward authorized UI request
     UI->>Gateway: Call paired application API route
-    Gateway->>AppAPI: Forward token, correlation ID, and request metadata
+    Gateway->>AppAPI: Forward token and request metadata
     AppAPI->>DomainAPI: Call domain API with user or service context
     DomainAPI->>DomainAPI: Enforce local permissions, self-approval rules, validation, persistence, history, and domain rules
     DomainAPI-->>AppAPI: Domain response
@@ -37,7 +37,7 @@ sequenceDiagram
     Gateway-->>User: Response
 ```
 
-Internal Kubernetes service calls are permitted after ingress for trusted ERP service-to-service communication when the called API enforces service identity, authorization, correlation, contract validation, and operational-history requirements.
+Internal Kubernetes service calls are permitted after ingress for trusted ERP service-to-service communication when the called API enforces service identity, authorization, contract validation, and operational-history requirements.
 
 The local developer gateway URL is `http://localhost:8082`. The Kubernetes Gravitee gateway service is exposed to the workstation by the local Helm values as a Docker Desktop `LoadBalancer` on port `8082`; non-gateway platform and ERP services remain internal to the `erp-local` namespace. Local Gravitee runs in database-less gateway-only mode, synchronizing API definitions from Kubernetes ConfigMaps under `build/k8s/gravitee/routes` instead of deploying the APIM Management API, portal, UI, MongoDB, or Elasticsearch. Authentik OAuth/OIDC redirect URIs and allowed origins for local development must use `http://localhost:8082` when OAuth application bootstrap is automated.
 
@@ -69,7 +69,7 @@ The local developer gateway URL is `http://localhost:8082`. The Kubernetes Gravi
 - Publish external routes for APIs and UI services.
 - Integrate with Authentik for OAuth/OIDC authentication.
 - Enforce coarse-grained route access policy and API subscription policy where needed.
-- Forward identity claims, bearer tokens, correlation IDs, and request metadata to downstream services.
+- Forward identity claims, bearer tokens, and request metadata to downstream services.
 - Centralize API exposure and OpenAPI publication.
 - Apply rate limits or request policies where needed for internal stability.
 - Record gateway access logs and route-level failures.
@@ -112,15 +112,12 @@ Platform administration access does not imply business approval authority. Busin
 - Application APIs call domain APIs using delegated user context or scoped service identity according to the workflow contract.
 - Application UIs call only their paired application APIs.
 - Domain APIs do not call application APIs.
-- Mutating calls carry idempotency keys.
-- All calls carry correlation IDs.
 - Called APIs validate caller authorization and current business state before changing local data.
-- Integration failures are recorded and surfaced as workflow exceptions where they affect user decisions.
 
 ## OpenAPI Rules
 
 - Every domain and application WebAPI service publishes OpenAPI 3.0 JSON.
-- Contracts document authentication, authorization, correlation ID, idempotency key, validation errors, and business error responses.
+- Contracts document authentication, authorization, validation errors, and business error responses.
 - Public endpoints use route names that reflect feature behavior rather than database entities alone.
 - OpenAPI descriptions include external ID fields where payloads cross domain boundaries.
 - Breaking contract changes require explicit architecture or API review.
@@ -131,6 +128,5 @@ Platform administration access does not imply business approval authority. Busin
 - [ ] Authentik is the OAuth/OIDC identity provider.
 - [ ] Gravitee performs gateway policy but APIs enforce business authorization.
 - [ ] Domain and application APIs publish OpenAPI 3.0 contracts.
-- [ ] Correlation IDs flow from gateway to services and across service calls.
 - [ ] Service accounts are scoped and non-interactive.
 - [ ] Self-approval rules and approval authority are enforced in domain APIs, not only in UI, application APIs, or gateway policy.

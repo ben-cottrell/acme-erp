@@ -4,7 +4,7 @@
 
 The Purchasing bounded context owns durable supplier-backed purchase orders, MVP supplier reference data, purchasing approval state, buyer request queue decisions, purchase order receipt visibility, purchasing status history, and purchasing operational history records.
 
-Purchasing exposes WebAPI contracts and owns the Purchasing database. It is authoritative for purchase order validation, purchasing approval rules, buyer request handling, purchasing authorization, idempotency, and purchasing operational history. Buyer workbench, purchasing manager screens, warehouse receipt presentation, and reporting screens are owned by application services.
+Purchasing exposes WebAPI contracts and owns the Purchasing database. It is authoritative for purchase order validation, purchasing approval rules, buyer request handling, purchasing authorization, and purchasing operational history. Buyer workbench, purchasing manager screens, warehouse receipt presentation, and reporting screens are owned by application services.
 
 ## 2. Domain Scope
 
@@ -52,14 +52,14 @@ The MVP outcome is a simple purchasing workflow where POs can be authored, appro
 | ID | Capability | Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|---|
 | PUR-DOM-001 | Supplier reference | The system shall maintain MVP supplier reference data required for purchase order creation and reporting. | Must | Given a supplier is inactive or unknown, when a PO is submitted, then Purchasing rejects the PO or blocks submission according to policy. |
-| PUR-DOM-002 | PO creation | The system shall accept purchase order commands only when supplier, item, SKU/barcode where available, quantity, unit cost, purchase date, expected arrival date, and correlation metadata are present. | Must | Given required data is complete and authorized, when a Buyer creates a PO, then Purchasing persists it with status history; missing required fields produce validation errors and no partial controlled state. |
+| PUR-DOM-002 | PO creation | The system shall accept purchase order commands only when supplier, item, SKU/barcode where available, quantity, unit cost, purchase date, and expected arrival date are present. | Must | Given required data is complete and authorized, when a Buyer creates a PO, then Purchasing persists it with status history; missing required fields produce validation errors and no partial controlled state. |
 | PUR-DOM-003 | PO lifecycle | The system shall maintain explicit PO states for Draft, Submitted, Approval Required, Approved, Ordered, Partially Received, Received, Closed, Cancelled, Rejected, and Exception. | Must | Given a transition is invalid for current state or receipt status, when requested, then Purchasing rejects it and records no state change. |
 | PUR-DOM-004 | Approval control | The system shall enforce configurable approval thresholds and self-approval prevention for controlled purchasing actions. | Must | Given a PO exceeds configured threshold, when submitted, then it requires Purchasing Manager approval; given the creator attempts approval, then the action is denied. |
-| PUR-DOM-005 | Buyer requests | The system shall receive Sales-originated buyer requests and maintain Purchasing-owned queue decisions without taking ownership of Sales order state. | Must | Given a buyer request is accepted, rejected, returned, or linked to a PO, when status changes, then Purchasing records the decision and sends a correlated status update to Sales. |
+| PUR-DOM-005 | Buyer requests | The system shall receive Sales-originated buyer requests and maintain Purchasing-owned queue decisions without taking ownership of Sales order state. | Must | Given a buyer request is accepted, rejected, returned, or linked to a PO, when status changes, then Purchasing records the decision and sends the status update to Sales. |
 | PUR-DOM-006 | Receipt matching support | The system shall expose eligible PO details to Inventory Management for goods receipt matching. | Must | Given Inventory requests an eligible PO, when Purchasing responds, then the response includes supplier, item, SKU/barcode, ordered quantity, unit cost, dates, and current PO status. |
 | PUR-DOM-007 | Receipt visibility | The system shall consume Inventory receipt status and exception updates as copied visibility for purchasing workflows. | Must | Given Inventory reports partial receipt or exception, when Purchasing accepts the update, then PO receipt visibility and status history reflect the copied state without Purchasing booking stock. |
 | PUR-DOM-008 | Amendment and cancellation | The system shall support draft amendments and controlled post-submission amendments/cancellations with business reason and approval where required. | Must | Given an approved or partially received PO is amended, when controlled fields change, then Purchasing requires approval or rejects the change if receipt state prevents it. |
-| PUR-DOM-009 | Purchasing queries | The system shall expose query contracts for open POs, expected arrivals, buyer requests, receipt status, approvals, amendments, and operational history. | Should | Given an authorized query with filters, when Purchasing processes it, then results are permission-scoped and include stale receipt indicators where applicable. |
+| PUR-DOM-009 | Purchasing queries | The system shall expose query contracts for open POs, expected arrivals, buyer requests, receipt status, approvals, amendments, and operational history. | Should | Given an authorized query with filters, when Purchasing processes it, then results are permission-scoped and include the requested business state. |
 
 ## 7. Business Rules and Validation Rules
 
@@ -91,7 +91,7 @@ The MVP outcome is a simple purchasing workflow where POs can be authored, appro
 | Rejected | Draft, Cancelled | Buyer revises or cancels | Rejection reason required. |
 | Cancelled | Exception | Correction | Terminal unless approved correction. |
 | Closed | Exception | Correction | Terminal for normal workflow. |
-| Exception | Prior recoverable state, Cancelled | Retry, correction, manual review | Used for integration or policy failures. |
+| Exception | Prior business state, Cancelled | Correction or manual policy review | Used for business or policy exceptions. |
 
 ## 9. Data Ownership and Data Requirements
 
@@ -102,16 +102,16 @@ The MVP outcome is a simple purchasing workflow where POs can be authored, appro
 | Purchase Order Line | Purchasing | Yes | Item, SKU/barcode where available, quantity, unit cost, expected arrival date. | Inventory product/SKU external IDs. |
 | Buyer Request Queue Item | Purchasing | Conditional | Sales request ID, requested item, quantity, decision state, reason. | Sales buyer request external ID. |
 | Receipt Visibility | Inventory Management copy | Conditional | Received quantity, receipt status, exception state, receipt date. | Inventory receipt external ID. |
-| Purchasing Activity History | Purchasing | Yes | Actor/service, action, prior/new state, outcome, timestamp, correlation ID. | Purchasing-owned operational history. |
+| Purchasing Activity History | Purchasing | Yes | Actor/service, action, prior/new state, outcome, and timestamp. | Purchasing-owned operational history. |
 
 ## 10. Integration Requirements
 
-| ID | Source | Target | Direction | Data Exchanged | Trigger / Frequency | Failure Handling |
+| ID | Source | Target | Direction | Data Exchanged | Trigger / Frequency | Validation |
 |---|---|---|---|---|---|---|
-| PUR-INT-001 | Purchasing | Inventory Management | Outbound query/copy | PO header, lines, supplier, item, SKU/barcode, quantity, unit cost, purchase date, expected arrival, status. | Receipt lookup/booking. | Return explicit unavailable/stale response; do not infer receipt eligibility. |
-| PUR-INT-002 | Inventory Management | Purchasing | Inbound update | Received quantities, receipt status, receipt exceptions, receipt dates. | Receipt booking/exception changes. | Ignore duplicates by idempotency; mark receipt visibility stale if update cannot be applied. |
-| PUR-INT-003 | Sales | Purchasing | Inbound command | Buyer request ID, customer/order context, requested product details, quantity, reason, correlation ID. | Non-stocked request submission. | Reject incomplete payload; return duplicate response for same idempotency key. |
-| PUR-INT-004 | Purchasing | Sales | Outbound update | Buyer request status, decision reason, linked PO reference where allowed, timestamps. | Buyer request decision changes. | Retry idempotently; preserve pending Sales update state. |
+| PUR-INT-001 | Purchasing | Inventory Management | Outbound query/copy | PO header, lines, supplier, item, SKU/barcode, quantity, unit cost, purchase date, expected arrival, and status. | Receipt lookup/booking. | Reject receipt eligibility queries for unknown or ineligible purchase orders. |
+| PUR-INT-002 | Inventory Management | Purchasing | Inbound update | Received quantities, receipt status, receipt exceptions, and receipt dates. | Receipt booking/exception changes. | Reject unknown purchase orders, receipts, or invalid state changes. |
+| PUR-INT-003 | Sales | Purchasing | Inbound command | Buyer request ID, customer/order context, requested product details, quantity, and reason. | Non-stocked request submission. | Reject incomplete or invalid request data. |
+| PUR-INT-004 | Purchasing | Sales | Outbound update | Buyer request status, decision reason, linked PO reference where allowed, and timestamps. | Buyer request decision changes. | Sales validates the request identity and status change. |
 | PUR-INT-005 | Inventory Management | Purchasing | Inbound query | Product/SKU/barcode/unit-of-measure validation data where needed. | PO line validation. | Reject or warn according to product validation result. |
 | PUR-INT-006 | Application APIs | Purchasing | Inbound command/query | PO commands, approvals, buyer request actions, search/report filters. | User actions. | Domain authorization/validation errors returned without partial state changes. |
 
@@ -135,13 +135,11 @@ Purchasing Manager approval is required for configured high-value POs and contro
 
 Purchasing shall record operational history for supplier reference changes, PO creation, submission, approval, rejection, amendment, cancellation, ordering, receipt visibility updates, buyer request decisions, and authorization denials.
 
-Operational history records shall include actor/service, source application/domain, PO and buyer request IDs, prior/new state, changed controlled fields, reason/comments, outcome, timestamp, correlation ID, and idempotency key where applicable.
+Operational history records shall include actor/service, source application/domain, PO and buyer request IDs, prior/new state, changed controlled fields, reason/comments, outcome, and timestamp.
 
 ## 14. Non-Functional Requirements
 
-- PO commands, buyer request commands, and receipt status updates shall be idempotent where retries may occur.
 - Query contracts shall support pagination and stable sorting for open PO and buyer request queues.
-- Integration failures shall create visible stale or exception state rather than silently hiding missing receipt or Sales updates.
 - Purchasing validation errors shall be deterministic and field-addressable for application presentation.
 - Structured logs, metrics, health checks, and operational history shall support operational diagnosis.
 - Purchasing services shall not depend on application UI projects or application-owned persistence.
@@ -149,8 +147,8 @@ Operational history records shall include actor/service, source application/doma
 ## 15. Dependencies
 
 - Inventory Management for product/SKU/barcode validation and receipt status feedback.
-- Sales for buyer request origination and status synchronization.
-- Gravitee and Authentik for authenticated ingress, service identities, user roles, and correlation metadata.
+- Sales for buyer request origination and accepted status feedback.
+- Gravitee and Authentik for authenticated ingress, service identities, and user roles.
 - Buyer, Warehouse Operator, Inventory Supervisor, and Sales Assistant application APIs for user-facing workflows and presentation.
 
 ## 16. Assumptions and MVP Defaults
