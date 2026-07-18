@@ -97,6 +97,19 @@ The local Helm values are tuned for a single-node Docker Desktop cluster:
 
 The Gravitee gateway service is configured as a local Docker Desktop `LoadBalancer` on port `8082`, giving the workstation the canonical gateway URL `http://localhost:8082` without DNS or HOSTS changes. These settings are development-only and live in `build/k8s/authentik/values.local.yaml` and `build/k8s/gravitee/values.local.yaml`.
 
+## Destructive Teardown
+
+To return the Docker Desktop environment to a clean slate before a full rebuild, run this from the repository root:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\build\scripts\teardown-local.ps1
+```
+
+The script only runs when the active Kubernetes context is `docker-desktop`. It stops Skaffold and `kubectl port-forward` processes, deletes Skaffold-managed ERP resources, uninstalls **every Helm release in every namespace** in that Kubernetes context, deletes `erp-local`, removes local `acme-erp/*` images and `build/.local`, then runs `docker system prune -a --volumes --force`.
+
+`docker system prune` removes every unused Docker container, image, volume, network, and build-cache entry on the machine. It retains resources currently in use. Do not run this script when Docker Desktop or its Kubernetes context contains workloads you need to preserve.
+
 ## Validation
 
 Run:
@@ -123,4 +136,4 @@ To also verify the application UIs from the developer workstation through the lo
 
 `-IncludeExternalUi` checks these public UI routes through `http://localhost:8082`: `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, `/apps/fulfilment-operator/ui`, `/apps/inventory-supervisor/ui`, and `/apps/fulfilment-supervisor/ui`. The script does not create gateway exposure; the Gravitee gateway service is exposed by the local Helm values as a Docker Desktop `LoadBalancer`. If the gateway is unreachable, or if all UI routes return `404`, validation fails because the database-less gateway did not synchronize the route ConfigMaps or the gateway exposure is incorrect.
 
-For a destructive clean-slate rebuild and validation handoff, use `clean-slate-teardown-build-test-plan.md`.
+For a destructive clean-slate rebuild and validation handoff, run `teardown-local.ps1` first, then follow `clean-slate-teardown-build-test-plan.md` from the build phase onward.

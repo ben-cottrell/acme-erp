@@ -31,7 +31,7 @@ The local runtime owns these resources:
   - `acme-erp/fulfilment-supervisor-ui`
 - Generated local state: `build/.local/`
 
-Do not delete unrelated namespaces, images, volumes, or Docker resources unless the user explicitly asks for a broader machine cleanup.
+The automated teardown is intentionally broader than the ERP resource list: it uninstalls every Helm release in every namespace in the active `docker-desktop` context and runs `docker system prune -a --volumes --force`. The Docker prune removes all unused Docker containers, images, volumes, networks, and build cache on the machine. Do not run it when the Docker Desktop context contains workloads or unused Docker resources that must be preserved.
 
 ## Success Criteria
 
@@ -74,65 +74,37 @@ Capture the current state before deleting anything:
 ```powershell
 kubectl get namespaces
 kubectl get all,pvc,secrets,configmaps -n erp-local
+helm list --all-namespaces
 docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | Select-String '^acme-erp/'
+docker system df
 ```
 
 It is acceptable for some commands to report that `erp-local` does not exist; teardown must remain idempotent.
 
 ## Phase 2: Full Runtime Teardown
 
-Stop or close any port-forward, watcher, or long-running Skaffold process before deleting resources. Current platform components are rendered through Skaffold and applied as Kubernetes manifests. If an older local namespace still contains legacy `authentik` or `gravitee` Helm releases from a previous bootstrap model, record that and uninstall those releases before continuing; otherwise skip Helm uninstall.
-
-Delete Skaffold-managed Kubernetes resources. This is useful when the namespace still exists and gives clearer errors than deleting the namespace first.
+Run the automated teardown. It stops local Skaffold and `kubectl port-forward` processes, deletes Skaffold-managed resources, uninstalls every Helm release in every namespace in the active `docker-desktop` context, and deletes `erp-local`. It is non-interactive.
 
 ```powershell
-skaffold delete -f build/skaffold.yaml -p apps
-skaffold delete -f build/skaffold.yaml -p platform
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\build\scripts\teardown-local.ps1
 ```
 
-If `skaffold delete` reports missing resources, record that and continue.
-
-Delete the namespace and wait for it to terminate:
-
-```powershell
-kubectl delete namespace erp-local --wait=true --timeout=300s
-```
-
-If the namespace is stuck terminating, inspect finalizers instead of force-deleting immediately:
-
-```powershell
-kubectl get namespace erp-local -o yaml
-kubectl get pvc,pv -A
-```
-
-Only use force/finalizer cleanup if the namespace is demonstrably stuck and the user has approved that escalation.
+The script treats already-absent ERP resources as a successful teardown. If namespace deletion fails, it captures namespace, PVC, and PV diagnostics and stops without force-removing finalizers.
 
 ## Phase 3: Delete Local Images and Generated State
 
-Delete only the ERP images managed by this repo.
+The teardown script removes all local `acme-erp/*` images and `build/.local`, then runs `docker system prune -a --volumes --force`. This globally removes unused Docker resources, including non-ERP resources. It does not remove Docker resources that are still in use.
+
+Verify the expected local clean state after the script completes:
 
 ```powershell
-$erpImages = docker images --format "{{.Repository}}:{{.Tag}}" | Where-Object { $_ -like 'acme-erp/*' }
-if ($erpImages) {
-    docker rmi -f $erpImages
-}
-```
-
-Verify they are gone:
-
-```powershell
+kubectl get namespace erp-local
 docker images --format "{{.Repository}}:{{.Tag}}" | Select-String '^acme-erp/'
+Test-Path build/.local
 ```
 
-The verification should produce no rows.
-
-Remove generated local state so the rebuild proves first-run bootstrap behavior. This deletes generated secrets and Helm generated values, not source files.
-
-```powershell
-Remove-Item -Recurse -Force build/.local -ErrorAction SilentlyContinue
-```
-
-Do not run broad Docker cleanup such as `docker system prune -a --volumes` unless explicitly approved. It can remove unrelated images, caches, and volumes from the developer machine.
+The namespace lookup should report NotFound, the image check should produce no rows, and `Test-Path` should return `False`.
 
 ## Phase 4: Clean-Slate Build
 
@@ -213,6 +185,18 @@ kubectl get events -n erp-local --sort-by=.lastTimestamp
 kubectl get configmap -n erp-local --selector "managed-by=gravitee.io,gio-type=apidefinitions.gravitee.io"
 ```
 
+If teardown fails while uninstalling Helm releases, inspect the remaining cluster-wide releases before retrying:
+
+```powershell
+helm list --all-namespaces
+```
+
+If Docker cleanup fails, inspect Docker's remaining resource usage before retrying:
+
+```powershell
+docker system df
+```
+
 If pods are not Ready:
 
 ```powershell
@@ -246,7 +230,7 @@ kubectl run erp-curl --rm -i --restart=Never --image=curlimages/curl:8.11.1 -n e
 
 When finished, report:
 
-- Teardown actions completed, including namespace deletion and image deletion.
+- Teardown actions completed, including stopped processes, every removed Helm release, namespace deletion, ERP image deletion, generated-state removal, and the global unused-Docker prune.
 - Whether `build/.local` was removed and regenerated.
 - Build command results: `dotnet build`, `skaffold diagnose`, and app image rebuild.
 - Helm release versions deployed.
