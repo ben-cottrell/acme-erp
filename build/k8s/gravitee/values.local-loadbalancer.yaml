@@ -1,0 +1,5 @@
+gateway:
+  service:
+    type: LoadBalancer
+    externalPort: 8082
+    internalPort: 8082

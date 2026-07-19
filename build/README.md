@@ -54,7 +54,13 @@ The execution policy command affects only the current PowerShell process and is 
 
 Use `-DeploymentScope all` to deploy both layers in one run. Use `-SkipDeploy` to generate/apply prerequisites, secrets, and generated local values without invoking Skaffold.
 
-The bootstrap script creates local secret material under `build/.local/secrets.json`, which is ignored by Git. Existing secrets are preserved by default. Use `-RotateSecrets` only when you intentionally want new local credentials.
+`-DeploymentScope` also accepts targeted scopes for local repair and faster iteration: `namespace`, `sqlserver`, `identity`, `gateway`, and `routes`. For example, use `-DeploymentScope gateway` to reapply only the Gravitee gateway without restarting SQL Server or Authentik.
+
+The default gateway exposure mode is `-GatewayExposure PortForward`. It deploys the Gravitee gateway as a `ClusterIP` service and starts `kubectl port-forward` for `http://localhost:8082`. Use `-GatewayExposure LoadBalancer` only when you specifically want Docker Desktop to allocate the local LoadBalancer endpoint, or `-GatewayExposure None` when validating only in-cluster behavior.
+
+The bootstrap script stores local secret material in Kubernetes Secrets in the `erp-local` namespace. Existing cluster secrets are preserved by default. Use `-RotateSecrets` only when you intentionally want new local credentials.
+
+Kubernetes Secret shape is declarative in `build/k8s/local-secrets/local-secret-values.json`. The bootstrap script renders those configured Kubernetes Secrets in memory and applies them directly to the cluster, so SQL Server and application secret material is not duplicated into generated files under `build/k8s/local-secrets/`.
 
 The script automates:
 
@@ -62,16 +68,17 @@ The script automates:
 - Docker Desktop Kubernetes context validation
 - namespace creation
 - local SQL Server, Authentik, and service credential generation
-- Kubernetes Secret creation for SQL Server and service connection strings
+- Kubernetes Secret application from the declarative `build/k8s/local-secrets/local-secret-values.json` configuration
 - generated Authentik Helm values creation under `build/.local/`
 - Skaffold deployment for platform/app manifests, including local Helm chart rendering
 - SQL Server bootstrap job readiness checks
+- optional local Gravitee gateway port-forwarding for workstation routes
 
 Manual setup still required:
 
 - enable Kubernetes in Docker Desktop
 - install Skaffold and Helm if missing
-- wait for the Docker Desktop LoadBalancer endpoint before browser testing or external UI validation
+- keep the bootstrap-created Gravitee port-forward process running before browser testing or external UI validation
 
 ## Skaffold Profiles
 
@@ -81,6 +88,8 @@ skaffold run -f .\build\skaffold.yaml -p apps
 ```
 
 The `platform` profile applies namespaces, SQL Server, the Authentik bootstrap ConfigMap, Gravitee route ConfigMaps, and Skaffold-rendered Authentik and Gravitee Helm charts. `bootstrap-local.ps1` prepares the generated Authentik values file before invoking Skaffold.
+
+The platform layer is also split into narrower profiles: `namespace`, `sqlserver`, `identity`, `gateway`, `gateway-loadbalancer`, and `routes`. The bootstrap script uses these narrower profiles internally so targeted repairs do not churn unrelated platform workloads. The combined `platform` profile remains available for direct Skaffold use.
 
 The `apps` profile builds and deploys the 18 ASP.NET Core service images and includes the Gravitee route ConfigMaps so app deployments keep route ownership declarative.
 
@@ -94,8 +103,11 @@ The local Helm values are tuned for a single-node Docker Desktop cluster:
 - Gravitee runs in database-less gateway-only mode for local development.
 - Gravitee Management API, portal, UI, MongoDB, and Elasticsearch are not deployed locally.
 - Gravitee route definitions are synchronized from Kubernetes ConfigMaps in `build/k8s/gravitee/routes/*.yaml`.
+- Authentik and Gravitee Helm chart versions are pinned in `build/skaffold.yaml` for repeatable fresh-cluster bootstraps.
 
-The Gravitee gateway service is configured as a local Docker Desktop `LoadBalancer` on port `8082`, giving the workstation the canonical gateway URL `http://localhost:8082` without DNS or HOSTS changes. These settings are development-only and live in `build/k8s/authentik/values.local.yaml` and `build/k8s/gravitee/values.local.yaml`.
+The default Gravitee gateway service is a `ClusterIP` service on port `8082`, with the workstation URL provided by `kubectl port-forward`. This is more reliable on Docker Desktop than relying on LoadBalancer allocation. To opt into Docker Desktop LoadBalancer behavior, use `bootstrap-local.ps1 -DeploymentScope gateway -GatewayExposure LoadBalancer` or the `gateway-loadbalancer` Skaffold profile. These settings are development-only and live in `build/k8s/authentik/values.local.yaml`, `build/k8s/gravitee/values.local.yaml`, and `build/k8s/gravitee/values.local-loadbalancer.yaml`.
+
+The canonical local gateway URL remains `http://localhost:8082`.
 
 ## Destructive Teardown
 
@@ -126,7 +138,7 @@ To confirm Gravitee is exposed to the developer workstation through Docker Deskt
 kubectl get service gravitee-apim-gateway -n erp-local
 ```
 
-The service should be `LoadBalancer` and expose port `8082` on localhost once the platform deployment is ready.
+With the default bootstrap settings, the service should be `ClusterIP` and a `kubectl port-forward` process should expose port `8082` on localhost. If you selected `-GatewayExposure LoadBalancer`, the service should be `LoadBalancer` and expose port `8082` on localhost once Docker Desktop assigns an endpoint.
 
 To also verify the application UIs from the developer workstation through the local Gravitee gateway, run:
 
@@ -134,6 +146,14 @@ To also verify the application UIs from the developer workstation through the lo
 .\build\scripts\validate-local.ps1 -IncludeExternalUi
 ```
 
-`-IncludeExternalUi` checks these public UI routes through `http://localhost:8082`: `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, `/apps/fulfilment-operator/ui`, `/apps/inventory-supervisor/ui`, and `/apps/fulfilment-supervisor/ui`. The script does not create gateway exposure; the Gravitee gateway service is exposed by the local Helm values as a Docker Desktop `LoadBalancer`. If the gateway is unreachable, or if all UI routes return `404`, validation fails because the database-less gateway did not synchronize the route ConfigMaps or the gateway exposure is incorrect.
+`-IncludeExternalUi` checks these public UI routes through `http://localhost:8082`: `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, `/apps/fulfilment-operator/ui`, `/apps/inventory-supervisor/ui`, and `/apps/fulfilment-supervisor/ui`. The script does not create gateway exposure; use `bootstrap-local.ps1 -GatewayExposure PortForward` or manually run `kubectl port-forward -n erp-local svc/gravitee-apim-gateway 8082:8082` first. If the gateway is unreachable, core in-cluster validation may still be healthy while workstation gateway exposure is unavailable. If all UI routes return `404`, validation fails because the database-less gateway did not synchronize the route ConfigMaps.
+
+## Local Recovery
+
+- If Skaffold cannot render remote charts because a local Helm index is missing or stale, run `helm repo update` and retry.
+- If the Gravitee gateway is absent from `erp-local`, run `kubectl get deployment,service -A | Select-String gravitee` to check whether rendered resources landed in another namespace, then re-run `bootstrap-local.ps1 -DeploymentScope gateway`.
+- If Docker Desktop leaves the Gravitee LoadBalancer pending, switch to the default port-forward path: `bootstrap-local.ps1 -DeploymentScope gateway -GatewayExposure PortForward`.
+- If only routes changed, run `bootstrap-local.ps1 -DeploymentScope routes` instead of reapplying the whole platform.
+- If Authentik startup is interrupted and migrations become inconsistent, delete and recreate only `erp-local` before using the destructive teardown script.
 
 For a destructive clean-slate rebuild and validation handoff, run `teardown-local.ps1` first, then follow `clean-slate-teardown-build-test-plan.md` from the build phase onward.

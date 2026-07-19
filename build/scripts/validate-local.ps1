@@ -33,6 +33,16 @@ function Invoke-NativeCommand {
     }
 }
 
+function Write-ValidationPhase {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    Write-Host ""
+    Write-Host "== $Name =="
+}
+
 function Invoke-ClusterHttpCheck {
     param(
         [Parameter(Mandatory = $true)]
@@ -246,7 +256,7 @@ function Wait-ExternalGateway {
         Start-Sleep -Milliseconds 500
     } while ([DateTimeOffset]::UtcNow -lt $deadline)
 
-    throw "Gateway endpoint $GatewayUrl was not reachable within $TimeoutSeconds seconds. The local Gravitee gateway service is configured as a Docker Desktop LoadBalancer on localhost:8082; confirm the gravitee-apim-gateway service has an external localhost endpoint and the platform deployment is ready. Last error: $lastError"
+    throw "Gateway endpoint $GatewayUrl was not reachable within $TimeoutSeconds seconds. Core in-cluster validation may still be healthy, but workstation gateway exposure is unavailable. Run bootstrap with -GatewayExposure PortForward, or start 'kubectl port-forward -n $Namespace svc/gravitee-apim-gateway 8082:8082', then retry -IncludeExternalUi. Last error: $lastError"
 }
 
 function Invoke-ExternalUiValidation {
@@ -305,9 +315,11 @@ function Invoke-ExternalUiValidation {
 
 Push-Location $RepoRoot
 try {
+    Write-ValidationPhase 'Solution build'
     Invoke-NativeCommand dotnet sln Acme.Erp.slnx list
     Invoke-NativeCommand dotnet build Acme.Erp.slnx
 
+    Write-ValidationPhase 'Platform resources'
     Invoke-NativeCommand kubectl get namespace $Namespace
     Invoke-NativeCommand kubectl get secret erp-sqlserver --namespace $Namespace
     Invoke-NativeCommand kubectl get secret erp-sqlserver-connection-strings --namespace $Namespace
@@ -316,11 +328,14 @@ try {
     Invoke-NativeCommand kubectl get configmap --namespace $Namespace --selector "managed-by=gravitee.io,gio-type=apidefinitions.gravitee.io"
     Invoke-NativeCommand kubectl get configmap gravitee-acme-erp-route-sales-api gravitee-acme-erp-route-fulfilment-supervisor-ui --namespace $Namespace
 
+    Write-ValidationPhase 'Platform rollouts'
     Invoke-NativeCommand kubectl rollout status deployment/authentik-server --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status deployment/authentik-worker --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status statefulset/authentik-postgresql --namespace $Namespace --timeout=300s
 
     Invoke-NativeCommand kubectl rollout status deployment/gravitee-apim-gateway --namespace $Namespace --timeout=300s
+
+    Write-ValidationPhase 'Application rollouts'
     Invoke-NativeCommand kubectl rollout status deployment/sales-api --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status deployment/purchasing-api --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status deployment/inventory-management-api --namespace $Namespace --timeout=300s
@@ -410,13 +425,18 @@ try {
         @{ Url = 'http://gravitee-apim-gateway:8082/'; Status = 404 }
     )
 
+    Write-ValidationPhase 'In-cluster HTTP behavior'
     foreach ($check in $clusterChecks) {
         Invoke-ClusterHttpCheck -Namespace $Namespace -Url $check.Url -ExpectedStatusCodes @($check.Status)
     }
 
     if ($IncludeExternalUi) {
+        Write-ValidationPhase 'Workstation gateway routes'
         Invoke-ExternalUiValidation -GatewayHost $GatewayHost -Scheme $Scheme -GatewayPort $GatewayPort
     }
+
+    Write-Host ""
+    Write-Host 'Validation completed successfully.'
 }
 finally {
     Pop-Location

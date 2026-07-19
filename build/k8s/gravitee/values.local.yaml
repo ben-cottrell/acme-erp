@@ -21,7 +21,7 @@ gateway:
   dbLess: true
   replicaCount: 1
   service:
-    type: LoadBalancer
+    type: ClusterIP
     externalPort: 8082
     internalPort: 8082
   services:

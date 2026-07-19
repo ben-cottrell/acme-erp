@@ -86,8 +86,107 @@ manifests:
     - build/k8s/gravitee/routes/*.yaml
     - build/k8s/services/*.yaml
 deploy:
-  kubectl: {}
+  kubectl:
+    defaultNamespace: erp-local
+portForward:
+  - resourceType: service
+    resourceName: gravitee-apim-gateway
+    namespace: erp-local
+    port: 8082
+    localPort: 8082
 profiles:
+  - name: namespace
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+  - name: sqlserver
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+          - build/k8s/sqlserver/*.yaml
+  - name: identity
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+          - build/k8s/authentik/blueprint-configmap.yaml
+      - op: add
+        path: /manifests/helm
+        value:
+          releases:
+            - name: authentik
+              namespace: erp-local
+              remoteChart: authentik
+              repo: https://charts.goauthentik.io
+              version: 2026.5.5
+              valuesFiles:
+                - build/k8s/authentik/values.local.yaml
+                - build/.local/authentik.generated-values.yaml
+  - name: gateway
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+      - op: add
+        path: /manifests/helm
+        value:
+          releases:
+            - name: gravitee
+              namespace: erp-local
+              remoteChart: apim
+              repo: https://helm.gravitee.io
+              version: 4.12.9
+              valuesFiles:
+                - build/k8s/gravitee/values.local.yaml
+  - name: gateway-loadbalancer
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+      - op: add
+        path: /manifests/helm
+        value:
+          releases:
+            - name: gravitee
+              namespace: erp-local
+              remoteChart: apim
+              repo: https://helm.gravitee.io
+              version: 4.12.9
+              valuesFiles:
+                - build/k8s/gravitee/values.local.yaml
+                - build/k8s/gravitee/values.local-loadbalancer.yaml
+  - name: routes
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+          - build/k8s/gravitee/routes/*.yaml
   - name: platform
     patches:
       - op: replace
@@ -108,6 +207,7 @@ profiles:
               namespace: erp-local
               remoteChart: authentik
               repo: https://charts.goauthentik.io
+              version: 2026.5.5
               valuesFiles:
                 - build/k8s/authentik/values.local.yaml
                 - build/.local/authentik.generated-values.yaml
@@ -115,6 +215,7 @@ profiles:
               namespace: erp-local
               remoteChart: apim
               repo: https://helm.gravitee.io
+              version: 4.12.9
               valuesFiles:
                 - build/k8s/gravitee/values.local.yaml
   - name: apps
