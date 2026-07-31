@@ -25,10 +25,6 @@ The local runtime owns these resources:
   - `acme-erp/warehouse-operator-ui`
   - `acme-erp/fulfilment-operator-api`
   - `acme-erp/fulfilment-operator-ui`
-  - `acme-erp/inventory-supervisor-api`
-  - `acme-erp/inventory-supervisor-ui`
-  - `acme-erp/fulfilment-supervisor-api`
-  - `acme-erp/fulfilment-supervisor-ui`
 - Generated local state: `build/.local/`
 
 The automated teardown is intentionally broader than the ERP resource list: it uninstalls every Helm release in every namespace in the active `docker-desktop` context and runs `docker system prune -a --volumes --force`. The Docker prune removes all unused Docker containers, images, volumes, networks, and build cache on the machine. Do not run it when the Docker Desktop context contains workloads or unused Docker resources that must be preserved.
@@ -40,9 +36,9 @@ The task is complete only when all of the following are true:
 - `erp-local` was removed during teardown and recreated during bootstrap.
 - Skaffold-rendered Authentik and Gravitee gateway workloads are deployed and Ready.
 - SQL Server is Ready and `sqlserver-bootstrap` completed.
-- All 18 Gravitee route ConfigMaps exist with database-less sync labels.
-- All 18 ASP.NET Core deployments are Ready.
-- All 18 local `acme-erp/*` images were rebuilt after deletion.
+- All 14 Gravitee route ConfigMaps exist with database-less sync labels.
+- All 14 ASP.NET Core deployments are Ready.
+- All 14 local `acme-erp/*` images were rebuilt after deletion.
 - `dotnet build Acme.Erp.slnx` succeeds.
 - `skaffold diagnose -f build/skaffold.yaml` succeeds.
 - `build/scripts/validate-local.ps1` succeeds.

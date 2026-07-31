@@ -2,9 +2,9 @@
 
 ## 1. Purpose
 
-The Customer Ordering application supports authenticated B2B customer users who submit website-originated sales orders and view status for their own orders.
+The Customer Ordering application shall allow authenticated B2B customer users to discover orderable products, submit website-originated sales orders, and view their own order status.
 
-The MVP outcome is a customer-facing ordering workflow that captures valid sales demand through Sales, presents Inventory-backed availability responsibly, and protects customer data without the application owning sales or inventory state.
+The MVP outcome is a privacy-conscious ordering channel that presents Inventory Management availability and creates demand through Sales without owning durable sales or inventory state.
 
 ## 2. Application Boundary
 
@@ -16,116 +16,162 @@ The MVP outcome is a customer-facing ordering workflow that captures valid sales
 | Database | None |
 | Domain APIs consumed | Sales, Inventory Management |
 
-The Customer Ordering UI calls only the Customer Ordering API. The Customer Ordering API owns no durable business state, uses no EF Core migrations, and does not connect to SQL Server.
+The Customer Ordering UI shall call only the Customer Ordering API. The Customer Ordering API shall own no database, EF Core migrations, durable business state, or domain invariants.
 
 ## 3. User-Facing Scope
 
 ### In Scope
 
-- Authenticated customer access through Gravitee and Authentik-backed identity.
-- Customer-scoped product discovery, stocked-product availability indicators, and validation feedback.
-- Customer order capture for account, contact, billing/shipping details, product lines, quantities, and customer reference.
-- Website channel order submission to Sales.
-- Customer-visible order status for the authenticated customer's own orders.
-- Accessible order entry, confirmation, status search, validation messaging, and privacy-conscious presentation.
+- Authenticated access through Gravitee and Authentik-backed identity.
+- Customer-account scoping for every customer-specific query and command.
+- Product discovery and indicative availability for active, customer-visible products.
+- Order capture for account, contact, billing address, shipping address, product lines, quantities, and customer reference.
+- Website-channel order submission to Sales and confirmation display.
+- Customer-safe order list and detail views for the signed-in customer's own orders.
+- Responsive desktop and mobile behavior, input validation, pagination, and recoverable technical error handling.
 
 ### Out of Scope
 
-- Guest checkout, anonymous order tracking, public self-registration, account recovery, payment capture, credit checks, tax calculation, invoicing, returns/RMA, and customer master administration.
-- Durable sales or inventory state, direct database access, product master updates, inventory mutation, buyer workbench behavior, fulfilment execution, and internal approval workflows.
+- Guest checkout, anonymous tracking, public registration, account recovery, customer-user administration, or customer master maintenance.
+- Durable sales or inventory state, direct database access, EF Core migrations, product master maintenance, stock mutation, purchasing work, or fulfilment execution.
+- Payment capture, credit checks, tax calculation, invoicing, returns, and finance workflows.
 
 ## 4. Business Context
 
-ACME wants customers to submit orders without rekeying by internal sales staff while still preserving B2B controls, customer scoping, and domain-owned sales validation. Customers need understandable status without exposure to internal operational details.
+ACME needs customers to enter routine B2B orders without internal rekeying. Customers need current product guidance and understandable status, while Sales remains authoritative for customer scope, order validation, lifecycle, and persistence and Inventory Management remains authoritative for product and availability data.
 
 ## 5. Personas and User Roles
 
 | Role | Description | Key Responsibilities | UX / Access Needs |
 |---|---|---|---|
-| Authenticated Customer | B2B customer account user. | Browse active products, submit orders, view own order status. | Simple forms, clear availability/status, privacy protection, accessible responsive UI. |
-| Customer Account Administrator | Optional customer-side role if enabled later. | Manage customer users or addresses. | Out of scope for MVP unless ACME confirms. |
-| Support User | Internal read-only helper where approved. | Help customers troubleshoot submitted orders. | Not a primary Customer Ordering role; access must be separately authorized. |
+| Authenticated Customer | B2B user associated with one permitted customer account scope. | Find products, submit orders, retain confirmation references, and review own order status. | Responsive forms, concise availability wording, clear validation, and strong privacy boundaries. |
 
 ## 6. User Journeys and Workflows
 
-- **Sign in and customer scope**: customer authenticates, the application resolves allowed customer account scope through identity/Sales context, and denies access if no active customer scope exists.
-- **Create order**: customer searches/selects products, views availability indicator, enters quantities and references, confirms billing/shipping details, and submits the order.
-- **View order status**: customer searches or opens own orders and sees customer-safe statuses such as Submitted, Confirmed, Pending Inventory, Pending Buyer Request, Released to Fulfilment, Partially Fulfilled, Backordered, Completed, Cancelled, or Exception where Sales exposes them.
-- **Handle validation failure**: domain validation or availability change is shown with clear next action while preserving entered data.
+### 6.1 Sign In and Resolve Customer Scope
+
+The journey starts at a protected route. Authentik authenticates the user, the application resolves permitted customer scope, and Sales validates that scope. The journey ends at the product or order view. Invalid identity or inactive scope shall deny access without exposing customer data.
+
+### 6.2 Discover Products
+
+The customer searches active products, opens product information, and views the availability indicator returned by Inventory Management. The indicator is guidance and shall not be presented as a reservation.
+
+### 6.3 Create and Submit an Order
+
+The customer selects products, enters quantities and a customer reference, confirms contact and address details, and submits once. The journey ends with a Sales order number, submitted date, and customer-visible status, or with retained input and correctable validation messages.
+
+### 6.4 View Order Status
+
+The customer searches their own orders and opens an order detail. The application displays only customer-visible Sales status, quantities, dates, and references permitted by Sales.
 
 ## 7. Functional Requirements
 
 | ID | Workflow | Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|---|
-| CO-APP-001 | Authentication | The application shall require authenticated customer identity before order submission or customer-specific order visibility. | Must | Given a user is unauthenticated, when they access order submission or status, then access is denied or redirected to authentication. |
-| CO-APP-002 | Customer scoping | The application shall show and submit only data for the authenticated customer's authorized customer account scope. | Must | Given a customer requests another customer's order, when Sales evaluates the query, then access is denied and the UI shows no cross-customer data. |
-| CO-APP-003 | Product discovery | The application shall display active products and customer-appropriate availability indicators from Inventory Management. | Should | Given Inventory returns active stocked products, when the customer searches, then product and availability status are displayed without local product persistence. |
-| CO-APP-004 | Order submission | The application shall submit customer orders to Sales with website channel, customer account, contact, billing/shipping details, lines, and quantities. | Must | Given required data is valid, when the customer submits, then Sales creates the order and the UI shows confirmation; validation errors are shown without local order storage. |
-| CO-APP-005 | Status visibility | The application shall display only customer-visible Sales statuses for the authenticated customer's own orders. | Must | Given Sales exposes status updates, when the customer opens order status, then status, dates, and customer-safe exception wording are displayed. |
-| CO-APP-006 | Accessibility | The application shall provide accessible order submission and status screens. | Must | Given a keyboard or assistive technology user, when they complete primary workflows, then focus order, labels, errors, and confirmations are perceivable and operable. |
+| CO-APP-001 | Authentication | The system shall require a valid authenticated customer identity for every application route. | Must | Given an unauthenticated request, when a protected route is requested, then the request shall be redirected to authentication or denied with no customer data. |
+| CO-APP-002 | Customer scoping | The system shall query and mutate orders only within the authenticated user's permitted customer account scope. | Must | Given an order outside the permitted scope, when it is requested, then no order data shall be returned and no mutation shall occur. |
+| CO-APP-003 | Product discovery | The system shall display active, customer-visible products returned by Inventory Management. | Must | Given search criteria, when product search completes, then matching products shall be paginated and displayed without local persistence. |
+| CO-APP-004 | Availability | The system shall display the current availability indicator returned by Inventory Management. | Must | Given a selected product, when availability is loaded, then the UI shall show the returned indicator and query time without promising reservation. |
+| CO-APP-005 | Order capture | The system shall allow the customer to capture contact, address, reference, line, and quantity data. | Must | Given a validation failure, when the response is displayed, then entered values shall remain available and messages shall identify the affected fields. |
+| CO-APP-006 | Order submission | The system shall submit a website-channel order to Sales. | Must | Given valid data and customer scope, when submitted once, then Sales shall create one order and the UI shall display its order number, date, and customer-visible status. |
+| CO-APP-007 | Confirmation recovery | The system shall recover the result of an uncertain submission before allowing another submission. | Must | Given the client times out after submit, when the confirmation view retries, then the API shall query by idempotency key and show the existing result if Sales accepted it. |
+| CO-APP-008 | Order search | The system shall provide paginated search for orders in the current customer scope. | Must | Given supported filters, when search completes, then only scoped orders shall be returned using stable sorting. |
+| CO-APP-009 | Status visibility | The system shall display only the customer-visible status and detail fields returned by Sales. | Must | Given a scoped order, when detail loads, then internal-only fields and users shall not be displayed. |
 
-## 8. UI, Accessibility, and Usability Requirements
+## 8. UI and Usability Requirements
 
-- Order forms shall clearly indicate required fields and preserve customer input on validation failure.
-- Status wording shall be customer-safe and must not expose internal users, internal exception details, or supplier/courier configuration beyond what Sales permits.
-- Availability shall be presented as an indicator, not as a guaranteed reservation until Sales confirms release policy.
-- The application shall be responsive for desktop and mobile browsers and target WCAG 2.2 AA.
-- Error messages shall distinguish authentication, authorization, validation, and business conflict outcomes.
+- The UI shall support desktop and mobile browser widths without horizontal scrolling for primary forms and order lists.
+- Forms shall mark required fields and preserve entered values after validation, authorization, conflict, timeout, or dependency failure responses.
+- Validation messages shall appear beside affected fields and action-level messages in a stable summary region.
+- The submit action shall prevent accidental repeated clicks while a request is in progress.
+- Availability wording shall clearly distinguish indicative stock information from an accepted order.
+- Long product names, addresses, references, and status text shall wrap without obscuring controls.
+- The confirmation view shall prominently display the Sales order number and customer reference.
 
 ## 9. Data Display and Input Requirements
 
 | Data | Source Domain/API | Used For | Required | Validation / Display Rules |
 |---|---|---|---|---|
-| Customer identity/scope | Authentik/Sales | Access and order scoping. | Yes | No order actions without active customer scope. |
-| Product/SKU | Inventory Management | Product selection. | Yes for stocked lines | Show active/customer-visible products only. |
-| Availability indicator | Inventory Management | Customer order guidance. | Conditional | Show the returned stock state; do not promise reservation. |
-| Billing/shipping/contact | Sales | Order submission. | Yes | Show Sales validation errors. |
-| Customer reference | Sales | Customer order tracking. | Optional | Preserve and display if supplied. |
-| Order status | Sales | Status view. | Yes for submitted orders | Customer-safe statuses only. |
+| Authenticated identity and customer scope | Authentik and Sales | Access and data scoping | Yes | Never accept customer scope solely from editable browser input. |
+| Product external ID and SKU | Inventory Management | Product selection | Yes | Display only active, customer-visible products. |
+| Availability indicator | Inventory Management | Ordering guidance | Conditional | Display indicator and query time; do not promise reservation. |
+| Contact, billing address, and shipping address | Sales | Order submission | Yes | Apply Sales format and required-field rules; avoid logging values. |
+| Customer reference | Sales | Customer tracking | No | Trim whitespace and enforce Sales length rules. |
+| Quantity | Sales | Order demand | Yes | Positive value using precision allowed for the product. |
+| Order number, dates, and status | Sales | Confirmation and tracking | Yes after submission | Display only customer-visible values returned by Sales. |
 
 ## 10. Orchestration and Integration Requirements
 
-| ID | Application Action | Domain/API Called | Data Exchanged | Validation / Result |
-|---|---|---|---|---|
-| CO-INT-001 | Authenticate customer | Authentik/Gravitee | Token, claims, route metadata. | Deny access if identity is invalid or has no customer scope. |
-| CO-INT-002 | Search products | Inventory Management via app API | Search filters and active/customer-visible flag. | Show the recognized active products returned by Inventory. |
-| CO-INT-003 | Submit order | Sales | Customer scope, order details, and website channel. | Show validation, authorization, and business conflict errors. |
-| CO-INT-004 | View status | Sales | Customer scope and order ID/reference/date filters. | Show no data for unauthorized scope and display the returned customer-visible status. |
+| ID | Application Action | Domain/API Called | Data Exchanged | Failure Handling | Idempotency / Correlation |
+|---|---|---|---|---|---|
+| CO-INT-001 | Authenticate and resolve scope | Authentik, Gravitee, and Sales | Token claims and customer external reference | Deny access on invalid identity or inactive scope; do not cache a failed scope resolution. | Propagate the ingress correlation ID. |
+| CO-INT-002 | Search products | Inventory Management | Search criteria, active/customer-visible filters, paging | Show a temporary unavailable message and permit retry without stale substitution. | Propagate the request correlation ID. |
+| CO-INT-003 | Load availability | Inventory Management | Product external ID and requested quantity | Retain selected lines and mark availability temporarily unavailable. | Correlate calls with the active order-entry request. |
+| CO-INT-004 | Submit order | Sales | Customer scope, website channel, contact, addresses, reference, and lines | Map validation to fields; show authorization and conflict outcomes without local persistence. | Send one idempotency key for the submission and reuse it for uncertain-outcome recovery. |
+| CO-INT-005 | Search or view orders | Sales | Customer scope, order ID, reference, date, status, and paging | Return no cross-scope data; identify temporary dependency failure separately from no results. | Propagate the request correlation ID. |
 
-## 11. Order Views and Search Requirements
+The paired API shall use bounded timeouts. Safe reads may be retried automatically. Order submission shall not be automatically repeated with a new idempotency key.
+
+## 11. Operational View and Search Requirements
 
 | View | Audience | Purpose | Filters |
 |---|---|---|---|
-| Order Status List | Authenticated Customer | Review own orders. | Date range, customer reference, status, order number. |
-| Order Detail | Authenticated Customer | Review submitted order and status. | Order ID/reference. |
-| Product Search | Authenticated Customer | Find orderable products. | Search text, SKU/category if available, active. |
+| Product Search | Authenticated Customer | Find orderable products | Search text, SKU, category where supplied |
+| My Orders | Authenticated Customer | Review scoped order history | Order number, customer reference, status, date range |
+| Order Detail | Authenticated Customer | Review one submitted order | Order external ID within customer scope |
+
+Order lists shall default to newest order date first, use deterministic secondary sorting, and provide pagination. The MVP shall not provide scheduled reports, data exports, or application-owned reporting storage.
 
 ## 12. Security and Permissions
 
-The application shall require authenticated customer identity and customer account scope for all order submission and status workflows. Sales remains authoritative for customer-scoped order access, validation, and persistence. Inventory remains authoritative for product and availability data. Application presentation shall not reveal cross-customer data or internal-only exception detail.
+- Authentik shall authenticate customer users and Gravitee shall enforce ingress and token policy.
+- Every route shall require the Authenticated Customer role and a resolvable customer account scope.
+- The paired API shall derive customer scope from trusted identity and Sales context, not from editable request fields.
+- Sales shall remain authoritative for customer-scoped order access, allowed fields, validation, and persistence.
+- Inventory Management shall remain authoritative for product visibility and availability data.
+- Responses, caches, telemetry, and logs shall not reveal another customer's identifiers or data.
+- Tokens, contact details, and addresses shall not be written to application logs.
 
 ## 13. Non-Functional Requirements
 
-- The UI shall present clear progress, success, and validation states for order submission.
-- The application shall not cache sensitive customer data beyond normal request/session needs.
-- Search/status queries shall be paginated where result sets can grow.
+- **Performance:** Product and order lists shall be paginated; independent availability calls may load progressively without blocking line entry.
+- **Reliability:** The application shall remain stateless beyond normal authenticated session and request context.
+- **Consistency:** Uncertain submissions shall be resolved through Sales using the original idempotency key.
+- **Observability:** Requests shall carry correlation IDs; logs and metrics shall record route, dependency, outcome class, and duration without personal data.
+- **Availability:** Dependency outages shall produce retryable technical messages and preserve unsent order input in the browser session.
+- **Maintainability:** Versioned Sales and Inventory Management clients shall be covered by contract tests.
+- **Localization:** MVP text, dates, numbers, and configured currency shall use the ACME deployment locale; multiple locales are not required.
+- **Supportability:** Unexpected technical errors shall display a support reference derived from the correlation ID.
 
-## 14. Dependencies
+## 14. Errors and Edge Cases
 
-- Sales for customer account reference, order submission, and customer-scoped status.
-- Inventory Management for active products and availability indicators.
-- Authentik and Gravitee for authentication, customer identity claims, and ingress.
-- Sales-owned customer data access rules for customer-scoped privacy and visibility.
+- Duplicate clicks or network retries shall create no more than one Sales order for one idempotency key.
+- A customer scope that becomes inactive during entry shall block submission and reveal no additional account data.
+- A product that becomes inactive shall be rejected by the owning domains and remain identified on the form for correction.
+- Availability may change between display and submission; the Sales result shall be authoritative.
+- An expired session shall preserve non-sensitive browser form values where practical and require sign-in before submission.
+- A failed status query shall not be displayed as an empty order history.
 
-## 15. Assumptions and MVP Defaults
+## 15. Dependencies
+
+- Sales for customer account scope, order creation, order lifecycle, customer-visible fields, validation, and persistence.
+- Inventory Management for active product discovery and availability indicators.
+- Authentik and Gravitee for identity, claims, ingress, and token policy.
+- Versioned API contracts, external IDs, idempotency keys, and correlation IDs.
+
+## 16. Assumptions
 
 - Customer Ordering is authenticated-only for MVP.
-- Guest checkout, anonymous order tracking, self-registration, payment capture, and account recovery are excluded.
-- Availability shown to customers is indicative until Sales confirms order state; it is not a reservation guarantee.
-- Customer account scope is resolved from the Authentik group or claim mapped to a Sales customer account reference.
-- Customer-safe status wording uses Sales status names, with internal technical detail hidden by the application.
-- Customers cannot cancel or amend submitted orders in MVP; they must contact ACME through existing support channels.
+- Each user is mapped by trusted identity claims to one permitted Sales customer account scope.
+- Availability is indicative until Sales accepts the order; it is not a reservation guarantee.
+- Guest checkout, anonymous tracking, registration, account recovery, payment capture, and customer-user administration are outside MVP.
+- Product and order search use a default page size of 24 and 25 respectively; order search defaults to the most recent 90 days.
+- Customer-visible status wording is supplied or permitted by Sales.
 
-## 16. Acceptance Summary
+## 17. Open Questions
 
-The Customer Ordering requirements are complete for MVP when they define authenticated order entry, customer scoping, product/availability display, Sales submission, customer-visible status, privacy/security, and explicit MVP defaults without assigning sales or inventory ownership to the application.
+The production mapping between Authentik claims and Sales customer account references must be confirmed before release because an incorrect mapping could expose another customer's data.
+
+## 18. Acceptance Summary
+
+The Customer Ordering MVP is complete when an authenticated, correctly scoped customer can discover products, view indicative availability, submit one idempotent website order, recover its confirmation, and view only their own order status. Technical failures must preserve recoverable input, and all durable business state and validation must remain domain-owned.

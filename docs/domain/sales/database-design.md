@@ -33,15 +33,25 @@ erDiagram
     SalesOrders ||--|| SalesOrderContacts : snapshots
     SalesOrders ||--|{ SalesOrderAddresses : snapshots
     SalesOrders ||--|{ SalesOrderLines : contains
-    SalesOrders ||--o{ SalesOrderChangeRequests : controls
-    SalesOrderChangeRequests ||--o{ SalesOrderApprovals : decides
-    SalesOrders ||--o{ SalesOrderExceptions : exposes
-    SalesOrderLines ||--o{ SalesOrderExceptions : concerns
     SalesOrderLines ||--o| SalesBuyerRequests : requests
     SalesOrders ||--o| SalesFulfilmentReferences : mirrors
-    SalesFulfilmentReferences ||--o{ SalesFulfilmentLineVisibility : contains
-    SalesOrderLines ||--o| SalesFulfilmentLineVisibility : mirrors
 ```
+
+## Table Catalog
+
+| Table | Purpose |
+|---|---|
+| `CustomerAccounts` | Sales-owned B2B customer reference |
+| `CustomerContacts` | Active customer contacts |
+| `CustomerAccountUsers` | Authentik subject-to-customer scope mapping |
+| `CustomerAddresses` | Reusable billing and shipping addresses |
+| `SalesChannels` | Stable order-origin channels |
+| `SalesOrders` | Sales order aggregate root and current lifecycle state |
+| `SalesOrderContacts` | Immutable order-time contact snapshot |
+| `SalesOrderAddresses` | Immutable order-time address snapshots |
+| `SalesOrderLines` | Ordered products and quantities |
+| `SalesBuyerRequests` | Non-stocked request context and copied Purchasing state |
+| `SalesFulfilmentReferences` | Copied Fulfilment task and shipment visibility |
 
 ## Customer and Channel Tables
 
@@ -142,7 +152,6 @@ Unique constraint: `UQ_SalesChannels_Code`. These two stable channels are migrat
 | `ConfirmedAt` | `datetimeoffset(7)` | Yes | Set on confirmation |
 | `ReleasedAt` | `datetimeoffset(7)` | Yes | Set after Fulfilment acceptance |
 | `CompletedAt` | `datetimeoffset(7)` | Yes | Set from Fulfilment update |
-| `CancelledAt` | `datetimeoffset(7)` | Yes | Set on cancellation |
 | `RowVersion` | `rowversion` | No | Aggregate concurrency token |
 
 Unique constraint: `UQ_SalesOrders_OrderNumber`. Check constraint: `CK_SalesOrders_Status`.
@@ -192,62 +201,11 @@ Unique constraint: `UQ_SalesOrderAddresses_OrderType` on `(SalesOrderId, Address
 | `Quantity` | `decimal(18,4)` | No | Greater than zero |
 | `UnitOfMeasure` | `nvarchar(16)` | No | Inventory-supplied code where applicable |
 | `IsStocked` | `bit` | No | Inventory validation result |
-| `Status` | `nvarchar(32)` | No | Line status catalog |
 | `CreatedAt` | `datetimeoffset(7)` | No | UTC |
 | `UpdatedAt` | `datetimeoffset(7)` | No | UTC |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-Unique constraint: `UQ_SalesOrderLines_OrderLineNumber` on `(SalesOrderId, LineNumber)`. Checks require `Quantity > 0`, a supported status, and either `ExternalSkuId` or a non-empty `RequestedItemDescription`.
-
-## Lifecycle and Control Tables
-
-### `SalesOrderChangeRequests`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `SalesOrderId` | `uniqueidentifier` | No | FK to `SalesOrders.Id` |
-| `ChangeType` | `nvarchar(32)` | No | `Amendment`, `Cancellation`, or `Override` |
-| `Status` | `nvarchar(24)` | No | `Pending`, `Approved`, `Rejected`, `Applied`, `Cancelled` |
-| `RequestedBySubject` | `nvarchar(200)` | No | Used for self-approval rule |
-| `Reason` | `nvarchar(1000)` | No | Required business reason |
-| `ChangedFieldsJson` | `nvarchar(max)` | Yes | Valid JSON; sanitized field diff |
-| `PolicyAmount` | `decimal(19,4)` | Yes | Amount evaluated by policy, when applicable |
-| `CurrencyCode` | `char(3)` | Yes | Required with `PolicyAmount` |
-| `RequiresApproval` | `bit` | No | Applied policy result |
-| `RequestedAt` | `datetimeoffset(7)` | No | UTC |
-| `ResolvedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Concurrency token |
-
-Checks constrain type/status, validate JSON, and require `CurrencyCode` exactly when `PolicyAmount` is populated.
-
-### `SalesOrderApprovals`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only decision attempt |
-| `SalesOrderChangeRequestId` | `uniqueidentifier` | No | FK to `SalesOrderChangeRequests.Id` |
-| `Decision` | `nvarchar(16)` | No | `Approved`, `Rejected`, or `Denied` |
-| `DecidedBySubject` | `nvarchar(200)` | No | Must differ from requester for approval |
-| `Reason` | `nvarchar(1000)` | Yes | Required for rejection/denial |
-| `DecidedAt` | `datetimeoffset(7)` | No | UTC |
-
-Self-approval is enforced transactionally by Sales and a denied attempt is retained.
-
-### `SalesOrderExceptions`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `SalesOrderId` | `uniqueidentifier` | No | FK to `SalesOrders.Id` |
-| `SalesOrderLineId` | `uniqueidentifier` | Yes | Optional FK to `SalesOrderLines.Id` |
-| `ExceptionType` | `nvarchar(64)` | No | Availability, buyer request, fulfilment, cancellation, or policy exception |
-| `Status` | `nvarchar(16)` | No | `Open`, `Resolved`, `Cancelled` |
-| `Summary` | `nvarchar(500)` | No | Operator-safe summary |
-| `DetailsJson` | `nvarchar(max)` | Yes | Valid sanitized JSON |
-| `OpenedAt` | `datetimeoffset(7)` | No | UTC |
-| `ResolvedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Concurrency token |
+Unique constraint: `UQ_SalesOrderLines_OrderLineNumber` on `(SalesOrderId, LineNumber)`. Checks require `Quantity > 0` and either `ExternalSkuId` or a non-empty `RequestedItemDescription`.
 
 ## Copied Integration Visibility
 
@@ -261,8 +219,6 @@ Self-approval is enforced transactionally by Sales and a denied attempt is retai
 | `Status` | `nvarchar(32)` | No | Sales copy of buyer-request state |
 | `RequestedDescription` | `nvarchar(500)` | No | Request snapshot |
 | `Quantity` | `decimal(18,4)` | No | Greater than zero |
-| `Reason` | `nvarchar(1000)` | No | Origination reason |
-| `DecisionReason` | `nvarchar(1000)` | Yes | Purchasing response |
 | `ExternalPurchaseOrderId` | `uniqueidentifier` | Yes | Optional Purchasing-owned PO |
 | `CreatedAt` | `datetimeoffset(7)` | No | UTC |
 | `UpdatedAt` | `datetimeoffset(7)` | No | UTC |
@@ -280,31 +236,22 @@ Filtered unique index on `ExternalPurchasingBuyerRequestId` when non-null.
 | `FulfilmentStatus` | `nvarchar(32)` | No | Copied status |
 | `TrackingReference` | `nvarchar(100)` | Yes | Copied provider reference |
 | `ShipmentReference` | `nvarchar(100)` | Yes | Copied shipment reference |
-| `ExceptionSummary` | `nvarchar(500)` | Yes | Operator-safe copied exception |
+| `CompletedAt` | `datetimeoffset(7)` | Yes | Copied completion time |
+| `LastUpdateId` | `uniqueidentifier` | No | Last accepted Fulfilment update; unique with source |
+| `SourceService` | `nvarchar(100)` | No | Authenticated update source |
 | `UpdatedAt` | `datetimeoffset(7)` | No | UTC business update time |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-### `SalesFulfilmentLineVisibility`
+Unique constraints apply to `ExternalFulfilmentTaskId` and `(SourceService, LastUpdateId)`. `FulfilmentStatus` copies only the task states documented by Order Fulfilment.
 
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `SalesFulfilmentReferenceId` | `uniqueidentifier` | No | FK to `SalesFulfilmentReferences.Id` |
-| `SalesOrderLineId` | `uniqueidentifier` | No | FK to `SalesOrderLines.Id`; unique |
-| `ExternalFulfilmentTaskLineId` | `uniqueidentifier` | Yes | Fulfilment-owned line |
-| `FulfilledQuantity` | `decimal(18,4)` | No | Non-negative |
-| `BackorderedQuantity` | `decimal(18,4)` | No | Non-negative |
-| `Status` | `nvarchar(32)` | No | Copied line status |
-
-## Status Catalogs
+## Status Models
 
 | Area | Allowed values |
 |---|---|
-| Sales order | `Draft`, `Submitted`, `Confirmed`, `PendingInventory`, `PendingBuyerRequest`, `ReleasedToFulfilment`, `PartiallyFulfilled`, `Backordered`, `Completed`, `Cancelled`, `Exception` |
-| Sales order line | `Draft`, `Validated`, `PendingInventory`, `PendingBuyerRequest`, `Released`, `PartiallyFulfilled`, `Backordered`, `Completed`, `Cancelled`, `Exception` |
-| Buyer request copy | `Accepted`, `LinkedToPurchaseOrder`, `Rejected`, `ReturnedForClarification`, `Closed` |
+| Sales order | `Draft`, `Confirmed`, `PendingInventory`, `PendingBuyerRequest`, `ReleasedToFulfilment`, `InFulfilment`, `Completed` |
+| Buyer request copy | `Open`, `Linked`, `Satisfied` |
 
-Check constraints limit persisted values; the transition graph remains the one defined in `requirements.md` and is enforced by Sales before persistence.
+Valid order transitions are `Draft -> Confirmed|PendingInventory|PendingBuyerRequest`, `PendingInventory -> Confirmed`, `PendingBuyerRequest -> Confirmed|PendingInventory`, `Confirmed -> PendingInventory|ReleasedToFulfilment`, `ReleasedToFulfilment -> InFulfilment|Completed`, and `InFulfilment -> Completed`. `Completed` is terminal. Only Draft orders may be edited; every later state changes only through the documented submission, availability, buyer-request, release, or Fulfilment workflows.
 
 ## Local Foreign Keys and Delete Behavior
 
@@ -314,12 +261,10 @@ All foreign keys use `ON DELETE NO ACTION`. Required relationships are indexed. 
 |---|---|
 | `CustomerContacts`, `CustomerAccountUsers`, `CustomerAddresses`, `SalesOrders` | `CustomerAccounts` |
 | `SalesOrders` | `SalesChannels` |
-| `SalesOrderContacts`, `SalesOrderAddresses`, `SalesOrderLines`, `SalesOrderChangeRequests`, `SalesOrderExceptions`, `SalesFulfilmentReferences` | `SalesOrders` |
+| `SalesOrderContacts`, `SalesOrderAddresses`, `SalesOrderLines`, `SalesFulfilmentReferences` | `SalesOrders` |
 | `SalesOrderContacts` | Optional `CustomerContacts` |
 | `SalesOrderAddresses` | Optional `CustomerAddresses` |
-| `SalesOrderApprovals` | `SalesOrderChangeRequests` |
-| `SalesOrderExceptions`, `SalesBuyerRequests`, `SalesFulfilmentLineVisibility` | `SalesOrderLines` |
-| `SalesFulfilmentLineVisibility` | `SalesFulfilmentReferences` |
+| `SalesBuyerRequests` | `SalesOrderLines` |
 
 ## Indexes for Required Queries
 
@@ -329,17 +274,16 @@ All foreign keys use `ON DELETE NO ACTION`. Required relationships are indexed. 
 | `IX_SalesOrders_Status_UpdatedAt` on `(Status, UpdatedAt, Id)` | Operational queues and age sorting |
 | `IX_SalesOrders_Channel_CreatedAt` on `(SalesChannelId, CreatedAt DESC, Id)` | Channel filtering and ordering |
 | `IX_SalesOrderLines_ExternalSkuId` on `(ExternalSkuId, SalesOrderId)` | SKU order search |
-| `IX_SalesOrderExceptions_Status_Type_OpenedAt` on `(Status, ExceptionType, OpenedAt, Id)` | Exception queue |
 | `IX_SalesBuyerRequests_Status_UpdatedAt` on `(Status, UpdatedAt, Id)` | Buyer-request visibility |
 | `IX_SalesFulfilmentReferences_Status_UpdatedAt` on `(FulfilmentStatus, UpdatedAt, Id)` | Fulfilment visibility |
 
-## Transactions and Concurrency
+## Transaction Boundaries and Concurrency
 
 - Create an order, its contact/address snapshots, and lines in one transaction.
-- Apply every valid status transition with the current `SalesOrders.RowVersion` and update affected line state in one transaction.
-- Record a change request and policy result before approval. Apply an approved change only after re-reading the request and order under optimistic concurrency; requester and approver subjects must differ.
+- Apply Draft edits with current order and affected line `RowVersion` values; apply a valid status transition with the current order `RowVersion`. Update all affected rows and timestamps atomically.
+- Update order state from an accepted Inventory result in one transaction.
 - Record a buyer request after Purchasing accepts it and mark Sales released only after Fulfilment accepts the release contract.
-- Apply valid Purchasing or Fulfilment business updates and update copied visibility in one transaction.
+- Apply valid Purchasing or Fulfilment updates and update copied visibility and current order state in one transaction.
 - Do not hold a database transaction open across an HTTP call.
 
 ## External References
@@ -348,45 +292,45 @@ All foreign keys use `ON DELETE NO ACTION`. Required relationships are indexed. 
 |---|---|---:|
 | `ExternalProductId`, `ExternalSkuId`, `ExternalBarcodeId` | Inventory Management | No |
 | `ExternalPurchasingBuyerRequestId`, `ExternalPurchaseOrderId` | Purchasing | No |
-| `ExternalFulfilmentTaskId`, `ExternalFulfilmentTaskLineId` | Order Fulfilment | No |
-| Customer, requester, approver, and creator subject columns | Authentik/platform identity | No |
+| `ExternalFulfilmentTaskId` | Order Fulfilment | No |
+| Customer and creator subject columns | Authentik/platform identity | No |
 
 ## Requirement Traceability
 
 | Requirement | Persistence coverage |
 |---|---|
-| `SAL-DOM-001` | Customer references, channels, order snapshots, and lines are committed atomically |
-| `SAL-DOM-002` | Required `SalesChannelId`, seeded `SalesChannels`, and channel indexes preserve origin |
-| `SAL-DOM-003` | External Inventory IDs and line stocked state persist accepted validation outcomes |
-| `SAL-DOM-004` | Current line and order states record the business result of accepted availability checks |
-| `SAL-DOM-005` | `SalesBuyerRequests` owns origination context and copies Purchasing IDs/status without a cross-database FK |
-| `SAL-DOM-006` | Checked current status, optimistic concurrency, and transactional transition rules |
-| `SAL-DOM-007` | Delivery snapshots and the accepted fulfilment reference persist release evidence |
-| `SAL-DOM-008` | Fulfilment header/line visibility and current order status persist accepted fulfilment updates |
-| `SAL-DOM-009` | Change requests, approvals, policy snapshots, reasons, self-approval evidence, and optimistic concurrency |
-| `SAL-DOM-010` | Purpose-built order, line, exception, buyer-request, and fulfilment indexes |
+| `SAL-DOM-001` | Customer account, contact, address, and authenticated-subject scope records |
+| `SAL-DOM-002` | Unique Draft order identity, required customer/channel origin, and atomic creation |
+| `SAL-DOM-003` | Draft-only line data and order/line concurrency tokens |
+| `SAL-DOM-004` | Submission timestamps and checked order states persist the accepted submission outcome |
+| `SAL-DOM-005` | External Inventory identifiers and stocked state support product and availability validation |
+| `SAL-DOM-006` | `SalesBuyerRequests` owns origination context and copies Open/Linked/Satisfied Purchasing state |
+| `SAL-DOM-007` | Accepted Fulfilment task reference and release timestamp persist release evidence |
+| `SAL-DOM-008` | Fulfilment status, shipment, tracking, completion, source, and update identity persist accepted updates |
+| `SAL-DOM-009` | Purpose-built order, line, buyer-request, and fulfilment indexes support scoped queries |
 
-Business authorization, field-level validation, allowed status transitions, Inventory calls, and response shaping remain API/domain responsibilities. Persistence supplies the durable evidence and constraints they require.
+Authorization, field-level validation, allowed status transitions, Inventory calls, and response shaping remain API/domain responsibilities. Persistence supplies the durable evidence and constraints they require.
 
 ### Business Rule Traceability
 
 | Rule | Persistence or domain disposition |
 |---|---|
-| `SAL-BR-001` | Required customer/channel FKs, one contact snapshot, billing/shipping uniqueness, and at least one line enforced by aggregate transaction |
-| `SAL-BR-002` | `Quantity > 0` check on every order line |
-| `SAL-BR-003` | Inventory external IDs and accepted availability results are persisted; active-product decision remains an Inventory call/domain guard |
-| `SAL-BR-004` | Inventory owns reservation mutation; Sales records the resulting business state |
-| `SAL-BR-005` | Non-stocked line check and unique `SalesBuyerRequests` relationship; release guard remains domain logic |
-| `SAL-BR-006` | Required data constraints plus availability, buyer-request, and approval states support the release guard |
-| `SAL-BR-007` | Policy amount/currency, approval requirement, requester, and decision evidence; threshold evaluation remains configurable domain logic |
-| `SAL-BR-008` | Change request/approval records and order `RowVersion` protect coordinated amendments |
-| `SAL-BR-009` | Unique customer subject mapping and indexed `CustomerAccountId`; authorization enforces authenticated scope |
+| `SAL-BR-001` | Required customer/channel FKs and seeded supported channels |
+| `SAL-BR-002` | One contact snapshot, billing/shipping uniqueness, and at least one line enforced by aggregate transaction |
+| `SAL-BR-003` | `Quantity > 0` check on every order line |
+| `SAL-BR-004` | Inventory external IDs persist accepted stocked-line identity; active-product validation remains an Inventory call/domain guard |
+| `SAL-BR-005` | Unique `SalesBuyerRequests` relationship and Satisfied state support the release guard |
+| `SAL-BR-006` | Release timestamp and accepted Fulfilment reference are committed only after reservation and Fulfilment acceptance |
+| `SAL-BR-007` | Unique customer subject mapping and indexed `CustomerAccountId`; authorization enforces authenticated scope |
+| `SAL-BR-008` | Order and line `RowVersion` values protect Draft edits and reject stale writes |
 
-## Seed and Lifecycle Policy
+## Retention and Seed Policy
 
 - Seed deterministic `SalesAssistant` and `CustomerOrdering` channel rows.
 - Load customer accounts, contacts, users, and addresses through rerunnable Sales-owned environment tooling, not EF model seed data.
-- Do not physically delete orders, lines, snapshots, approvals, exceptions, buyer-request context, or fulfilment visibility.
+- Retain orders, lines, snapshots, buyer-request context, and fulfilment visibility for the ERP retention period.
+- Deactivate customer reference records instead of deleting records referenced by orders.
+- Purge only unreferenced inactive customer reference data under an explicit retention job; never cascade-delete order evidence.
 
 ## Excluded Schema
 
@@ -397,6 +341,16 @@ This MVP design intentionally excludes product master tables, inventory balances
 - Map every type, maximum length, check constraint, unique/filter index, `rowversion`, and `DeleteBehavior.NoAction` explicitly.
 - Keep external IDs as scalar properties with no navigation properties.
 - Configure value conversions for statuses to their documented strings, never numeric enum ordinals.
-- Configure decision entities as append-only in application behavior; migrations must not replace them with central audit tables without a design change.
 - Use `__SalesMigrationsHistory` and inspect every generated migration for cross-database references, cascade deletes, unbounded payload columns, missing checks, or destructive schema changes.
-- Add SQL Server integration tests for customer scope, positive quantities, status checks, optimistic concurrency, and migration application.
+
+## Proposed Persistence Tests
+
+- Apply all migrations to an empty SQL Server database and verify `__SalesMigrationsHistory`.
+- Verify unique account number, identity subject, order number, order line number, snapshot type, and external Fulfilment task constraints.
+- Verify required snapshots, positive line quantities, supported statuses, and SKU-or-description checks reject invalid rows.
+- Verify customer-scope queries cannot return another account's orders.
+- Verify concurrent Draft edits produce one success and one `DbUpdateConcurrencyException`; the failed command changes no lines.
+- Verify edits in every non-Draft status and invalid status transitions leave all rows unchanged.
+- Verify duplicate buyer-request and Fulfilment updates are idempotent by their external IDs.
+- Verify accepted Purchasing and Fulfilment updates change copied visibility and order state atomically.
+- Verify every FK uses `NO ACTION` and no migration creates a cross-database FK.

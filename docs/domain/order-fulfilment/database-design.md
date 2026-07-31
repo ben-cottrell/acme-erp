@@ -30,17 +30,25 @@ erDiagram
     FulfilmentTasks ||--o{ Packages : packs
     Packages ||--|{ PackageLines : contains
     FulfilmentTaskLines ||--o{ PackageLines : packs
-    FulfilmentTasks ||--o{ ShipmentPurchases : ships
+    FulfilmentTasks ||--o| ShipmentPurchases : ships
     ShipmentPurchases ||--o{ ShipmentLabels : labels
-    FulfilmentTasks ||--o{ FulfilmentExceptions : exposes
-    FulfilmentTaskLines ||--o{ FulfilmentExceptions : concerns
-    FulfilmentExceptions ||--o{ FulfilmentExceptionDecisions : decides
-    FulfilmentTasks ||--o{ FulfilmentCompletions : completes
+    FulfilmentTasks ||--o| FulfilmentCompletions : completes
     FulfilmentCompletions ||--|{ FulfilmentCompletionLines : contains
     FulfilmentTaskLines ||--o{ FulfilmentCompletionLines : completes
     FulfilmentTasks ||--o{ InventoryReferences : records
     FulfilmentTaskLines ||--o{ InventoryReferences : concerns
 ```
+
+## Table Catalog
+
+| Area | Tables |
+|---|---|
+| Released work | `FulfilmentTasks`, `FulfilmentTaskLines`, `FulfilmentDeliveryDetails` |
+| Picking | `PickRecords`, `PickRecordLines`, `PickSerials` |
+| Packing | `Packages`, `PackageLines` |
+| Shipping | `ShipmentPurchases`, `ShipmentLabels` |
+| Completion | `FulfilmentCompletions`, `FulfilmentCompletionLines` |
+| Inventory integration | `InventoryReferences` |
 
 ## Released Work Tables
 
@@ -56,14 +64,17 @@ erDiagram
 | `Status` | `nvarchar(32)` | No | Fulfilment task status catalog |
 | `Priority` | `int` | No | `1` highest through `5` lowest; default `3` |
 | `AssignedOperatorSubject` | `nvarchar(200)` | Yes | Current assignment |
+| `SourceService` | `nvarchar(100)` | No | Authenticated Sales release source |
+| `ReleaseIdempotencyKey` | `nvarchar(200)` | No | Authenticated Sales release identity; unique with source |
+| `CorrelationId` | `uniqueidentifier` | No | Release and workflow correlation identity |
 | `ReleasedAt` | `datetimeoffset(7)` | No | Sales release time |
+| `PickingStartedAt` | `datetimeoffset(7)` | Yes | Set when the task is claimed |
 | `CreatedAt` | `datetimeoffset(7)` | No | UTC |
 | `UpdatedAt` | `datetimeoffset(7)` | No | UTC |
 | `CompletedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `CancelledAt` | `datetimeoffset(7)` | Yes | UTC |
 | `RowVersion` | `rowversion` | No | Aggregate concurrency token |
 
-Unique constraints: `UQ_FulfilmentTasks_TaskNumber` and `UQ_FulfilmentTasks_ExternalSalesOrderId`. Checks constrain status and priority.
+Unique constraints apply to `TaskNumber`, `ExternalSalesOrderId`, and `(SourceService, ReleaseIdempotencyKey)`. Checks constrain status and priority.
 
 ### `FulfilmentTaskLines`
 
@@ -78,10 +89,8 @@ Unique constraints: `UQ_FulfilmentTasks_TaskNumber` and `UQ_FulfilmentTasks_Exte
 | `SkuCode` | `nvarchar(64)` | No | Released snapshot |
 | `ItemDescription` | `nvarchar(500)` | No | Released snapshot |
 | `RequiredQuantity` | `decimal(18,4)` | No | Greater than zero |
-| `PickedQuantity` | `decimal(18,4)` | No | Non-negative; not above requirement without approved exception |
+| `PickedQuantity` | `decimal(18,4)` | No | Non-negative; not above required quantity |
 | `PackedQuantity` | `decimal(18,4)` | No | Non-negative; not above picked |
-| `FulfilledQuantity` | `decimal(18,4)` | No | Non-negative; not above packed |
-| `BackorderedQuantity` | `decimal(18,4)` | No | Non-negative; fulfilled plus backordered not above required |
 | `UnitOfMeasure` | `nvarchar(16)` | No | Inventory-supplied code |
 | `IsSerialized` | `bit` | No | Released Inventory policy |
 | `Status` | `nvarchar(32)` | No | Fulfilment line status |
@@ -124,7 +133,7 @@ One immutable released delivery snapshot per task.
 | `Id` | `uniqueidentifier` | No | Primary key |
 | `FulfilmentTaskId` | `uniqueidentifier` | No | FK to `FulfilmentTasks.Id` |
 | `SequenceNumber` | `int` | No | Positive attempt sequence |
-| `Status` | `nvarchar(16)` | No | `InProgress`, `Completed`, `Exception`, `Cancelled` |
+| `Status` | `nvarchar(16)` | No | `InProgress` or `Completed` |
 | `OperatorSubject` | `nvarchar(200)` | No | Acting operator |
 | `StartedAt` | `datetimeoffset(7)` | No | UTC |
 | `CompletedAt` | `datetimeoffset(7)` | Yes | UTC |
@@ -140,12 +149,11 @@ Unique constraint: `(FulfilmentTaskId, SequenceNumber)`.
 | `PickRecordId` | `uniqueidentifier` | No | FK to `PickRecords.Id` |
 | `FulfilmentTaskLineId` | `uniqueidentifier` | No | FK to `FulfilmentTaskLines.Id` |
 | `ExternalPickedProductId` | `uniqueidentifier` | No | Actual Inventory product |
-| `ExternalPickedSkuId` | `uniqueidentifier` | No | Actual Inventory SKU; differs only under approved substitution |
+| `ExternalPickedSkuId` | `uniqueidentifier` | No | Must equal the released Inventory SKU |
 | `Quantity` | `decimal(18,4)` | No | Greater than zero |
-| `Condition` | `nvarchar(16)` | No | `Accepted` or `Damaged` |
 | `RecordedAt` | `datetimeoffset(7)` | No | UTC |
 
-Unique constraint: `(PickRecordId, FulfilmentTaskLineId, ExternalPickedSkuId)`. Substitution and quantity exceptions require a linked `FulfilmentExceptions` record before progression.
+Unique constraint: `(PickRecordId, FulfilmentTaskLineId, ExternalPickedSkuId)`. Product, SKU, serial, and quantity mismatches reject the command without changing pick totals.
 
 ### `PickSerials`
 
@@ -170,7 +178,7 @@ Unique constraints on `(PickRecordLineId, ExternalInventorySerialId)` and `(Pick
 | `Width` | `decimal(18,3)` | No | Greater than zero |
 | `Height` | `decimal(18,3)` | No | Greater than zero |
 | `MeasurementSystem` | `nvarchar(8)` | No | `Metric` for MVP |
-| `Status` | `nvarchar(16)` | No | `Open`, `Packed`, `Shipped`, `Cancelled` |
+| `Status` | `nvarchar(16)` | No | `Open`, `Packed`, or `Shipped` |
 | `PackedBySubject` | `nvarchar(200)` | Yes | Required when packed |
 | `PackedAt` | `datetimeoffset(7)` | Yes | UTC |
 | `RowVersion` | `rowversion` | No | Concurrency token |
@@ -196,7 +204,7 @@ Unique constraint on `(PackageId, FulfilmentTaskLineId)`. Packed totals across p
 | `FulfilmentTaskId` | `uniqueidentifier` | No | FK to `FulfilmentTasks.Id` |
 | `Provider` | `nvarchar(50)` | No | `RoyalMail` for MVP; schema remains provider-neutral |
 | `ServiceLevel` | `nvarchar(100)` | No | Requested service snapshot |
-| `Status` | `nvarchar(24)` | No | `Purchased` or `Voided` |
+| `ProviderRequestId` | `nvarchar(200)` | No | Provider idempotency identity; unique |
 | `PackageCount` | `int` | No | Greater than zero |
 | `Amount` | `decimal(19,4)` | Yes | Provider-returned amount |
 | `CurrencyCode` | `char(3)` | Yes | Required with amount |
@@ -206,7 +214,7 @@ Unique constraint on `(PackageId, FulfilmentTaskLineId)`. Packed totals across p
 | `PurchasedAt` | `datetimeoffset(7)` | No | UTC |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-Unique constraints apply to provider transaction, shipment, and tracking references.
+Unique constraints apply to `FulfilmentTaskId`, provider request, provider transaction, shipment, and tracking references.
 
 ### `ShipmentLabels`
 
@@ -218,43 +226,13 @@ Unique constraints apply to provider transaction, shipment, and tracking referen
 | `StorageReference` | `nvarchar(500)` | Yes | Optional external PDF/object reference; no label blob |
 | `ContentType` | `nvarchar(100)` | No | `application/pdf` for MVP |
 | `ContentSha256` | `char(64)` | Yes | Optional evidence digest |
-| `Status` | `nvarchar(16)` | No | `Available`, `Printed`, or `Voided` |
+| `Status` | `nvarchar(16)` | No | `Available` or `Printed` |
 | `CreatedAt` | `datetimeoffset(7)` | No | UTC |
 | `PrintedAt` | `datetimeoffset(7)` | Yes | Application-reported evidence |
 | `PrintedBySubject` | `nvarchar(200)` | Yes | Application-reported actor |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
 Unique constraint: `(ShipmentPurchaseId, ProviderLabelId)`.
-
-## Exception and Approval Tables
-
-### `FulfilmentExceptions`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `FulfilmentTaskId` | `uniqueidentifier` | No | FK to `FulfilmentTasks.Id` |
-| `FulfilmentTaskLineId` | `uniqueidentifier` | Yes | Optional FK to task line |
-| `ExceptionType` | `nvarchar(32)` | No | `ShortPick`, `Substitution`, `Damaged`, `Packing`, `Cancellation`, `Reversal`, or `Policy` |
-| `Status` | `nvarchar(24)` | No | `Open`, `PendingApproval`, `Approved`, `Rejected`, `Resolved`, `Cancelled` |
-| `ApprovedResumeStatus` | `nvarchar(32)` | Yes | Optional business state authorized by the decision |
-| `RecordedBySubject` | `nvarchar(200)` | No | Cannot approve related control action |
-| `Reason` | `nvarchar(1000)` | No | Business/operator reason |
-| `DetailsJson` | `nvarchar(max)` | Yes | Valid sanitized JSON |
-| `OpenedAt` | `datetimeoffset(7)` | No | UTC |
-| `ResolvedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Concurrency token |
-
-### `FulfilmentExceptionDecisions`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only decision attempt |
-| `FulfilmentExceptionId` | `uniqueidentifier` | No | FK to `FulfilmentExceptions.Id` |
-| `Decision` | `nvarchar(16)` | No | `Approved`, `Rejected`, `Denied` |
-| `DecidedBySubject` | `nvarchar(200)` | No | Must differ from recorder for approval |
-| `Reason` | `nvarchar(1000)` | Yes | Required for reject/deny |
-| `DecidedAt` | `datetimeoffset(7)` | No | UTC |
 
 ## Completion and External Business References
 
@@ -263,16 +241,14 @@ Unique constraint: `(ShipmentPurchaseId, ProviderLabelId)`.
 | Column | SQL type | Null | Rules |
 |---|---|---:|---|
 | `Id` | `uniqueidentifier` | No | Primary key |
-| `FulfilmentTaskId` | `uniqueidentifier` | No | FK to `FulfilmentTasks.Id` |
-| `SequenceNumber` | `int` | No | Positive; supports partial then final completion |
-| `CompletionType` | `nvarchar(16)` | No | `Partial`, `Final`, `Reversal` |
-| `Status` | `nvarchar(24)` | No | `Completed` or `Reversed` |
+| `FulfilmentTaskId` | `uniqueidentifier` | No | FK to `FulfilmentTasks.Id`; unique |
 | `CompletedBySubject` | `nvarchar(200)` | No | Acting user/service |
-| `ApprovedExceptionId` | `uniqueidentifier` | Yes | Optional FK supporting controlled override |
+| `ExternalSalesUpdateId` | `uniqueidentifier` | No | Sales completion update identity; unique |
+| `CorrelationId` | `uniqueidentifier` | No | Completion operation correlation identity |
 | `CompletedAt` | `datetimeoffset(7)` | No | Set after Sales and Inventory accept required updates |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-Unique constraint on `(FulfilmentTaskId, SequenceNumber)`.
+Unique constraint on `FulfilmentTaskId` permits one immutable completion per task.
 
 ### `FulfilmentCompletionLines`
 
@@ -281,11 +257,9 @@ Unique constraint on `(FulfilmentTaskId, SequenceNumber)`.
 | `Id` | `uniqueidentifier` | No | Primary key |
 | `FulfilmentCompletionId` | `uniqueidentifier` | No | FK to `FulfilmentCompletions.Id` |
 | `FulfilmentTaskLineId` | `uniqueidentifier` | No | FK to `FulfilmentTaskLines.Id` |
-| `FulfilledQuantity` | `decimal(18,4)` | No | Non-negative |
-| `BackorderedQuantity` | `decimal(18,4)` | No | Non-negative |
-| `ReversedQuantity` | `decimal(18,4)` | No | Non-negative |
+| `ConsumedQuantity` | `decimal(18,4)` | No | Positive and exactly equal to the task line required quantity |
 
-Unique constraint on `(FulfilmentCompletionId, FulfilmentTaskLineId)`. Domain logic validates cumulative quantities against the released requirement.
+Unique constraint on `(FulfilmentCompletionId, FulfilmentTaskLineId)`. Domain logic requires one line for every task line and exact required quantities.
 
 ### `InventoryReferences`
 
@@ -294,27 +268,28 @@ Unique constraint on `(FulfilmentCompletionId, FulfilmentTaskLineId)`. Domain lo
 | `Id` | `uniqueidentifier` | No | Primary key |
 | `FulfilmentTaskId` | `uniqueidentifier` | No | FK to `FulfilmentTasks.Id` |
 | `FulfilmentTaskLineId` | `uniqueidentifier` | Yes | Optional FK to task line |
-| `ReferenceType` | `nvarchar(16)` | No | `Reservation`, `Consumption`, or `Reversal` |
+| `ReferenceType` | `nvarchar(16)` | No | `Reservation` or `Consumption` |
 | `ExternalInventoryReservationId` | `uniqueidentifier` | Yes | Inventory reservation reference |
 | `ExternalInventoryMovementId` | `uniqueidentifier` | Yes | Inventory movement reference |
 | `RecordedAt` | `datetimeoffset(7)` | No | UTC |
 
 Checks require the external reference appropriate to `ReferenceType`. Filtered unique indexes make Inventory reservation and movement IDs unique when present.
 
-## Status Catalogs
+## Status Models
 
 | Area | Allowed values |
 |---|---|
-| Fulfilment task | `Released`, `Picking`, `PickException`, `Picked`, `Packing`, `Packed`, `ShippingPurchased`, `LabelPrinted`, `PartiallyFulfilled`, `Completed`, `Cancelled`, `Exception` |
-| Task line | `Released`, `Picking`, `Picked`, `Packed`, `PartiallyFulfilled`, `Fulfilled`, `Backordered`, `Cancelled`, `Exception` |
-| Shipment purchase | `Purchased`, `Voided` |
-| Completion | `Completed`, `Reversed` |
+| Fulfilment task | `Released`, `Picking`, `Picked`, `Packing`, `Packed`, `ShippingPurchased`, `LabelReady`, `Completing`, `Completed` |
+| Task line | `Released`, `Picking`, `Picked`, `Packed`, `Completed` |
+| Pick record | `InProgress`, `Completed` |
+| Package | `Open`, `Packed`, `Shipped` |
+| Shipment label | `Available`, `Printed` |
 
-SQL checks limit current values. Order Fulfilment enforces transition graphs and controlled guards from `requirements.md`.
+Valid task transitions are `Released -> Picking`, `Picking -> Picked`, `Picked -> Packing`, `Packing -> Packed`, `Packed -> ShippingPurchased`, `ShippingPurchased -> LabelReady`, `LabelReady -> Completing`, and `Completing -> Completed`. `Completed` is terminal. Pick confirmation, packing, Inventory consumption, and completion each require every task line to equal its exact released quantity.
 
 ## Local Foreign Keys and Delete Behavior
 
-All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The local graph consists of task-owned lines/delivery, picks and lines/serials, packages and lines, accepted shipment purchases/labels, exceptions/decisions, completion lines, and accepted Inventory references. External Sales, Inventory, courier, and identity references never receive SQL foreign keys.
+All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The local graph consists of task-owned lines/delivery, picks and lines/serials, packages and lines, accepted shipment purchases/labels, completion lines, and accepted Inventory references. External Sales, Inventory, courier, and identity references never receive SQL foreign keys.
 
 ## Indexes for Required Queries
 
@@ -324,23 +299,21 @@ All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The
 | `IX_FulfilmentTasks_Assignee_Status_ReleasedAt` on `(AssignedOperatorSubject, Status, ReleasedAt, Id)` | Assigned workload |
 | `IX_FulfilmentTasks_Channel_Status` on `(SalesChannel, Status, ReleasedAt, Id)` | Channel filtering |
 | `IX_FulfilmentTaskLines_ExternalSkuId` on `(ExternalSkuId, FulfilmentTaskId)` | SKU queue search |
-| `IX_FulfilmentExceptions_Status_Type_OpenedAt` on `(Status, ExceptionType, OpenedAt, Id)` | Supervisor exception queue |
 | `IX_ShipmentPurchases_TrackingReference` filtered unique on `TrackingReference` | Tracking lookup |
-| `IX_ShipmentPurchases_Provider_Status_PurchasedAt` on `(Provider, Status, PurchasedAt, Id)` | Shipment review |
-| `IX_FulfilmentCompletions_Task_Sequence` on `(FulfilmentTaskId, SequenceNumber)` | Completion sequencing |
+| `IX_ShipmentPurchases_Provider_PurchasedAt` on `(Provider, PurchasedAt, Id)` | Shipment review |
+| `UX_FulfilmentCompletions_Task` unique on `FulfilmentTaskId` | One full completion per task |
 
 ## Transactions and Concurrency
 
 - Intake an accepted released Sales payload, delivery snapshot, and lines in one transaction.
 - Apply task transitions only with `FulfilmentTasks.RowVersion` and update affected lines atomically.
-- Record picks and serials in one transaction, then update cumulative line quantities. Quantity, SKU, serial, damage, short-pick, or substitution mismatches open an exception instead of silently progressing.
+- Validate product, SKU, serial, and quantity inputs before recording picks. Persist valid pick lines and serials and update cumulative line quantities in one transaction; rejected commands leave pick totals unchanged.
 - Confirm packing only when package lines reconcile with accepted picks. Update package and task state under optimistic concurrency.
 - Persist a shipment purchase only after the courier accepts it and returns the required provider, shipment, and tracking references.
-- Label evidence changes the task to `LabelPrinted` only when a label reference exists or an approved override permits progression.
+- Label evidence changes the task to `LabelReady` only when a valid label reference exists.
 - Create a completion, its lines, accepted Inventory references, and current task status in one transaction after Inventory and Sales accept their required business updates.
-- Partial completion requires an approved exception and stores fulfilled/backordered quantities sent to Sales. Cumulative completion quantities cannot exceed released requirements.
-- Record reversal as a new completion plus an accepted Inventory reversal reference; never mutate the original completion or provider evidence.
-- Self-approval, cumulative pick/pack/completion reconciliation, serial uniqueness across picks, transition legality, and completion guards are cross-row domain rules enforced inside local transactions.
+- Completion stores the exact consumed quantity for every task line, Inventory movement references, the accepted Sales update identity, and the operation correlation identity.
+- Cumulative pick and pack reconciliation, exact completion reconciliation, serial uniqueness across picks, transition legality, and completion guards are cross-row domain rules enforced inside local transactions.
 - Never hold a database transaction open across Sales, Inventory, or courier HTTP calls.
 
 ## External References
@@ -350,21 +323,21 @@ All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The
 | Sales order and line IDs | Sales | No |
 | Product, SKU, serial, reservation, and movement IDs | Inventory Management | No |
 | Provider transaction, shipment, tracking, and label IDs | Courier provider | No |
-| Operator, supervisor, actor, and service subjects | Authentik/platform identity | No |
+| Operator, actor, and service subjects | Authentik/platform identity | No |
 
 ## Requirement Traceability
 
 | Requirement | Persistence coverage |
 |---|---|
 | `FUL-DOM-001` | Unique Sales order identity, released header/line/delivery snapshots, and atomic intake |
-| `FUL-DOM-002` | Checked current task/line states, concurrency, and transactional transition rules |
-| `FUL-DOM-003` | Pick attempts/lines/serials, actual Inventory IDs, quantity/condition evidence, and exception links |
-| `FUL-DOM-004` | Typed exceptions, recorder identity, approval decisions/denials, reasons, and self-approval transaction guard |
-| `FUL-DOM-005` | Accepted shipment purchase, provider/shipment/tracking references, and label references |
-| `FUL-DOM-006` | Completion/line records, package/shipment/label evidence, and accepted Inventory references |
-| `FUL-DOM-007` | Approved business exception, partial completion lines, and cumulative fulfilled/backordered quantities |
-| `FUL-DOM-008` | Typed accepted Inventory reservation/consumption/reversal references with unique external IDs |
-| `FUL-DOM-009` | Purpose-built task, assignment, SKU, business exception, shipment, and completion indexes |
+| `FUL-DOM-002` | Assignment identity, picking start time, task concurrency, and transactional claim transition |
+| `FUL-DOM-003` | Pick attempts, lines, serials, exact Inventory IDs, quantity evidence, and pre-persistence mismatch validation |
+| `FUL-DOM-004` | Exact required and picked quantities plus task/line state support all-line pick confirmation |
+| `FUL-DOM-005` | Package dimensions, exact package-line quantities, actor, and packing time |
+| `FUL-DOM-006` | One accepted shipment purchase with unique provider, shipment, and tracking references |
+| `FUL-DOM-007` | Label reference tied by FK to the accepted shipment purchase |
+| `FUL-DOM-008` | One exact completion, consumed line quantities, Inventory movement IDs, Sales update ID, and correlation ID |
+| `FUL-DOM-009` | Purpose-built task, assignment, SKU, shipment, and completion indexes |
 
 Authorization, payload/schema validation, transition decisions, provider adapter behavior, Inventory/Sales calls, pagination, data serialization, and cumulative cross-row validation remain domain/API responsibilities.
 
@@ -372,20 +345,23 @@ Authorization, payload/schema validation, transition decisions, provider adapter
 
 | Rule | Persistence or domain disposition |
 |---|---|
-| `FUL-BR-001` | Unique Sales order/release identity and immutable released snapshots prevent work without a Sales release |
-| `FUL-BR-002` | Required-versus-picked quantities and actual SKU/serial evidence drive mismatch exceptions and progression guards |
-| `FUL-BR-003` | Shipment purchase and label statuses/references support the shipping-before-label guard; approved override is explicit |
-| `FUL-BR-004` | Pick, pack, shipment, label, Inventory, and Sales business states are checked before completion is persisted |
-| `FUL-BR-005` | Inventory reference rows carry the task, Sales order through the task, and accepted reservation or movement reference |
-| `FUL-BR-006` | Completion lines persist fulfilled/backordered quantities after Sales accepts the update |
-| `FUL-BR-007` | Exception recorder and decision actor support self-approval prevention and append-only denial evidence |
-| `FUL-BR-008` | Provider is a persisted transaction snapshot; Royal Mail remains environment configuration rather than a schema constraint |
+| `FUL-BR-001` | Unique Sales release identity and immutable released snapshots prevent work without a Sales release |
+| `FUL-BR-002` | Positive required quantities and reservation reference rows preserve release ownership data |
+| `FUL-BR-003` | Required-versus-picked quantities and exact SKU/serial evidence drive confirmation guards |
+| `FUL-BR-004` | Assignment identity and task state are checked for every operator mutation |
+| `FUL-BR-005` | Exact pick and package-line reconciliation guards packing |
+| `FUL-BR-006` | Shipment purchase FK and label reference enforce shipping-before-label ordering |
+| `FUL-BR-007` | LabelReady state, exact completion lines, Inventory movements, and Sales update ID guard completion |
+| `FUL-BR-008` | Unique immutable shipment, label, Inventory result, Sales update, and completion records support deterministic replay |
+| `FUL-BR-009` | Task and workflow `RowVersion` values reject stale progress writes |
 
-## Seed and Lifecycle Policy
+## Retention and Seed Policy
 
 - Do not EF-seed fulfilment tasks, courier transactions, labels, or workflow examples.
 - Courier provider and service-level configuration belongs to environment/application configuration; persisted values are transaction snapshots.
-- Never physically delete released snapshots, pick/pack evidence, accepted shipment purchases, labels, decisions, completions, or Inventory references.
+- Retain released snapshots, pick/pack evidence, accepted shipment purchases, labels, completions, and Inventory references for the ERP retention period.
+- Retain provider transaction, shipment, tracking, and label references as fulfilment evidence.
+- Purge only incomplete work under an explicit retention policy that preserves every record with downstream evidence; never cascade-delete completed task evidence.
 
 ## Excluded Schema
 
@@ -396,6 +372,17 @@ This design excludes Sales order/customer ownership, product master and stock ba
 - Explicitly map every SQL type, maximum length, decimal precision, check, unique/filter index, `rowversion`, and `DeleteBehavior.NoAction`.
 - Keep all Sales, Inventory, courier, and identity references scalar with no cross-domain navigation.
 - Persist status strings exactly as documented, never enum ordinals.
-- Treat exception decisions and completion evidence as append-only in persistence behavior.
+- Treat completion and accepted provider evidence as append-only in persistence behavior.
 - Use `__OrderFulfilmentMigrationsHistory`; inspect migrations for cross-database FKs, cascade deletes, label blobs, provider-specific credentials, missing business references, or destructive schema changes.
-- Add SQL Server integration tests for unique Sales order intake, quantity checks, serial uniqueness, self-approval denial, optimistic task concurrency, completion guards, provider reference uniqueness, status checks, and migration application.
+
+## Proposed Persistence Tests
+
+- Apply all migrations to an empty SQL Server database and verify `__OrderFulfilmentMigrationsHistory`.
+- Verify unique Sales order intake, release idempotency key, task number, task line number, pick sequence, package number, provider references, labels, serials, completion task, and Sales update identity.
+- Verify invalid product, SKU, serial, quantity, package, status, and completion inputs reject writes without changing lifecycle state.
+- Verify concurrent task transitions produce one success and one `DbUpdateConcurrencyException` without divergent line state.
+- Verify valid pick and pack commands update evidence, cumulative quantities, and task/line status atomically.
+- Verify shipment and label progression requires accepted provider references and stores no credential or label binary.
+- Verify full completion persists exact consumed quantities and accepted Sales and Inventory references atomically.
+- Verify attempts to complete with any quantity other than the exact released quantity leave completion, task, Sales-update, and Inventory-reference rows unchanged.
+- Verify every FK uses `NO ACTION` and no migration creates a cross-database FK.

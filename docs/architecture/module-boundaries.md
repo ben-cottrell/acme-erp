@@ -2,9 +2,7 @@
 
 ## Status
 
-This document is retained as a compatibility summary for earlier module-based wording. The controlling boundary model is now `docs/architecture/domain-and-application-boundaries.md`.
-
-The architecture no longer treats each ERP module as a full-stack `API + UI + database` unit. Bounded contexts are domain services. User-facing workloads are application services.
+This document summarizes the boundary model defined in `docs/architecture/domain-and-application-boundaries.md`. Bounded contexts are domain services, and user-facing workloads are application services.
 
 ## Updated Boundary Rules
 
@@ -15,28 +13,26 @@ The architecture no longer treats each ERP module as a full-stack `API + UI + da
 - Application UIs call only their paired application APIs.
 - Application APIs do not own databases, EF Core migrations, or durable business state.
 - Application APIs call one or more domain APIs to read or mutate durable business state.
-- Domain APIs remain authoritative for business authorization, validation, persistence, domain invariants, and local self-approval rules.
+- Domain APIs remain authoritative for business authorization, validation, persistence, domain invariants, and state transitions.
 
 ## Domain Boundary Matrix
 
 | Domain bounded context | Domain API | Database | Owns | Does not own |
 |---|---|---|---|---|
 | Sales | `Acme.Erp.Sales.Api` | Sales database | Customer account reference data for MVP, sales orders, order channels, buyer request state, release-to-fulfilment decisions | Sales assistant UI, customer ordering UI, picking, packing, shipping, PO creation, stock balance updates |
-| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, buyer request queue state, purchasing approvals, PO status | Buyer UI, goods receipt booking, inventory balances, sales order entry, finance postings |
-| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, stock checks, stock movements | Warehouse UI, purchase order authoring, sales order authoring, courier shipment purchase |
-| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, picking, packing, courier shipment records, label references, completion, exceptions | Fulfilment application UI, sales order creation, product master ownership, stock balance authority |
+| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, buyer request queue state, PO status | Buyer UI, goods receipt booking, inventory balances, sales order entry, finance postings |
+| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, informational stock checks, stock movements | Warehouse UI, purchase order authoring, sales order authoring, courier shipment purchase |
+| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, exact-quantity picking, packing, courier shipment records, label references, full completion | Fulfilment application UI, sales order creation, product master ownership, stock balance authority |
 
 ## Application Boundary Matrix
 
 | Application | Application API | Application UI | Primary users | Domain APIs consumed | Database |
 |---|---|---|---|---|---|
-| Sales Assistant | `Acme.Erp.SalesAssistant.Api` | `Acme.Erp.SalesAssistant.Ui` | Sales Assistant, Sales Supervisor | Sales, Inventory Management, Purchasing, Order Fulfilment | None |
+| Sales Assistant | `Acme.Erp.SalesAssistant.Api` | `Acme.Erp.SalesAssistant.Ui` | Sales Assistant | Sales, Inventory Management, Purchasing, Order Fulfilment | None |
 | Customer Ordering | `Acme.Erp.CustomerOrdering.Api` | `Acme.Erp.CustomerOrdering.Ui` | Authenticated Customer | Sales, Inventory Management | None |
-| Buyer | `Acme.Erp.Buyer.Api` | `Acme.Erp.Buyer.Ui` | Buyer, Purchasing Manager | Purchasing, Sales, Inventory Management | None |
+| Buyer | `Acme.Erp.Buyer.Api` | `Acme.Erp.Buyer.Ui` | Buyer | Purchasing, Sales, Inventory Management | None |
 | Warehouse Operator | `Acme.Erp.WarehouseOperator.Api` | `Acme.Erp.WarehouseOperator.Ui` | Warehouse Operator | Inventory Management, Purchasing | None |
 | Fulfilment Operator | `Acme.Erp.FulfilmentOperator.Api` | `Acme.Erp.FulfilmentOperator.Ui` | Fulfilment Operator | Order Fulfilment, Sales, Inventory Management | None |
-| Inventory Supervisor | `Acme.Erp.InventorySupervisor.Api` | `Acme.Erp.InventorySupervisor.Ui` | Inventory Supervisor | Inventory Management, Purchasing, Order Fulfilment | None |
-| Fulfilment Supervisor | `Acme.Erp.FulfilmentSupervisor.Api` | `Acme.Erp.FulfilmentSupervisor.Ui` | Fulfilment Supervisor | Order Fulfilment, Sales, Inventory Management | None |
 
 ## Boundary Diagram
 
@@ -48,12 +44,15 @@ flowchart LR
     Gravitee --> FulfilmentAppApi[Fulfilment Operator API]
     Gravitee --> SalesAssistantUi[Sales Assistant UI]
     Gravitee --> SalesAssistantApi[Sales Assistant API]
+    Gravitee --> CustomerOrderingUi[Customer Ordering UI]
+    Gravitee --> CustomerOrderingApi[Customer Ordering API]
     Gravitee --> BuyerUi[Buyer UI]
     Gravitee --> BuyerApi[Buyer API]
 
     WarehouseUi --> WarehouseApi
     FulfilmentUi --> FulfilmentAppApi
     SalesAssistantUi --> SalesAssistantApi
+    CustomerOrderingUi --> CustomerOrderingApi
     BuyerUi --> BuyerApi
 
     WarehouseApi --> InventoryApi[Inventory Domain API]
@@ -65,6 +64,8 @@ flowchart LR
     SalesAssistantApi --> InventoryApi
     SalesAssistantApi --> PurchasingApi
     SalesAssistantApi --> FulfilmentApi
+    CustomerOrderingApi --> SalesApi
+    CustomerOrderingApi --> InventoryApi
     BuyerApi --> PurchasingApi
     BuyerApi --> SalesApi
     BuyerApi --> InventoryApi
@@ -92,6 +93,7 @@ flowchart LR
 - [ ] Domain APIs own persistence and EF Core migrations for their databases.
 - [ ] Cross-domain references use external ID columns.
 - [ ] Sales releases orders and Order Fulfilment executes warehouse fulfilment state.
-- [ ] Inventory reserves at fulfilment release and consumes at fulfilment completion.
+- [ ] Inventory reserves every required line quantity at fulfilment release and consumes those exact quantities at full fulfilment completion.
+- [ ] Inventory stock checks are informational and do not change stock balances or create movements.
 - [ ] Purchasing supplies PO data for inventory receipt validation but does not book stock.
 - [ ] All ingress is routed through Gravitee with Authentik-backed identity.

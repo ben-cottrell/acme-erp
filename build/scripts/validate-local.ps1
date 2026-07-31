@@ -130,9 +130,7 @@ function Get-ExternalUiChecks {
         @{ Name = 'Customer Ordering UI'; Path = '/apps/customer-ordering/ui' },
         @{ Name = 'Buyer UI'; Path = '/apps/buyer/ui' },
         @{ Name = 'Warehouse Operator UI'; Path = '/apps/warehouse-operator/ui' },
-        @{ Name = 'Fulfilment Operator UI'; Path = '/apps/fulfilment-operator/ui' },
-        @{ Name = 'Inventory Supervisor UI'; Path = '/apps/inventory-supervisor/ui' },
-        @{ Name = 'Fulfilment Supervisor UI'; Path = '/apps/fulfilment-supervisor/ui' }
+        @{ Name = 'Fulfilment Operator UI'; Path = '/apps/fulfilment-operator/ui' }
     )
 }
 
@@ -326,7 +324,7 @@ try {
     Invoke-NativeCommand kubectl rollout status statefulset/sqlserver --namespace $Namespace --timeout=120s
     Invoke-NativeCommand kubectl wait --for=condition=complete job/sqlserver-bootstrap --namespace $Namespace --timeout=120s
     Invoke-NativeCommand kubectl get configmap --namespace $Namespace --selector "managed-by=gravitee.io,gio-type=apidefinitions.gravitee.io"
-    Invoke-NativeCommand kubectl get configmap gravitee-acme-erp-route-sales-api gravitee-acme-erp-route-fulfilment-supervisor-ui --namespace $Namespace
+    Invoke-NativeCommand kubectl get configmap gravitee-acme-erp-route-sales-api gravitee-acme-erp-route-fulfilment-operator-ui --namespace $Namespace
 
     Write-ValidationPhase 'Platform rollouts'
     Invoke-NativeCommand kubectl rollout status deployment/authentik-server --namespace $Namespace --timeout=300s
@@ -350,10 +348,6 @@ try {
     Invoke-NativeCommand kubectl rollout status deployment/warehouse-operator-ui --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status deployment/fulfilment-operator-api --namespace $Namespace --timeout=300s
     Invoke-NativeCommand kubectl rollout status deployment/fulfilment-operator-ui --namespace $Namespace --timeout=300s
-    Invoke-NativeCommand kubectl rollout status deployment/inventory-supervisor-api --namespace $Namespace --timeout=300s
-    Invoke-NativeCommand kubectl rollout status deployment/inventory-supervisor-ui --namespace $Namespace --timeout=300s
-    Invoke-NativeCommand kubectl rollout status deployment/fulfilment-supervisor-api --namespace $Namespace --timeout=300s
-    Invoke-NativeCommand kubectl rollout status deployment/fulfilment-supervisor-ui --namespace $Namespace --timeout=300s
 
     $clusterChecks = @(
         @{ Url = 'http://sales-api/healthz'; Status = 200 },
@@ -407,20 +401,6 @@ try {
         @{ Url = 'http://fulfilment-operator-ui/healthz'; Status = 200 },
         @{ Url = 'http://fulfilment-operator-ui/readyz'; Status = 200 },
         @{ Url = 'http://fulfilment-operator-ui/apps/fulfilment-operator/ui'; Status = 200 },
-        @{ Url = 'http://inventory-supervisor-api/healthz'; Status = 200 },
-        @{ Url = 'http://inventory-supervisor-api/readyz'; Status = 200 },
-        @{ Url = 'http://inventory-supervisor-api/apps/inventory-supervisor/api'; Status = 200 },
-        @{ Url = 'http://inventory-supervisor-api/openapi/v1.json'; Status = 200 },
-        @{ Url = 'http://inventory-supervisor-ui/healthz'; Status = 200 },
-        @{ Url = 'http://inventory-supervisor-ui/readyz'; Status = 200 },
-        @{ Url = 'http://inventory-supervisor-ui/apps/inventory-supervisor/ui'; Status = 200 },
-        @{ Url = 'http://fulfilment-supervisor-api/healthz'; Status = 200 },
-        @{ Url = 'http://fulfilment-supervisor-api/readyz'; Status = 200 },
-        @{ Url = 'http://fulfilment-supervisor-api/apps/fulfilment-supervisor/api'; Status = 200 },
-        @{ Url = 'http://fulfilment-supervisor-api/openapi/v1.json'; Status = 200 },
-        @{ Url = 'http://fulfilment-supervisor-ui/healthz'; Status = 200 },
-        @{ Url = 'http://fulfilment-supervisor-ui/readyz'; Status = 200 },
-        @{ Url = 'http://fulfilment-supervisor-ui/apps/fulfilment-supervisor/ui'; Status = 200 },
         @{ Url = 'http://authentik-server/-/health/live/'; Status = 200 },
         @{ Url = 'http://gravitee-apim-gateway:8082/'; Status = 404 }
     )

@@ -49,14 +49,6 @@ jobs:
             dockerfile: src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api/Dockerfile
           - image: fulfilment-operator-ui
             dockerfile: src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui/Dockerfile
-          - image: inventory-supervisor-api
-            dockerfile: src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api/Dockerfile
-          - image: inventory-supervisor-ui
-            dockerfile: src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui/Dockerfile
-          - image: fulfilment-supervisor-api
-            dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api/Dockerfile
-          - image: fulfilment-supervisor-ui
-            dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v4

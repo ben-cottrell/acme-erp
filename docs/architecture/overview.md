@@ -59,26 +59,22 @@ The architecture is derived from these requirement sources:
 
 ## Initial Boundary Model
 
-Domain bounded contexts own durable business state and expose WebAPI contracts. User-facing workloads are separate application services with a paired UI and API.
-
-The MVP no longer includes a Security and Audit bounded context, Security Administration application, or active auditing/compliance workflows. Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee through OAuth2/OIDC. Each role-focused UI/application owns its own access-permission experience and its paired API enforces workflow authorization before calling domain APIs. Domain APIs remain authoritative for their own business rules, state transitions, data ownership, and domain-specific authorization checks.
+Four domain bounded contexts own durable business state and expose WebAPI contracts. Five user-facing workloads are separate application services, each with a paired UI and API. Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee through OAuth2/OIDC. Each UI/application owns its own access-permission experience and its paired API enforces workflow authorization before calling domain APIs. Domain APIs remain authoritative for their own business rules, state transitions, data ownership, and domain-specific authorization checks.
 
 | Domain bounded context | Domain API responsibility | Database ownership | UI ownership |
 |---|---|---|---|
 | Sales | Sales order state, customer account reference data for MVP, order channels, buyer request state, release-to-fulfilment decisions | Sales database | None |
-| Purchasing | Supplier reference data for MVP, purchase orders, buyer request queue state, purchasing approvals, purchase order receipt visibility | Purchasing database | None |
-| Inventory Management | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, stock checks, stock movements | Inventory database | None |
-| Order Fulfilment | Fulfilment task state, pick/pack/ship/completion rules, courier shipment records, label references, fulfilment exceptions | Fulfilment database | None |
+| Purchasing | Supplier reference data for MVP, purchase orders, buyer request queue state, purchase order receipt visibility | Purchasing database | None |
+| Inventory Management | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, informational stock checks, stock movements | Inventory database | None |
+| Order Fulfilment | Fulfilment task state, exact-quantity pick/pack/ship/completion rules, courier shipment records, label references | Fulfilment database | None |
 
 | Application | Application API responsibility | Application UI responsibility | Database ownership |
 |---|---|---|---|
-| Sales Assistant | Orchestrates Sales, Inventory Management, Purchasing, and Order Fulfilment for internal sales order entry and monitoring | Sales assistant and sales supervisor workflows | None |
+| Sales Assistant | Orchestrates Sales, Inventory Management, Purchasing, and Order Fulfilment for internal sales order entry and monitoring | Sales assistant workflows | None |
 | Customer Ordering | Orchestrates Sales and Inventory Management for authenticated customer website orders and own-order visibility | Customer order submission and order status views | None |
-| Buyer | Orchestrates Purchasing, Sales, and Inventory Management for PO entry, buyer requests, approvals, and receipt visibility | Buyer and purchasing manager workflows | None |
-| Warehouse Operator | Orchestrates Inventory Management and Purchasing for stock checks and goods receipt | Warehouse stock count and goods receipt workflows | None |
-| Fulfilment Operator | Orchestrates Order Fulfilment, Sales, and Inventory Management for pick, pack, ship, label, and completion work | Fulfilment operator workflows | None |
-| Inventory Supervisor | Orchestrates Inventory Management, Purchasing, and Order Fulfilment for discrepancy and receipt exception review | Inventory supervisor workflows | None |
-| Fulfilment Supervisor | Orchestrates Order Fulfilment, Sales, and Inventory Management for fulfilment exception review | Fulfilment supervisor workflows | None |
+| Buyer | Orchestrates Purchasing, Sales, and Inventory Management for PO entry, buyer requests, and receipt visibility | Buyer workflows | None |
+| Warehouse Operator | Orchestrates Inventory Management and Purchasing for informational stock checks and goods receipt | Warehouse informational count and goods receipt workflows | None |
+| Fulfilment Operator | Orchestrates Order Fulfilment, Sales, and Inventory Management for exact picking, packing, shipping, labeling, and full completion | Fulfilment operator workflows | None |
 
 ## Traffic and Identity Baseline
 
@@ -92,6 +88,8 @@ flowchart LR
     Gravitee --> FulfilmentAppApi[Fulfilment Operator WebAPI]
     Gravitee --> SalesAssistantUi[Sales Assistant Razor Pages]
     Gravitee --> SalesAssistantApi[Sales Assistant WebAPI]
+    Gravitee --> CustomerOrderingUi[Customer Ordering Razor Pages]
+    Gravitee --> CustomerOrderingApi[Customer Ordering WebAPI]
     Gravitee --> BuyerUi[Buyer Razor Pages]
     Gravitee --> BuyerApi[Buyer WebAPI]
     Gravitee --> SalesApi[Sales Domain WebAPI]
@@ -101,6 +99,7 @@ flowchart LR
     WarehouseUi --> WarehouseApi
     FulfilmentUi --> FulfilmentAppApi
     SalesAssistantUi --> SalesAssistantApi
+    CustomerOrderingUi --> CustomerOrderingApi
     BuyerUi --> BuyerApi
     WarehouseApi --> InventoryApi
     WarehouseApi --> PurchasingApi
@@ -111,6 +110,8 @@ flowchart LR
     SalesAssistantApi --> InventoryApi
     SalesAssistantApi --> PurchasingApi
     SalesAssistantApi --> FulfilmentApi
+    CustomerOrderingApi --> SalesApi
+    CustomerOrderingApi --> InventoryApi
     BuyerApi --> PurchasingApi
     BuyerApi --> SalesApi
     BuyerApi --> InventoryApi
@@ -122,7 +123,7 @@ flowchart LR
 
 Gateway responsibilities include ingress, route publication, authentication integration, coarse-grained access policy, API subscription policy where needed, and OpenAPI exposure.
 
-Domain API services remain responsible for business authorization, local self-approval rules, validation, and persistence. Application APIs enforce workflow and route authorization for user experience before calling domain APIs, but they do not replace domain API authorization.
+Domain API services remain responsible for business authorization, validation, state transitions, and persistence. Application APIs enforce workflow and route authorization for user experience before calling domain APIs, but they do not replace domain API authorization.
 
 ## Data Ownership Baseline
 
@@ -151,10 +152,10 @@ Recommended feature-oriented examples:
 - `SalesOrderEntry`
 - `InventoryAvailability`
 - `GoodsReceipt`
-- `PurchaseOrderApproval`
+- `PurchaseOrderEntry`
 - `FulfilmentPicking`
 - `FulfilmentShipping`
-- `StockDiscrepancyReview`
+- `StockCheck`
 
 Avoid broad technical buckets such as `Models`, `Helpers`, `Utils`, or a catch-all `Controllers` folder as the primary organization method.
 
@@ -165,7 +166,7 @@ This baseline is expanded by these architecture documents:
 | Document | Purpose |
 |---|---|
 | `domain-and-application-boundaries.md` | Detailed ownership across database-owning domain APIs and database-free application UI/API pairs |
-| `module-boundaries.md` | Legacy compatibility summary that points to the domain/application boundary model |
+| `module-boundaries.md` | Concise summary of the domain and application boundary model |
 | `monorepo-structure.md` | Repository, project, namespace, Docker image, and deployment asset conventions |
 | `service-internal-architecture.md` | Layering and vertical-slice organization rules |
 | `data-architecture.md` | Shared SQL Server and EF Core physical conventions, ownership, keys, external IDs, migrations, and consistency rules |
@@ -182,13 +183,12 @@ Each domain keeps its implementation-authoritative `database-design.md` beside i
 
 ## Architecture Decisions
 
-- Approval thresholds shall be configurable by domain and role. Initial defaults are: purchase orders over 10,000 require Purchasing Manager approval; inventory adjustments over 2,000 value or 10 percent variance require Inventory Supervisor approval; sales overrides and post-confirmation cancellations over 5,000 require Sales Manager approval; fulfilment substitutions, short picks, and completion overrides require Fulfilment Supervisor approval.
-- Inventory shall be reserved when Sales releases an eligible order to Order Fulfilment. Draft, submitted, and confirmed orders may check availability but shall not reserve stock.
-- Partial fulfilment shall be allowed. Unfulfilled stocked items remain on backorder, and non-routinely stocked items are routed through the buyer request process.
+- Inventory availability queries during order entry shall be informational. Inventory shall reserve every required line quantity only when Sales releases an eligible order to Order Fulfilment.
+- Sales order and purchase order terms shall be editable only in Draft and become immutable on submission or placement.
+- Order Fulfilment shall confirm a pick only when every released line has its exact required quantity and required serials. Full-task completion shall consume those exact reservations and report one Completed result to Sales.
+- Inventory stock checks shall preserve count-time recorded quantity, actual quantity, and variance as informational records without changing balances or creating stock movements.
 - Authentik shall provide password-only authentication for the initial protected-network release. MFA is deferred unless ACME later exposes the ERP outside the protected network or requires privileged-user MFA.
 - Sessions shall use a 60 minute idle timeout and an 8 hour absolute timeout. Account lockout shall be enforced through Authentik after repeated failed login attempts.
-- The MVP does not include a Security and Audit bounded context, Security Administration application, or active auditing/compliance workflows.
-- Local self-approval rules shall prevent users from approving controlled business actions that they created or requested. Users may hold multiple operational roles when each owning domain allows the resulting permissions.
 - All user and external client ingress shall pass through Gravitee. Internal Kubernetes service calls are permitted after ingress for trusted application-to-domain and domain-to-domain APIs where contracts, service identity, and authorization are enforced by the called API.
 
 ## MVP Scope Decisions

@@ -12,7 +12,7 @@ The task is complete only when all of the following are true:
 - The old Kubernetes service manifests for module UIs and module APIs are removed.
 - `Acme.Erp.slnx` contains only the new domain API projects and application API/UI projects.
 - Domain APIs exist for Sales, Purchasing, Inventory Management, and Order Fulfilment.
-- Application API/UI pairs exist for Sales Assistant, Customer Ordering, Buyer, Warehouse Operator, Fulfilment Operator, Inventory Supervisor, and Fulfilment Supervisor.
+- Application API/UI pairs exist for Sales Assistant, Customer Ordering, Buyer, Warehouse Operator, and Fulfilment Operator.
 - Domain APIs have database connection string configuration for their owned SQL Server database.
 - Application APIs and UIs have no database connection string, EF Core migration, or SQL Server access configuration.
 - Gravitee route configuration uses `/domain/<domain>/api` for domain APIs and `/apps/<application>/api|ui` for application services.
@@ -47,8 +47,6 @@ Each application has exactly one API and exactly one UI. Application UIs call on
 | Buyer | `src/Applications/Buyer/Acme.Erp.Buyer.Api` | `src/Applications/Buyer/Acme.Erp.Buyer.Ui` | `acme-erp/buyer-api` | `acme-erp/buyer-ui` | `buyer-api` | `buyer-ui` | `/apps/buyer/api` | `/apps/buyer/ui` |
 | Warehouse Operator | `src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Api` | `src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui` | `acme-erp/warehouse-operator-api` | `acme-erp/warehouse-operator-ui` | `warehouse-operator-api` | `warehouse-operator-ui` | `/apps/warehouse-operator/api` | `/apps/warehouse-operator/ui` |
 | Fulfilment Operator | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api` | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui` | `acme-erp/fulfilment-operator-api` | `acme-erp/fulfilment-operator-ui` | `fulfilment-operator-api` | `fulfilment-operator-ui` | `/apps/fulfilment-operator/api` | `/apps/fulfilment-operator/ui` |
-| Inventory Supervisor | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api` | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui` | `acme-erp/inventory-supervisor-api` | `acme-erp/inventory-supervisor-ui` | `inventory-supervisor-api` | `inventory-supervisor-ui` | `/apps/inventory-supervisor/api` | `/apps/inventory-supervisor/ui` |
-| Fulfilment Supervisor | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui` | `acme-erp/fulfilment-supervisor-api` | `acme-erp/fulfilment-supervisor-ui` | `fulfilment-supervisor-api` | `fulfilment-supervisor-ui` | `/apps/fulfilment-supervisor/api` | `/apps/fulfilment-supervisor/ui` |
 
 ## Phase 1: Preflight
 
@@ -157,10 +155,6 @@ Recommended placeholder route behavior:
 /src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui
 /src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api
 /src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui
-/src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api
-/src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui
-/src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api
-/src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui
 ```
 
 Validation after this phase:
@@ -230,15 +224,11 @@ warehouse-operator-api.yaml
 warehouse-operator-ui.yaml
 fulfilment-operator-api.yaml
 fulfilment-operator-ui.yaml
-inventory-supervisor-api.yaml
-inventory-supervisor-ui.yaml
-fulfilment-supervisor-api.yaml
-fulfilment-supervisor-ui.yaml
 ```
 
 ## Phase 7: Skaffold
 
-Replace `build/skaffold.yaml` artifacts with all 18 replacement images.
+Replace `build/skaffold.yaml` artifacts with all 14 replacement images.
 
 Rules:
 
@@ -264,7 +254,7 @@ Primary workflow to update:
 .github/workflows/ci-docker-images.yml
 ```
 
-This workflow currently contains the old eight-image matrix. Replace that matrix with all 18 replacement images and Dockerfile paths:
+This workflow currently contains the old eight-image matrix. Replace that matrix with all 14 replacement images and Dockerfile paths:
 
 | Image | Dockerfile |
 |---|---|
@@ -282,10 +272,6 @@ This workflow currently contains the old eight-image matrix. Replace that matrix
 | `warehouse-operator-ui` | `src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui/Dockerfile` |
 | `fulfilment-operator-api` | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api/Dockerfile` |
 | `fulfilment-operator-ui` | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui/Dockerfile` |
-| `inventory-supervisor-api` | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api/Dockerfile` |
-| `inventory-supervisor-ui` | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui/Dockerfile` |
-| `fulfilment-supervisor-api` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api/Dockerfile` |
-| `fulfilment-supervisor-ui` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui/Dockerfile` |
 
 Review these workflows for old path or image references and update only where needed:
 
@@ -359,8 +345,8 @@ Required changes:
 - Replace all old route checks such as `http://sales-api/sales/api` with domain route checks such as `http://sales-api/domain/sales/api`.
 - Remove all old module UI service checks.
 - Add health, readiness, and route-root checks for all 4 domain APIs.
-- Add health, readiness, and route-root checks for all 7 application APIs.
-- Add health, readiness, and route-root checks for all 7 application UIs.
+- Add health, readiness, and route-root checks for all 5 application APIs.
+- Add health, readiness, and route-root checks for all 5 application UIs.
 - Add OpenAPI checks for all domain APIs and application APIs: `http://<service>/openapi/v1.json`.
 - Keep Authentik and Gravitee platform checks.
 

@@ -2,9 +2,9 @@
 
 ## 1. Purpose
 
-The Warehouse Operator application supports warehouse users who perform stock counts and book received goods against purchase orders. It provides scanner-friendly and keyboard-friendly workflows over Inventory Management and Purchasing without owning stock or purchase order state.
+The Warehouse Operator application shall support warehouse users who record informational physical stock checks and accepted goods received against purchase orders using scanner-friendly workflows.
 
-The MVP outcome is a practical warehouse data-entry application for counts and receipts that sends authoritative commands to Inventory Management, uses Purchasing lookup for purchase order context, and routes exceptions to supervisor review.
+The MVP outcome is a focused data-entry application that submits authoritative commands to Inventory Management and uses Purchasing for purchase order context without owning durable inventory or purchasing state.
 
 ## 2. Application Boundary
 
@@ -16,118 +16,163 @@ The MVP outcome is a practical warehouse data-entry application for counts and r
 | Database | None |
 | Domain APIs consumed | Inventory Management, Purchasing |
 
-The Warehouse Operator UI calls only the Warehouse Operator API. The Warehouse Operator API owns no durable business state, uses no EF Core migrations, and does not connect to SQL Server.
+The Warehouse Operator UI shall call only the Warehouse Operator API. The Warehouse Operator API shall own no database, EF Core migrations, durable business state, or domain invariants.
 
 ## 3. User-Facing Scope
 
 ### In Scope
 
-- Start/open stock count tasks and record actual counted quantities through Inventory Management.
-- Display recorded stock quantities, product/SKU/barcode/location context, and count status returned by Inventory Management.
-- Capture product, SKU, barcode, location, count date, receipt date, quantity, condition, and operator context.
-- Select or scan purchase orders available for receipt using Purchasing-backed lookup.
-- Display expected products, SKU/barcodes, ordered quantities, supplier, and expected arrival information.
-- Record received goods and submit receipt commands to Inventory Management for PO matching and stock booking.
-- Display receipt mismatch, under-receipt, over-receipt, damaged, quarantine, rejected, and discrepancy states.
-- Route discrepancy and receipt exception review to Inventory Supervisor workflows.
+- Product, SKU, barcode, and location lookup and scanner-assisted capture.
+- Starting or opening stock checks, submitting actual counted quantities, and displaying the calculated variance.
+- Purchase order search and selection for receipt using Purchasing data.
+- Display of expected purchase order lines, supplier, ordered quantities, received quantities, and expected arrival date.
+- Submission of accepted received quantities to Inventory Management and display of the resulting receipt reference.
+- Stock-check and receipt worklists, pagination, input validation, and recoverable technical error handling.
 
 ### Out of Scope
 
-- Durable inventory or purchasing state, direct SQL access, EF Core migrations, PO authoring, supplier updates, stock adjustment approval, receipt exception approval, fulfilment picking, shipping, and finance posting.
-- Warehouse automation hardware integration beyond scanner-friendly input behavior for MVP.
+- Durable inventory or purchasing state, direct database access, EF Core migrations, purchase order authoring, or supplier maintenance.
+- Picking, packing, shipping, finance posting, and warehouse automation hardware integration.
+- Offline business-data storage or background synchronization.
 
 ## 4. Business Context
 
-Warehouse users need quick, reliable capture of physical counts and received goods. The application must reduce entry errors and show immediate domain validation while preserving Inventory as the stock authority and Purchasing as the PO authority.
+Warehouse users need fast and reliable capture of informational physical checks and accepted inbound goods. Inventory Management remains authoritative for products, locations, stock checks, calculated variance, receipts, and stock movements. Purchasing remains authoritative for purchase orders and receipt eligibility.
 
 ## 5. Personas and User Roles
 
 | Role | Description | Key Responsibilities | UX / Access Needs |
 |---|---|---|---|
-| Warehouse Operator | Warehouse user performing physical tasks. | Count stock, scan/enter products and locations, receive goods, record condition and quantities. | Large clear forms, keyboard/scanner flow, minimal navigation, field-level errors. |
-| Inventory Supervisor | Escalation user, not primary in this app. | Reviews discrepancies and receipt exceptions in separate application. | Link/route to supervisor-owned workflows only. |
+| Warehouse Operator | Authenticated warehouse user performing physical inventory work. | Scan or enter products and locations, submit informational checks, select purchase orders, and record accepted quantities. | Large stable controls, predictable scan flow, minimal navigation, and clear field validation. |
 
 ## 6. User Journeys and Workflows
 
-- **Stock count**: operator starts or opens count task, scans/selects product/SKU/barcode/location, views recorded quantity where allowed, enters actual quantity, submits count, and sees no-variance or discrepancy state.
-- **Goods receipt**: operator searches/scans/selects PO, reviews expected lines, enters received quantities and condition, submits receipt to Inventory, and sees booked or exception state.
-- **Exception capture**: operator records mismatch, missing item, over/under receipt, damaged goods, quarantine, or rejected goods; Inventory creates exception state for supervisor review.
-- **Correction before submit**: operator can correct unsent form entries; after submission, corrections are domain-controlled commands rather than local edits.
+### 6.1 Record an Informational Stock Check
+
+The operator opens an existing stock check or starts one where Inventory Management permits it, scans the location and product, enters the actual quantity, and submits once. The journey ends with a completed check reference, count-time recorded quantity, actual quantity, and calculated variance returned by Inventory Management, or with retained input and correctable validation messages.
+
+### 6.2 Record a Goods Receipt
+
+The operator scans or searches for an eligible purchase order, reviews expected lines and quantities, scans received products, enters accepted quantities, and submits the receipt. The journey ends with an Inventory Management receipt reference and updated received quantities.
+
+### 6.3 Correct Input Before Submission
+
+The operator may edit or remove unsent stock-check and receipt entries. After submission, the UI shall reload the domain result and shall not alter durable state locally.
+
+### 6.4 Recover from a Technical Failure
+
+When a dependency or network call fails, the form shall retain unsent entries in the current browser session. For an uncertain mutation result, the application shall query by idempotency key before enabling another submission.
 
 ## 7. Functional Requirements
 
 | ID | Workflow | Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|---|
-| WHO-APP-001 | Stock checks | The application shall allow authorized warehouse operators to start or open stock checks through Inventory Management. | Must | Given a valid operator opens a count, when Inventory accepts the request, then the UI displays the count task and current recorded stock where permitted. |
-| WHO-APP-002 | Count entry | The application shall display recorded stock and allow actual quantity entry without storing inventory balances locally. | Must | Given an operator submits actual count, when Inventory processes it, then the UI shows no variance or discrepancy state returned by Inventory. |
-| WHO-APP-003 | Product/location capture | The application shall allow operators to select or scan products, SKUs, barcodes, and locations for count and receipt workflows. | Must | Given an unknown or inactive identifier is entered, when validation runs, then the UI shows Inventory validation errors and blocks invalid submission where required. |
-| WHO-APP-004 | PO receipt | The application shall allow operators to start goods receipts against purchase orders by orchestrating Purchasing lookup and Inventory receipt commands. | Must | Given an eligible PO is selected, when goods are submitted, then Inventory validates against PO details and returns booked or exception state. |
-| WHO-APP-005 | Receipt exceptions | The application shall display PO matching results and receipt exceptions returned by Inventory Management. | Must | Given over-receipt, under-receipt, damage, quarantine, or mismatch occurs, when Inventory responds, then the UI shows exception state and supervisor route. |
-| WHO-APP-006 | Supervisor routing | The application shall route discrepancy and receipt exception review to supervisor applications rather than approving them locally. | Must | Given an exception requires approval, when the operator views it, then approval controls are absent and the supervisor review state is shown. |
-| WHO-APP-007 | Accessibility/scanner use | The application shall provide accessible warehouse data-entry screens suitable for keyboard and scanner-assisted operation. | Must | Given scanner input sends value plus enter/tab behavior, when a field is focused, then the workflow advances predictably without losing data. |
+| WHO-APP-001 | Identifier capture | The system shall support product, SKU, barcode, and location entry by scanner or keyboard. | Must | Given a focused field and keyboard-wedge scan ending in Enter or Tab, when the value is received, then validation shall run and focus shall move to the configured next field without clearing valid data. |
+| WHO-APP-002 | Identifier validation | The system shall validate products and locations through Inventory Management. | Must | Given an unknown or inactive identifier, when validation completes, then the affected field shall show the domain message and submission shall remain blocked. |
+| WHO-APP-003 | Stock-check access | The system shall display Open stock checks available to the Warehouse Operator and shall allow a permitted check to be started for one product and location. | Must | Given supported filters, when the worklist loads, then Inventory Management checks shall be displayed with product, location, and current state; given valid product and location data, when a check is started once, then one Open check reference shall be returned. |
+| WHO-APP-004 | Stock-check submission | The system shall submit an actual non-negative quantity to Inventory Management for the selected Open check, product, and location. | Must | Given valid current check data, when submitted once, then the UI shall display one completed check reference, count-time recorded quantity, actual quantity, and calculated variance returned by Inventory Management. |
+| WHO-APP-005 | Purchase order lookup | The system shall search receipt-eligible purchase orders through Purchasing. | Must | Given a purchase order number, supplier, or expected date filter, when search completes, then eligible matching purchase orders shall be displayed. |
+| WHO-APP-006 | Receipt line capture | The system shall allow scanner-assisted capture of products and accepted quantities against an eligible purchase order. | Must | Given a product belongs to the selected purchase order, when scanned, then its expected, received-to-date, and remaining quantities shall be displayed for entry. |
+| WHO-APP-007 | Receipt submission | The system shall submit accepted received quantities to Inventory Management using the purchase order external ID. | Must | Given valid receipt lines, when submitted once, then the UI shall display one receipt reference and the accepted quantities returned by Inventory Management. |
+| WHO-APP-008 | Worklists | The system shall provide paginated stock-check and expected-receipt worklists. | Must | Given supported filters, when a worklist loads, then results shall use stable sorting and include total or continuation information without local persistence. |
 
-## 8. UI, Accessibility, and Usability Requirements
+## 8. UI and Usability Requirements
 
-- Count and receipt forms shall minimize required navigation and preserve in-progress entries until submitted or explicitly cancelled.
-- Barcode/SKU/location fields shall support keyboard-only and scanner-assisted entry.
-- Validation errors shall be displayed beside the relevant field and summarized at the top of the form.
-- The UI shall clearly distinguish booked stock, pending exception, rejected receipt, quarantine, and discrepancy states.
-- Screens shall target WCAG 2.2 AA and support high-contrast, focus visibility, and assistive technology labels.
+- Primary stock-check and receipt controls shall have stable dimensions and remain usable on shared workstation and handheld-width browser screens.
+- Barcode, SKU, purchase order, and location fields shall accept keyboard-wedge scanner input ending in Enter or Tab.
+- Scan processing shall not submit the entire form unless the final confirmation control has focus.
+- Successfully validated scans shall provide a clear visual acknowledgement and move focus predictably.
+- Forms shall preserve unsent entries after validation, authorization, conflict, timeout, or dependency failure responses.
+- Validation messages shall appear beside affected fields and action-level messages in a stable summary region.
+- Quantity fields shall use numeric input and shall not default blank values to zero.
+- Submission shall require an explicit final action and shall block repeated clicks while in progress.
 
 ## 9. Data Display and Input Requirements
 
 | Data | Source Domain/API | Used For | Required | Validation / Display Rules |
 |---|---|---|---|---|
-| Product/SKU/barcode | Inventory Management | Count and receipt item identification. | Yes | Show active/inactive/unknown state. |
-| Location | Inventory Management | Count and stock placement. | Conditional | Required where location tracking is enabled. |
-| Recorded stock | Inventory Management | Count comparison. | Conditional | Display according to role/policy. |
-| Actual count | User input to Inventory | Stock check. | Yes for count | Non-negative numeric. |
-| Purchase order | Purchasing | Receipt selection. | Yes for PO receipt | Show eligible/current status. |
-| Received quantity/condition | User input to Inventory | Receipt booking. | Yes | Non-negative quantity; condition required for damage/quarantine/rejection. |
+| Product external ID, SKU, and barcode | Inventory Management | Stock-check and receipt identification | Yes | Display recognized product and active state. |
+| Location external ID and code | Inventory Management | Stock-check location | Yes for stock check | Required for each stock check. |
+| Stock-check ID and version | Inventory Management | Check submission | Yes | Hidden from editing; refresh after a version conflict. |
+| Actual quantity | User input to Inventory Management | Informational stock check | Yes | Non-negative numeric value using product precision. |
+| Count-time recorded quantity and variance | Inventory Management | Check result | Yes after completion | Display exactly as returned with the completed check reference. |
+| Purchase order external ID | Purchasing | Receipt context | Yes for receipt | Display purchase order number, supplier, and eligible state. |
+| Expected and received quantities | Purchasing | Receipt guidance | Yes for receipt | Display by purchase order line and do not treat missing data as zero. |
+| Accepted received quantity | User input to Inventory Management | Receipt recording | Yes | Positive value and no greater than the quantity accepted by domain validation. |
+| Stock-check or receipt reference | Inventory Management | Submission confirmation | Yes after submit | Display prominently and retain for the current session. |
 
 ## 10. Orchestration and Integration Requirements
 
-| ID | Application Action | Domain/API Called | Data Exchanged | Validation / Result |
-|---|---|---|---|---|
-| WHO-INT-001 | Open/start count | Inventory Management | Product, location, and count context. | Show validation and authorization errors. |
-| WHO-INT-002 | Submit actual count | Inventory Management | Actual quantity, product/SKU/barcode, location, and operator context. | Show no-variance or discrepancy state. |
-| WHO-INT-003 | Lookup PO | Purchasing via app API | PO number/search filters and eligible receipt status. | Show returned eligible purchase orders. |
-| WHO-INT-004 | Submit receipt | Inventory Management | PO reference, received lines, quantities, and condition. | Show booked, business exception, or rejected state. |
-| WHO-INT-005 | View exception | Inventory Management | Receipt or discrepancy status. | Show supervisor route with no local approval. |
+| ID | Application Action | Domain/API Called | Data Exchanged | Failure Handling | Idempotency / Correlation |
+|---|---|---|---|---|---|
+| WHO-INT-001 | Validate product or location | Inventory Management | Barcode, SKU, product ID, or location code | Retain scanned value, show validation or temporary failure, and permit retry. | Correlate calls with the active stock-check or receipt session. |
+| WHO-INT-002 | Load or start stock check | Inventory Management | Check ID, product, location, operator context | Show authorization, stale-state, or technical errors without local state creation. | Propagate the request correlation ID; use an idempotency key when starting a check mutates state. |
+| WHO-INT-003 | Submit stock check | Inventory Management | Check ID, version, product, location, actual quantity | Preserve input; query the result after timeout before enabling resubmission. | Send one idempotency key per submission and an end-to-end correlation ID. |
+| WHO-INT-004 | Search purchase orders | Purchasing | Purchase order number, supplier, expected date, eligible state, paging | Show temporary unavailability separately from no results. | Propagate the request correlation ID. |
+| WHO-INT-005 | Submit receipt | Inventory Management | Purchase order external ID, line external IDs, products, quantities, operator context | Map validation to lines; query uncertain outcomes before another submit. | Send one idempotency key per receipt and an end-to-end correlation ID. |
 
-## 11. Worklist and Exception Queue Requirements
+The paired API shall use bounded timeouts. Safe reads may be retried automatically. Mutation retries shall reuse the original idempotency key. Cross-service references shall use external IDs.
+
+## 11. Operational View and Search Requirements
 
 | View | Audience | Purpose | Filters |
 |---|---|---|---|
-| Count Task List | Warehouse Operator | Find open counts. | Location, SKU, status, date. |
-| Receipt Worklist | Warehouse Operator | Receive expected POs. | PO, supplier, expected arrival, status. |
-| Receipt Exceptions | Warehouse Operator | See items routed to supervisor. | Exception type, PO, SKU, status. |
+| Open Stock Checks | Warehouse Operator | Find informational count work | Check ID, location, SKU, state, date |
+| Expected Receipt Worklist | Warehouse Operator | Find purchase orders ready for receipt | Purchase order, supplier, expected date, SKU, receipt state |
+| Recent Submissions | Warehouse Operator | Confirm the operator's recent check and receipt submissions | Submission type, reference, date, product, purchase order |
+
+Worklists shall use deterministic sorting and pagination. Recent Submissions shall be assembled from domain queries and shall not be stored by the application. The MVP shall not provide scheduled reports or data exports.
 
 ## 12. Security and Permissions
 
-The application shall enforce Warehouse Operator route and screen access. Inventory Management remains authoritative for stock checks, receipts, discrepancies, stock movements, authorization, and approval rules. Purchasing remains authoritative for PO data. The app shall not expose approval actions for discrepancies or receipt exceptions.
+- Authentik shall authenticate users and Gravitee shall enforce ingress policy.
+- The UI and paired API shall require the Warehouse Operator role for every route and action.
+- The paired API shall forward user identity and correlation context to domain APIs.
+- Inventory Management shall remain authoritative for product and location scope, stock-check and receipt commands, validation, variance calculation, and persistence.
+- Purchasing shall remain authoritative for purchase order visibility and receipt eligibility.
+- Logs shall exclude tokens and complete scanned payloads; identifiers may be logged only where operationally required and permitted.
 
 ## 13. Non-Functional Requirements
 
-- Primary count and receipt workflows shall remain usable with intermittent validation failures by preserving unsent input.
-- The application shall not maintain a local stock cache or PO cache beyond request/session needs.
+- **Performance:** Worklists shall be paginated, and scan validation shall provide an in-progress state without moving focus unexpectedly.
+- **Reliability:** The application shall remain stateless beyond normal authenticated session and request context and shall not provide offline persistence.
+- **Consistency:** Mutations shall use domain versions where supplied and shall resolve uncertain outcomes before resubmission.
+- **Observability:** Requests shall carry correlation IDs; metrics shall identify scan validation latency, submission outcomes, dependency, and duration without sensitive payloads.
+- **Availability:** A Purchasing outage shall not prevent stock-check work that requires only Inventory Management; affected receipt actions shall show a retryable technical message.
+- **Maintainability:** Versioned domain clients and scanner input behavior shall be covered by contract and UI tests.
+- **Localization:** MVP dates and numbers shall use the ACME deployment locale; multiple locales are not required.
+- **Supportability:** Unexpected technical errors shall display a support reference derived from the correlation ID.
 
-## 14. Dependencies
+## 14. Errors and Edge Cases
 
-- Inventory Management for stock checks, product/location validation, receipts, and exceptions.
-- Purchasing for PO lookup and receipt eligibility context.
-- Authentik and Gravitee for identity, ingress, and route policy.
+- Repeated scans of the same product shall update the active entry according to explicit user action and shall not silently create duplicate lines.
+- Duplicate clicks or network retries shall create no more than one stock check or receipt for one idempotency key.
+- A stale stock-check or purchase order state shall require refresh before submission.
+- Unknown, inactive, or context-incompatible identifiers shall block submission and retain other valid entries.
+- A scanner value containing prefix or suffix characters shall be normalized only according to configured scanner input rules.
+- A timed-out mutation shall be queried by idempotency key before the form permits another submit.
 
-## 15. Assumptions and MVP Defaults
+## 15. Dependencies
 
-- Warehouse automation hardware integrations are out of scope; scanner-friendly input is sufficient for MVP.
-- Warehouse Operators cannot approve discrepancies or receipt exceptions.
-- Application does not persist offline work in MVP.
-- MVP scanner support assumes keyboard-wedge barcode scanners that submit text into focused fields; Code 128 labels are the default barcode format.
-- Recorded stock is visible during counts to minimize MVP complexity; blind counts are deferred.
-- MVP uses the single logical warehouse and simple location codes defined by Inventory Management.
-- MVP receipt condition choices are Good, Damaged, Quarantine, and Rejected.
+- Inventory Management for products, barcodes, locations, stock-check recording and variance, receipts, stock effects, validation, and persistence.
+- Purchasing for purchase order search, expected lines, quantities, supplier context, and receipt eligibility.
+- Authentik and Gravitee for identity, claims, ingress, and route policy.
+- Keyboard-wedge barcode scanners and versioned API contracts using external IDs.
 
-## 16. Acceptance Summary
+## 16. Assumptions
 
-The Warehouse Operator requirements are complete for MVP when they define stock count and goods receipt workflows, scanner-friendly input, Inventory/Purchasing orchestration, exception routing, security, and explicit MVP defaults without assigning inventory or purchasing state to the application.
+- The application is available only to authenticated Warehouse Operator users.
+- MVP uses one logical warehouse and simple location codes supplied by Inventory Management.
+- Count-time recorded quantities are visible with completed stock-check results.
+- Scanner support targets keyboard-wedge devices that emit text followed by Enter or Tab.
+- Code 128 is the default label format, while manual SKU and barcode entry remains available.
+- The browser session may retain unsent form values but the application API stores no drafts.
+- Worklists use a default page size of 50 and newest operational date first.
+
+## 17. Open Questions
+
+None. The remaining device and contract details can use the stated MVP defaults and owning-domain rules.
+
+## 18. Acceptance Summary
+
+The Warehouse Operator MVP is complete when an authenticated operator can use keyboard or scanner input to validate products and locations, complete informational stock checks and view their calculated variance, find eligible purchase orders, record accepted goods receipts, and confirm recent submissions. Mutations must be idempotent, technical failures recoverable, and all durable state and business validation domain-owned.

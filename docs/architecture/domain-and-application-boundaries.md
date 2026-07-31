@@ -24,23 +24,21 @@ This document defines the target split between domain bounded contexts and user-
 | Domain bounded context | Domain API | Database | Owns | Does not own |
 |---|---|---|---|---|
 | Sales | `Acme.Erp.Sales.Api` | Sales database | Customer account reference data for MVP, sales orders, order channels, buyer request state, release-to-fulfilment decisions | User interface flows, picking, packing, shipping, purchase order authoring, stock balance updates |
-| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, purchase order approval state, buyer request queue state, purchase order receipt visibility | User interface flows, goods receipt booking, inventory balances, sales order entry, finance postings |
-| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, reservations, goods receipts, stock checks, stock movements, discrepancy state | User interface flows, purchase order authoring, sales order authoring, courier shipment purchase |
-| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, pick/pack/ship/completion rules, courier shipment purchase records, label references, fulfilment exceptions | User interface flows, sales order creation, product master ownership, stock balance authority |
+| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, buyer request queue state, purchase order receipt visibility | User interface flows, goods receipt booking, inventory balances, sales order entry, finance postings |
+| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, reservations, goods receipts, informational stock checks, stock movements | User interface flows, purchase order authoring, sales order authoring, courier shipment purchase |
+| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, exact-quantity pick/pack/ship/completion rules, courier shipment purchase records, label references | User interface flows, sales order creation, product master ownership, stock balance authority |
 
 ## Application Services
 
-The MVP no longer includes a Security and Audit bounded context, Security Administration application, or active auditing/compliance workflows. Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee through OAuth2/OIDC. Each role-focused UI/application owns its own access-permission experience and its paired API enforces workflow authorization before calling domain APIs. Domain APIs remain authoritative for their own business rules, state transitions, data ownership, and domain-specific authorization checks.
+The MVP has five application services. Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee through OAuth2/OIDC. Each UI/application owns its own access-permission experience and its paired API enforces workflow authorization before calling domain APIs. Domain APIs remain authoritative for their own business rules, state transitions, data ownership, and domain-specific authorization checks.
 
 | Application | Application UI | Application API | Primary users | Domain APIs consumed | Database |
 |---|---|---|---|---|---|
-| Sales Assistant | `Acme.Erp.SalesAssistant.Ui` | `Acme.Erp.SalesAssistant.Api` | Sales Assistant, Sales Supervisor | Sales, Inventory Management, Purchasing, Order Fulfilment | None |
+| Sales Assistant | `Acme.Erp.SalesAssistant.Ui` | `Acme.Erp.SalesAssistant.Api` | Sales Assistant | Sales, Inventory Management, Purchasing, Order Fulfilment | None |
 | Customer Ordering | `Acme.Erp.CustomerOrdering.Ui` | `Acme.Erp.CustomerOrdering.Api` | Authenticated Customer | Sales, Inventory Management | None |
-| Buyer | `Acme.Erp.Buyer.Ui` | `Acme.Erp.Buyer.Api` | Buyer, Purchasing Manager | Purchasing, Sales, Inventory Management | None |
+| Buyer | `Acme.Erp.Buyer.Ui` | `Acme.Erp.Buyer.Api` | Buyer | Purchasing, Sales, Inventory Management | None |
 | Warehouse Operator | `Acme.Erp.WarehouseOperator.Ui` | `Acme.Erp.WarehouseOperator.Api` | Warehouse Operator | Inventory Management, Purchasing | None |
 | Fulfilment Operator | `Acme.Erp.FulfilmentOperator.Ui` | `Acme.Erp.FulfilmentOperator.Api` | Fulfilment Operator | Order Fulfilment, Sales, Inventory Management | None |
-| Inventory Supervisor | `Acme.Erp.InventorySupervisor.Ui` | `Acme.Erp.InventorySupervisor.Api` | Inventory Supervisor | Inventory Management, Purchasing, Order Fulfilment | None |
-| Fulfilment Supervisor | `Acme.Erp.FulfilmentSupervisor.Ui` | `Acme.Erp.FulfilmentSupervisor.Api` | Fulfilment Supervisor | Order Fulfilment, Sales, Inventory Management | None |
 
 ## Boundary Diagram
 
@@ -55,12 +53,15 @@ flowchart LR
     Gravitee --> FulfilmentAppApi[Fulfilment Operator API]
     Gravitee --> SalesAssistantUi[Sales Assistant UI]
     Gravitee --> SalesAssistantApi[Sales Assistant API]
+    Gravitee --> CustomerOrderingUi[Customer Ordering UI]
+    Gravitee --> CustomerOrderingApi[Customer Ordering API]
     Gravitee --> BuyerUi[Buyer UI]
     Gravitee --> BuyerApi[Buyer API]
 
     WarehouseUi --> WarehouseApi
     FulfilmentUi --> FulfilmentAppApi
     SalesAssistantUi --> SalesAssistantApi
+    CustomerOrderingUi --> CustomerOrderingApi
     BuyerUi --> BuyerApi
 
     WarehouseApi --> InventoryApi[Inventory Domain API]
@@ -72,6 +73,8 @@ flowchart LR
     SalesAssistantApi --> InventoryApi
     SalesAssistantApi --> PurchasingApi
     SalesAssistantApi --> FulfilmentDomainApi
+    CustomerOrderingApi --> SalesApi
+    CustomerOrderingApi --> InventoryApi
     BuyerApi --> PurchasingApi
     BuyerApi --> SalesApi
     BuyerApi --> InventoryApi

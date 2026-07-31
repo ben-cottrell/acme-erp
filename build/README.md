@@ -35,8 +35,6 @@ dotnet build ..\Acme.Erp.slnx
 | Buyer API/UI | `../src/Applications/Buyer/` | `acme-erp/buyer-api`, `acme-erp/buyer-ui` | `/apps/buyer/api`, `/apps/buyer/ui` |
 | Warehouse Operator API/UI | `../src/Applications/WarehouseOperator/` | `acme-erp/warehouse-operator-api`, `acme-erp/warehouse-operator-ui` | `/apps/warehouse-operator/api`, `/apps/warehouse-operator/ui` |
 | Fulfilment Operator API/UI | `../src/Applications/FulfilmentOperator/` | `acme-erp/fulfilment-operator-api`, `acme-erp/fulfilment-operator-ui` | `/apps/fulfilment-operator/api`, `/apps/fulfilment-operator/ui` |
-| Inventory Supervisor API/UI | `../src/Applications/InventorySupervisor/` | `acme-erp/inventory-supervisor-api`, `acme-erp/inventory-supervisor-ui` | `/apps/inventory-supervisor/api`, `/apps/inventory-supervisor/ui` |
-| Fulfilment Supervisor API/UI | `../src/Applications/FulfilmentSupervisor/` | `acme-erp/fulfilment-supervisor-api`, `acme-erp/fulfilment-supervisor-ui` | `/apps/fulfilment-supervisor/api`, `/apps/fulfilment-supervisor/ui` |
 
 Each service exposes `/healthz` and `/readyz`. API services also expose `/openapi/v1.json`. Domain APIs own SQL Server connection string configuration. Application APIs and UIs do not own database configuration.
 
@@ -91,7 +89,7 @@ The `platform` profile applies namespaces, SQL Server, the Authentik bootstrap C
 
 The platform layer is also split into narrower profiles: `namespace`, `sqlserver`, `identity`, `gateway`, `gateway-loadbalancer`, and `routes`. The bootstrap script uses these narrower profiles internally so targeted repairs do not churn unrelated platform workloads. The combined `platform` profile remains available for direct Skaffold use.
 
-The `apps` profile builds and deploys the 18 ASP.NET Core service images and includes the Gravitee route ConfigMaps so app deployments keep route ownership declarative.
+The `apps` profile builds and deploys the 14 ASP.NET Core service images and includes the Gravitee route ConfigMaps so app deployments keep route ownership declarative.
 
 Use `bootstrap-local.ps1 -DeploymentScope all` when platform and apps should be deployed together; the script runs the profiles in dependency order.
 
@@ -146,7 +144,7 @@ To also verify the application UIs from the developer workstation through the lo
 .\build\scripts\validate-local.ps1 -IncludeExternalUi
 ```
 
-`-IncludeExternalUi` checks these public UI routes through `http://localhost:8082`: `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, `/apps/fulfilment-operator/ui`, `/apps/inventory-supervisor/ui`, and `/apps/fulfilment-supervisor/ui`. The script does not create gateway exposure; use `bootstrap-local.ps1 -GatewayExposure PortForward` or manually run `kubectl port-forward -n erp-local svc/gravitee-apim-gateway 8082:8082` first. If the gateway is unreachable, core in-cluster validation may still be healthy while workstation gateway exposure is unavailable. If all UI routes return `404`, validation fails because the database-less gateway did not synchronize the route ConfigMaps.
+`-IncludeExternalUi` checks these public UI routes through `http://localhost:8082`: `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, and `/apps/fulfilment-operator/ui`. The script does not create gateway exposure; use `bootstrap-local.ps1 -GatewayExposure PortForward` or manually run `kubectl port-forward -n erp-local svc/gravitee-apim-gateway 8082:8082` first. If the gateway is unreachable, core in-cluster validation may still be healthy while workstation gateway exposure is unavailable. If all UI routes return `404`, validation fails because the database-less gateway did not synchronize the route ConfigMaps.
 
 ## Local Recovery
 

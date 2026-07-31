@@ -17,25 +17,13 @@ data:
           name: Sales Assistant
       - model: authentik_core.group
         identifiers:
-          name: Sales Supervisor
-      - model: authentik_core.group
-        identifiers:
           name: Buyer
-      - model: authentik_core.group
-        identifiers:
-          name: Purchasing Manager
       - model: authentik_core.group
         identifiers:
           name: Warehouse Operator
       - model: authentik_core.group
         identifiers:
-          name: Inventory Supervisor
-      - model: authentik_core.group
-        identifiers:
           name: Fulfilment Operator
-      - model: authentik_core.group
-        identifiers:
-          name: Fulfilment Supervisor
       - model: authentik_core.group
         identifiers:
           name: Support User

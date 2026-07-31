@@ -24,16 +24,24 @@ erDiagram
     Suppliers ||--o{ SupplierContacts : has
     Suppliers ||--o{ PurchaseOrders : receives
     PurchaseOrders ||--|{ PurchaseOrderLines : contains
-    PurchaseOrders ||--o{ PurchaseOrderChangeRequests : controls
-    PurchaseOrders ||--o{ PurchaseOrderApprovals : requires
-    PurchaseOrderChangeRequests ||--o{ PurchaseOrderApprovals : authorizes
-    PurchaseOrders ||--o{ PurchaseOrderExceptions : exposes
-    BuyerRequests o|--o| PurchaseOrders : links
-    BuyerRequests o|--o| PurchaseOrderLines : satisfies
+    PurchaseOrders o|--o{ BuyerRequests : links
+    PurchaseOrderLines o|--o{ BuyerRequests : satisfies
     PurchaseOrders ||--o{ ReceiptVisibilities : mirrors
     ReceiptVisibilities ||--|{ ReceiptLineVisibilities : contains
     PurchaseOrderLines ||--o{ ReceiptLineVisibilities : mirrors
 ```
+
+## Table Catalog
+
+| Table | Purpose |
+|---|---|
+| `Suppliers` | Purchasing-owned supplier reference |
+| `SupplierContacts` | Active supplier contacts |
+| `PurchaseOrders` | Purchase order aggregate root and current lifecycle state |
+| `PurchaseOrderLines` | Ordered items, quantities, costs, and line state |
+| `BuyerRequests` | Purchasing-owned handling of Sales non-stocked requests |
+| `ReceiptVisibilities` | Copied Inventory receipt header state |
+| `ReceiptLineVisibilities` | Copied Inventory cumulative received quantities |
 
 ## Supplier Tables
 
@@ -87,11 +95,8 @@ Filtered unique index: `UX_SupplierContacts_Default` on `SupplierId` where `IsDe
 | `SourceApplication` | `nvarchar(100)` | No | Calling application |
 | `CreatedAt` | `datetimeoffset(7)` | No | UTC |
 | `UpdatedAt` | `datetimeoffset(7)` | No | UTC |
-| `SubmittedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `ApprovedAt` | `datetimeoffset(7)` | Yes | UTC |
 | `OrderedAt` | `datetimeoffset(7)` | Yes | UTC |
 | `ClosedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `CancelledAt` | `datetimeoffset(7)` | Yes | UTC |
 | `RowVersion` | `rowversion` | No | Aggregate concurrency token |
 
 Unique constraint: `UQ_PurchaseOrders_PurchaseOrderNumber`. Checks constrain `Status`, `TotalAmount >= 0`, and `ExpectedArrivalDate >= PurchaseDate`.
@@ -109,68 +114,14 @@ Unique constraint: `UQ_PurchaseOrders_PurchaseOrderNumber`. Checks constrain `St
 | `ExternalBarcodeId` | `uniqueidentifier` | Yes | Inventory barcode |
 | `QuantityOrdered` | `decimal(18,4)` | No | Greater than zero |
 | `UnitOfMeasure` | `nvarchar(16)` | No | Inventory-supplied code where applicable |
-| `UnitCost` | `decimal(19,4)` | No | Non-negative |
+| `UnitCost` | `decimal(19,4)` | No | Greater than zero |
 | `ExpectedArrivalDate` | `date` | Yes | Optional line override |
 | `Status` | `nvarchar(24)` | No | Line lifecycle |
 | `CreatedAt` | `datetimeoffset(7)` | No | UTC |
 | `UpdatedAt` | `datetimeoffset(7)` | No | UTC |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-Unique constraint: `UQ_PurchaseOrderLines_OrderLineNumber` on `(PurchaseOrderId, LineNumber)`. Checks require positive quantity, non-negative unit cost, and a supported status.
-
-### `PurchaseOrderChangeRequests`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `PurchaseOrderId` | `uniqueidentifier` | No | FK to `PurchaseOrders.Id` |
-| `ChangeType` | `nvarchar(24)` | No | `Amendment` or `Cancellation` |
-| `Status` | `nvarchar(24)` | No | `Pending`, `Approved`, `Rejected`, `Applied`, `Cancelled` |
-| `RequestedBySubject` | `nvarchar(200)` | No | Used for self-approval prevention |
-| `Reason` | `nvarchar(1000)` | No | Required business reason |
-| `ChangedFieldsJson` | `nvarchar(max)` | No | Valid sanitized JSON field diff |
-| `OriginalAmount` | `decimal(19,4)` | No | Policy snapshot; non-negative |
-| `ProposedAmount` | `decimal(19,4)` | No | Policy snapshot; non-negative |
-| `CurrencyCode` | `char(3)` | No | Configured currency |
-| `RequiresApproval` | `bit` | No | Applied policy result |
-| `RequestedAt` | `datetimeoffset(7)` | No | UTC |
-| `ResolvedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Concurrency token |
-
-### `PurchaseOrderApprovals`
-
-This table records both initial PO approval and controlled amendment/cancellation decisions.
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `PurchaseOrderId` | `uniqueidentifier` | No | FK to `PurchaseOrders.Id` |
-| `PurchaseOrderChangeRequestId` | `uniqueidentifier` | Yes | Optional FK to `PurchaseOrderChangeRequests.Id` |
-| `ApprovalType` | `nvarchar(24)` | No | `Initial`, `Amendment`, `Cancellation` |
-| `Status` | `nvarchar(16)` | No | `Pending`, `Approved`, `Rejected`, `Denied` |
-| `RequestedBySubject` | `nvarchar(200)` | No | Buyer/requester |
-| `DecidedBySubject` | `nvarchar(200)` | Yes | Required after decision; must differ for approval |
-| `DecisionReason` | `nvarchar(1000)` | Yes | Required for reject/deny |
-| `ThresholdAmount` | `decimal(19,4)` | No | Configured policy snapshot |
-| `EvaluatedAmount` | `decimal(19,4)` | No | PO/proposed amount snapshot |
-| `CurrencyCode` | `char(3)` | No | Configured currency |
-| `RequestedAt` | `datetimeoffset(7)` | No | UTC |
-| `DecidedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Pending-decision concurrency token |
-
-### `PurchaseOrderExceptions`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `PurchaseOrderId` | `uniqueidentifier` | No | FK to `PurchaseOrders.Id` |
-| `ExceptionType` | `nvarchar(64)` | No | Validation, approval, receipt, supplier, or policy exception |
-| `Status` | `nvarchar(16)` | No | `Open`, `Resolved`, `Cancelled` |
-| `Summary` | `nvarchar(500)` | No | Operator-safe summary |
-| `DetailsJson` | `nvarchar(max)` | Yes | Valid sanitized JSON |
-| `OpenedAt` | `datetimeoffset(7)` | No | UTC |
-| `ResolvedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Concurrency token |
+Unique constraint: `UQ_PurchaseOrderLines_OrderLineNumber` on `(PurchaseOrderId, LineNumber)`. Checks require positive quantity, positive unit cost, and a supported status.
 
 ## Buyer Request Tables
 
@@ -189,7 +140,6 @@ This table records both initial PO approval and controlled amendment/cancellatio
 | `Quantity` | `decimal(18,4)` | No | Greater than zero |
 | `Reason` | `nvarchar(1000)` | No | Sales request reason |
 | `Status` | `nvarchar(32)` | No | Buyer-request status catalog |
-| `DecisionReason` | `nvarchar(1000)` | Yes | Required for rejection/return |
 | `LinkedPurchaseOrderId` | `uniqueidentifier` | Yes | Optional local FK to `PurchaseOrders.Id` |
 | `LinkedPurchaseOrderLineId` | `uniqueidentifier` | Yes | Optional local FK to `PurchaseOrderLines.Id` |
 | `AssignedBuyerSubject` | `nvarchar(200)` | Yes | Queue assignment |
@@ -197,7 +147,7 @@ This table records both initial PO approval and controlled amendment/cancellatio
 | `UpdatedAt` | `datetimeoffset(7)` | No | UTC |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-Unique constraints: `UQ_BuyerRequests_ExternalSalesBuyerRequestId` and a filtered unique link to `LinkedPurchaseOrderLineId` when populated.
+Unique constraint: `UQ_BuyerRequests_ExternalSalesBuyerRequestId`. A check requires both purchase-order link columns to be null for Open requests and populated for Linked or Satisfied requests.
 
 ## Receipt Visibility Tables
 
@@ -209,10 +159,13 @@ Unique constraints: `UQ_BuyerRequests_ExternalSalesBuyerRequestId` and a filtere
 | `PurchaseOrderId` | `uniqueidentifier` | No | FK to `PurchaseOrders.Id` |
 | `ExternalInventoryReceiptId` | `uniqueidentifier` | No | Unique Inventory receipt ID |
 | `ReceiptStatus` | `nvarchar(32)` | No | Copied receipt state |
-| `ExceptionState` | `nvarchar(32)` | Yes | Copied exception state |
 | `ReceiptDate` | `date` | No | Inventory business date |
+| `LastUpdateId` | `uniqueidentifier` | No | Inventory update identity; unique with source |
+| `SourceService` | `nvarchar(100)` | No | Authenticated update source |
 | `UpdatedAt` | `datetimeoffset(7)` | No | UTC business update time |
 | `RowVersion` | `rowversion` | No | Concurrency token |
+
+Unique constraints apply to `ExternalInventoryReceiptId` and `(SourceService, LastUpdateId)`.
 
 ### `ReceiptLineVisibilities`
 
@@ -222,22 +175,20 @@ Unique constraints: `UQ_BuyerRequests_ExternalSalesBuyerRequestId` and a filtere
 | `ReceiptVisibilityId` | `uniqueidentifier` | No | FK to `ReceiptVisibilities.Id` |
 | `PurchaseOrderLineId` | `uniqueidentifier` | No | FK to `PurchaseOrderLines.Id` |
 | `ExternalInventoryReceiptLineId` | `uniqueidentifier` | No | Inventory line ID |
-| `ReceivedQuantity` | `decimal(18,4)` | No | Greater than zero |
-| `Condition` | `nvarchar(24)` | No | Copied condition |
-| `ExceptionType` | `nvarchar(64)` | Yes | Copied exception type |
+| `CumulativeReceivedQuantity` | `decimal(18,4)` | No | Non-negative and not above ordered quantity |
 
 Unique constraints apply to `ExternalInventoryReceiptLineId` and `(ReceiptVisibilityId, PurchaseOrderLineId, ExternalInventoryReceiptLineId)`.
 
-## Status Catalogs
+## Status Models
 
 | Area | Allowed values |
 |---|---|
-| Purchase order | `Draft`, `Submitted`, `ApprovalRequired`, `Approved`, `Ordered`, `PartiallyReceived`, `Received`, `Returned`, `Rejected`, `Cancelled`, `Closed`, `Exception` |
-| PO line | `Draft`, `Ordered`, `PartiallyReceived`, `Received`, `Cancelled`, `Closed`, `Exception` |
-| Buyer request | `Received`, `Accepted`, `LinkedToPurchaseOrder`, `Rejected`, `ReturnedForClarification`, `Closed`, `Exception` |
-| Receipt copy | `Open`, `Matched`, `PartiallyMatched`, `ExceptionPendingReview`, `Booked`, `Rejected`, `Closed` |
+| Purchase order | `Draft`, `Ordered`, `PartiallyReceived`, `Received`, `Closed` |
+| PO line | `Draft`, `Ordered`, `PartiallyReceived`, `Received`, `Closed` |
+| Buyer request | `Open`, `Linked`, `Satisfied` |
+| Receipt copy | `Booked` |
 
-Checks limit persisted values. Purchasing enforces the state-transition graphs from `requirements.md`.
+Valid PO transitions are `Draft -> Ordered`, `Ordered -> PartiallyReceived|Received`, `PartiallyReceived -> PartiallyReceived|Received`, and `Received -> Closed`. `Closed` is terminal. Only Draft purchase orders may be edited. Placement fixes supplier, item, quantity, unit cost, purchase date, and expected arrival data; later receipt updates only derive receipt progress and a Buyer may close only a Received order.
 
 ## Local Foreign Keys and Delete Behavior
 
@@ -246,8 +197,7 @@ All relationships use `ON DELETE NO ACTION` and indexed FK columns.
 | Dependent | Principal |
 |---|---|
 | `SupplierContacts`, `PurchaseOrders` | `Suppliers` |
-| `PurchaseOrderLines`, `PurchaseOrderChangeRequests`, `PurchaseOrderApprovals`, `PurchaseOrderExceptions`, `ReceiptVisibilities` | `PurchaseOrders` |
-| `PurchaseOrderApprovals` | Optional `PurchaseOrderChangeRequests` |
+| `PurchaseOrderLines`, `ReceiptVisibilities` | `PurchaseOrders` |
 | `BuyerRequests` | Optional linked `PurchaseOrders` and `PurchaseOrderLines` |
 | `ReceiptLineVisibilities` | `ReceiptVisibilities` and `PurchaseOrderLines` |
 
@@ -259,20 +209,17 @@ All relationships use `ON DELETE NO ACTION` and indexed FK columns.
 | `IX_PurchaseOrders_Supplier_Status` on `(SupplierId, Status, PurchaseOrderNumber)` | Supplier-filtered search |
 | `IX_PurchaseOrders_Buyer_Status_UpdatedAt` on `(BuyerSubject, Status, UpdatedAt, Id)` | Buyer workload |
 | `IX_PurchaseOrderLines_ExternalSkuId` on `(ExternalSkuId, PurchaseOrderId)` | SKU receipt lookup |
-| `IX_PurchaseOrderApprovals_Status_RequestedAt` on `(Status, RequestedAt, Id)` | Approval queue |
 | `IX_BuyerRequests_Status_UpdatedAt` on `(Status, UpdatedAt, Id)` | Buyer request queue and age sorting |
 | `IX_BuyerRequests_Assignee_Status` on `(AssignedBuyerSubject, Status, UpdatedAt, Id)` | Assigned queue |
 | `IX_ReceiptVisibilities_Status_UpdatedAt` on `(ReceiptStatus, UpdatedAt, Id)` | Receipt status review |
-| `IX_ReceiptVisibilities_ExceptionState_UpdatedAt` on `(ExceptionState, UpdatedAt, Id)` where `ExceptionState IS NOT NULL` | Receipt exception visibility |
 
-## Transactions and Concurrency
+## Transaction Boundaries and Concurrency
 
 - Create a PO and lines atomically. Recalculate `TotalAmount` from persisted lines in the same transaction.
-- Apply transitions and amendments only with the current PO/line `RowVersion`.
-- Persist the threshold and evaluated amount used for each approval. The approver must differ from the creator/requester before an approval decision commits.
-- Apply an approved change only after revalidating PO and receipt state under optimistic concurrency. Partially received state may reject quantity, supplier, cost, date, or cancellation changes.
+- Apply Draft edits and valid transitions only with current PO and line `RowVersion` values.
+- Revalidate supplier activity in the Draft edit and placement transactions. Every Ordered or later state rejects ordered-term edits.
 - Record an accepted Sales buyer request in one transaction. Record each accepted queue decision and resulting Sales-visible status atomically.
-- Apply each valid Inventory receipt update by updating copied receipt visibility, current PO state, and any business exception atomically.
+- Apply each valid Inventory receipt update by updating copied header/line visibility and current PO/line state atomically.
 - Do not hold a local transaction across Sales or Inventory HTTP calls.
 
 ## External References
@@ -281,7 +228,7 @@ All relationships use `ON DELETE NO ACTION` and indexed FK columns.
 |---|---|---:|
 | `ExternalSalesBuyerRequestId`, `ExternalSalesOrderId`, `ExternalSalesOrderLineId` | Sales | No |
 | `ExternalProductId`, `ExternalSkuId`, `ExternalBarcodeId`, `ExternalInventoryReceiptId`, `ExternalInventoryReceiptLineId` | Inventory Management | No |
-| Buyer, approver, assignee, and actor subjects | Authentik/platform identity | No |
+| Buyer and assignee subjects | Authentik/platform identity | No |
 
 ## Requirement Traceability
 
@@ -289,35 +236,37 @@ All relationships use `ON DELETE NO ACTION` and indexed FK columns.
 |---|---|
 | `PUR-DOM-001` | Active, uniquely coded suppliers and default contact enforcement |
 | `PUR-DOM-002` | PO header/lines, required dates/costs/quantities, and atomic creation |
-| `PUR-DOM-003` | Checked current status, optimistic concurrency, and transactional transition enforcement |
-| `PUR-DOM-004` | Threshold/evaluated amount snapshots, approval records, requester/approver identities, and denied decisions |
-| `PUR-DOM-005` | Unique Sales external request identity, Purchasing-owned queue state, optional local PO link, and accepted Sales-visible status |
-| `PUR-DOM-006` | Indexed PO/supplier/line records provide the authoritative receipt-matching query source |
-| `PUR-DOM-007` | Inventory receipt header/line copies carry external IDs, business status, exception state, and update time |
-| `PUR-DOM-008` | Change requests, JSON field diffs, reasons, approval links, and receipt-aware concurrency |
-| `PUR-DOM-009` | Purpose-built PO, arrivals, buyer queue, approval, and receipt exception indexes |
+| `PUR-DOM-003` | Draft state guards and PO/line concurrency tokens enforce Draft-only editing |
+| `PUR-DOM-004` | Ordered timestamp and direct `Draft -> Ordered` transition preserve placement |
+| `PUR-DOM-005` | Unique Sales request identity and initial Open state support idempotent intake |
+| `PUR-DOM-006` | Local PO/line links and checked Open/Linked/Satisfied states persist sourcing linkage |
+| `PUR-DOM-007` | Indexed PO/supplier/line records provide the authoritative receipt lookup source |
+| `PUR-DOM-008` | Receipt copies preserve Inventory IDs, cumulative quantities, source/update identity, and derived PO/line state |
+| `PUR-DOM-009` | Received-state guard and `ClosedAt` persist valid closure |
+| `PUR-DOM-010` | Purpose-built PO, arrivals, buyer-request, and receipt indexes |
 
-Authorization, field-level validation, status transitions, policy evaluation, Inventory product validation, and API response shaping remain domain/API responsibilities.
+Authorization, field-level validation, status transitions, Inventory product validation, and API response shaping remain domain/API responsibilities.
 
 ### Business Rule Traceability
 
 | Rule | Persistence or domain disposition |
 |---|---|
-| `PUR-BR-001` | Required supplier FK and active supplier state; submission guard verifies active state |
-| `PUR-BR-002` | Required line description, quantity, UOM, cost, dates, and optional Inventory references |
-| `PUR-BR-003` | `QuantityOrdered > 0` check |
-| `PUR-BR-004` | Required single `CurrencyCode` per PO and non-negative `UnitCost`; configured currency validation remains domain logic |
-| `PUR-BR-005` | Indexed authoritative PO/line records expose receipt-matching data without copying stock ownership |
-| `PUR-BR-006` | Persisted threshold/evaluated amounts and approval state; threshold calculation remains configurable domain logic |
-| `PUR-BR-007` | Creator/requester and decider identities support self-approval rejection and retained denial evidence |
-| `PUR-BR-008` | Draft state and `RowVersion` protect direct draft amendments |
-| `PUR-BR-009` | Typed change requests, field-diff JSON, reason, approval, status, and receipt-aware transaction guard |
-| `PUR-BR-010` | Checked buyer-request states, required reasons, and optional local PO links |
+| `PUR-BR-001` | Required supplier FK and placement guard verify active supplier state |
+| `PUR-BR-002` | Required line description, positive quantity/cost, UOM, and optional Inventory references |
+| `PUR-BR-003` | Header and effective line dates are constrained not to precede the purchase date |
+| `PUR-BR-004` | Required single `CurrencyCode`; configured currency validation remains domain logic |
+| `PUR-BR-005` | Draft-only edit guards make ordered supplier, line, cost, and date terms immutable |
+| `PUR-BR-006` | Buyer-request link checks require an Ordered line; quantity coverage remains a transactional domain guard |
+| `PUR-BR-007` | Cumulative receipt quantities are non-negative and bounded by ordered quantity |
+| `PUR-BR-008` | Closed PO and Satisfied buyer-request states have no outgoing transitions |
+| `PUR-BR-009` | Supplier and Draft PO/line `RowVersion` values reject stale writes |
 
-## Seed and Lifecycle Policy
+## Retention and Seed Policy
 
 - Do not EF-seed suppliers or contacts. Load the 10 to 20 MVP suppliers through rerunnable Purchasing-owned environment tooling.
-- Do not physically delete POs, lines, approvals, change requests, buyer requests, receipt visibility, or exceptions.
+- Retain POs, lines, buyer requests, and receipt visibility for the ERP retention period.
+- Deactivate suppliers and contacts instead of deleting records referenced by purchase orders.
+- Purge only unreferenced inactive supplier data under an explicit retention job; never cascade-delete purchasing evidence.
 
 ## Excluded Schema
 
@@ -328,5 +277,15 @@ This design excludes supplier onboarding and contracts, tendering, scorecards, I
 - Explicitly map every SQL type, length, check, unique/filter index, `rowversion`, and `DeleteBehavior.NoAction`.
 - Keep all Sales and Inventory IDs scalar with no cross-domain navigation.
 - Persist status strings exactly as documented, never enum ordinals.
-- Use `__PurchasingMigrationsHistory`; inspect migrations for cross-database FKs, cascade deletes, missing policy fields, or destructive schema operations.
-- Add SQL Server integration tests for PO/supplier uniqueness, positive quantities, non-negative costs, date checks, status checks, self-approval denial, optimistic concurrency, and migration application.
+- Use `__PurchasingMigrationsHistory`; inspect migrations for cross-database FKs, cascade deletes, missing constraints, or destructive schema operations.
+
+## Proposed Persistence Tests
+
+- Apply all migrations to an empty SQL Server database and verify `__PurchasingMigrationsHistory`.
+- Verify supplier code, default contact, PO number, line number, Sales request ID, and Inventory receipt IDs are unique as specified.
+- Verify inactive suppliers, non-positive quantities, negative costs, invalid dates, and unsupported statuses reject writes without partial state.
+- Verify concurrent Draft edits produce one success and one `DbUpdateConcurrencyException` without changing totals for the failed command.
+- Verify ordered-term edits and invalid transitions leave the PO and lines unchanged.
+- Verify duplicate Sales buyer requests and Inventory receipt updates are idempotent by external ID.
+- Verify accepted receipt updates change header visibility, line visibility, and PO/line status atomically.
+- Verify every FK uses `NO ACTION` and no migration creates a cross-database FK.

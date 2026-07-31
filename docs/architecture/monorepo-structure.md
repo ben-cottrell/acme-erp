@@ -21,11 +21,6 @@ docs/
   architecture/
   application/
   domain/
-  cross-cutting/              # legacy source requirements during migration
-  inventory-management/       # legacy source requirements during migration
-  order-fulfilment/           # legacy source requirements during migration
-  purchasing/                 # legacy source requirements during migration
-  sales/                      # legacy source requirements during migration
 src/
   Applications/
   Domain/
@@ -50,10 +45,8 @@ The top-level `Acme.Erp.slnx` is the only solution file. Do not create per-domai
 | Buyer | `src/Applications/Buyer/Acme.Erp.Buyer.Api` | `src/Applications/Buyer/Acme.Erp.Buyer.Ui` | `acme-erp/buyer-api`, `acme-erp/buyer-ui` | `/apps/buyer/api`, `/apps/buyer/ui` |
 | Warehouse Operator | `src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Api` | `src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui` | `acme-erp/warehouse-operator-api`, `acme-erp/warehouse-operator-ui` | `/apps/warehouse-operator/api`, `/apps/warehouse-operator/ui` |
 | Fulfilment Operator | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api` | `src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui` | `acme-erp/fulfilment-operator-api`, `acme-erp/fulfilment-operator-ui` | `/apps/fulfilment-operator/api`, `/apps/fulfilment-operator/ui` |
-| Inventory Supervisor | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api` | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui` | `acme-erp/inventory-supervisor-api`, `acme-erp/inventory-supervisor-ui` | `/apps/inventory-supervisor/api`, `/apps/inventory-supervisor/ui` |
-| Fulfilment Supervisor | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui` | `acme-erp/fulfilment-supervisor-api`, `acme-erp/fulfilment-supervisor-ui` | `/apps/fulfilment-supervisor/api`, `/apps/fulfilment-supervisor/ui` |
 
-The active MVP contains four domain API projects and seven application API/UI pairs. Security Administration is retired for MVP and must not be scaffolded from this structure.
+The active MVP contains four domain API projects and five application API/UI pairs.
 
 ## Naming Rules
 
@@ -114,7 +107,7 @@ src/Applications/<Application>/Acme.Erp.<Application>.Ui/
   appsettings.json
 ```
 
-Avoid broad catch-all folders such as `Models`, `Helpers`, and `Utils` as primary organization. Feature names should describe ERP behavior, such as `SalesOrderEntry`, `GoodsReceipt`, `PurchaseOrderApproval`, or `FulfilmentShipping`.
+Avoid broad catch-all folders such as `Models`, `Helpers`, and `Utils` as primary organization. Feature names should describe ERP behavior, such as `SalesOrderEntry`, `GoodsReceipt`, `PurchaseOrderEntry`, or `FulfilmentShipping`.
 
 Application APIs must not contain EF Core `DbContext` types, migrations, repositories, or durable business entities.
 

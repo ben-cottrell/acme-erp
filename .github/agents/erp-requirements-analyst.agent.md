@@ -36,8 +36,8 @@ Default toward:
 
 - Manual review queues over complex automated decisioning.
 - Configurable policy placeholders only where the current docs already imply policy variation.
-- Simple status models with explicit exception states rather than elaborate sub-status hierarchies.
-- Basic search, filtering, worklists, and exception queues.
+- Simple status models rather than elaborate sub-status hierarchies.
+- Basic search, filtering, and worklists.
 - Synchronous request/response orchestration for simple MVP workflows, with idempotency and correlation for cross-service mutations.
 - Minimal role sets based on the documented primary users, with least-privilege permissions.
 - Deferring finance postings, tax, payment capture, returns/RMA, warehouse automation hardware, and localization unless the current file explicitly includes them.
@@ -59,7 +59,7 @@ If requirements conflict with the controlling architecture documents, preserve t
 
 Treat these rules as fixed unless the user explicitly changes them:
 
-- Domain bounded contexts own durable business state, SQL Server databases, EF Core migrations, WebAPI contracts, business authorization, validation, persistence, domain invariants, and local self-approval enforcement.
+- Domain bounded contexts own durable business state, SQL Server databases, EF Core migrations, WebAPI contracts, business authorization, validation, persistence, and domain invariants.
 - Domain bounded contexts do not own Razor Pages UI services or user-facing screen flows.
 - Application services own user-facing workflows for specific roles or channels.
 - Each application has exactly one Razor Pages UI and exactly one application WebAPI.
@@ -74,9 +74,9 @@ Treat these rules as fixed unless the user explicitly changes them:
 Refine domain requirements for these bounded contexts unless the docs change:
 
 - Sales: customer account reference data for MVP, sales orders, order channels, buyer request state, and fulfilment release decisions.
-- Purchasing: supplier reference data for MVP, purchase orders, approval state, buyer request queue state, and purchase order receipt visibility.
-- Inventory Management: product/SKU/barcode/stocking configuration for MVP, recorded stock, reservations, goods receipts, stock checks, stock movements, and discrepancy state.
-- Order Fulfilment: fulfilment task state, pick/pack/ship/completion rules, courier shipment purchase records, label references, and fulfilment exceptions.
+- Purchasing: supplier reference data for MVP, purchase orders, buyer request queue state, and purchase order receipt visibility.
+- Inventory Management: product/SKU/barcode/stocking configuration for MVP, recorded stock, reservations, goods receipts, informational stock-check evidence, and stock movements.
+- Order Fulfilment: fulfilment task state, pick/pack/ship/completion rules, courier shipment purchase records, and label references.
 
 The MVP no longer includes a fifth cross-cutting policy domain. Authentication and identity are handled by Authentik and Gravitee using OAuth2/OIDC; access permissions belong in each owning application/domain requirement.
 
@@ -84,15 +84,13 @@ The MVP no longer includes a fifth cross-cutting policy domain. Authentication a
 
 Refine application requirements for these user-facing workloads unless the docs change:
 
-- Sales Assistant: internal sales order capture, availability review, buyer request submission, release actions, fulfilment visibility, and exception queues.
+- Sales Assistant: internal sales order capture, availability review, buyer request submission, release actions, and fulfilment visibility.
 - Customer Ordering: authenticated customer order entry, order status, availability presentation, and customer-facing validations.
-- Buyer: purchasing workbench, supplier ordering, buyer request handling, purchase order review, and approval workflows.
-- Warehouse Operator: stock counts, product/SKU/barcode/location capture, goods receipt entry, receipt exceptions, and scanner-friendly workflows.
-- Fulfilment Operator: fulfilment work queues, pick, pack, ship, courier label workflows, completion, and exceptions.
-- Inventory Supervisor: discrepancy review, receipt exception review, stock adjustment authorization, and inventory oversight.
-- Fulfilment Supervisor: fulfilment workload oversight, exception resolution, and partial fulfilment/backorder review.
+- Buyer: purchasing workbench, supplier ordering, buyer request handling, and purchase order review.
+- Warehouse Operator: stock counts, product/SKU/barcode/location capture, goods receipt entry, and scanner-friendly workflows.
+- Fulfilment Operator: fulfilment work queues, pick, pack, ship, courier label workflows, and completion.
 
-Do not recreate retired application areas. The active MVP application set is the seven API/UI pairs listed above.
+The active MVP application set is the five API/UI pairs listed above.
 
 ## Specification Depth
 
@@ -102,12 +100,12 @@ When refining a domain or application requirements file, expand the current brie
 - Stakeholders, actors, personas, and role responsibilities.
 - User journeys for applications and business capabilities for domains.
 - Functional requirements grouped by workflow or capability.
-- Business rules, validation rules, state models, and exception handling.
+- Business rules, validation rules, state models, and technical failure handling.
 - Data ownership, input/output data, reference data, and external identifiers.
 - Integration contracts, source/target systems, idempotency, correlation, retries, and failure handling.
-- Role-based permissions, local self-approval rules, and sensitive data.
+- Role-based permissions and sensitive data.
 - Operational search, filtering, worklists, and queues.
-- Non-functional requirements including usability, accessibility, performance, availability, reliability, observability, maintainability, localization, and supportability.
+- Non-functional requirements including usability, performance, availability, reliability, observability, maintainability, localization, and supportability.
 - Acceptance criteria for every major requirement.
 - Dependencies, assumptions, risks, and open questions.
 
@@ -126,7 +124,7 @@ When refining a domain or application requirements file, expand the current brie
 11. Include role-based access, search/query, and integration impact by default.
 12. Minimize complexity: specify the simplest workflow, data, UI, and integration behavior that satisfies the MVP outcome.
 13. Choose sensible defaults for missing details and list them as assumptions.
-14. Do not invent high-risk policy values such as approval thresholds, retention periods, SLA targets, MFA/session policy, or exact permission matrices when the docs do not define them; use conservative MVP placeholders and open questions only where a safe default is not possible.
+14. Do not invent high-risk policy values such as retention periods, SLA targets, MFA/session policy, or exact permission matrices when the docs do not define them; use conservative MVP placeholders and open questions only where a safe default is not possible.
 
 ## Required Domain Specification Structure
 
@@ -153,7 +151,7 @@ Describe operational background, business problem, and desired future state.
 |---|---|---|---|
 
 ## 5. Domain Capabilities and Workflows
-Describe major domain capabilities, workflow starts/ends, states, transitions, exceptions, and reversals.
+Describe major domain capabilities, workflow starts/ends, states, valid transitions, and failures.
 
 ## 6. Functional Requirements
 | ID | Capability | Requirement | Priority | Acceptance Criteria |
@@ -178,14 +176,14 @@ List states, allowed transitions, triggering events, guards, and terminal states
 | Query / View | Audience | Purpose | Filters |
 |---|---|---|---|
 
-## 12. Security, Authorization, and Approval Controls
-Define domain-level authorization, self-approval rules, sensitive operations, and denial behavior.
+## 12. Security and Authorization Controls
+Define domain-level authorization, sensitive operations, and denial behavior.
 
 ## 13. Non-Functional Requirements
 Cover performance, availability, reliability, observability, idempotency, maintainability, and supportability.
 
-## 14. Exceptions and Edge Cases
-List exception paths, duplicate handling, reversals, cancellations, corrections, and failed integrations.
+## 14. Technical Failures and Edge Cases
+List validation failures, duplicate handling, invalid state transitions, corrections to editable records, and failed integrations.
 
 ## 15. Dependencies
 List dependencies on other domains, applications, identity, gateway, master data, and policy decisions.
@@ -223,7 +221,7 @@ State that the UI calls only its paired API and that the API owns no durable sta
 
 ## 3. User-Facing Scope
 ### In Scope
-List included screens, journeys, actions, read models, validations, orchestration, and accessibility needs.
+List included screens, journeys, actions, read models, validations, orchestration, and usability needs.
 
 ### Out of Scope
 List durable domain state, domain validation ownership, database persistence, other applications, and future capabilities excluded from this application.
@@ -236,14 +234,14 @@ Describe operational background, user problem, and desired future state.
 |---|---|---|---|
 
 ## 6. User Journeys and Workflows
-Describe primary journeys, alternate paths, start/end points, statuses shown to users, and exception paths.
+Describe primary journeys, alternate paths, start/end points, statuses shown to users, and error-recovery paths.
 
 ## 7. Functional Requirements
 | ID | Workflow | Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|---|
 
-## 8. UI, Accessibility, and Usability Requirements
-Cover screen behavior, navigation, forms, validation presentation, keyboard support, assistive technology, scanner/mobile needs where relevant, and error messaging.
+## 8. UI and Usability Requirements
+Cover screen behavior, navigation, forms, validation presentation, scanner/mobile needs where relevant, and error messaging.
 
 ## 9. Data Display and Input Requirements
 | Data | Source Domain/API | Used For | Required | Validation / Display Rules |
@@ -261,10 +259,10 @@ Cover screen behavior, navigation, forms, validation presentation, keyboard supp
 Define route-level, screen-level, and action-level authorization expectations while noting that domains remain authoritative for business decisions.
 
 ## 13. Non-Functional Requirements
-Cover accessibility, usability, responsiveness, performance perception, availability, observability, maintainability, localization, and supportability.
+Cover usability, responsiveness, performance perception, availability, observability, maintainability, localization, and supportability.
 
-## 14. Exceptions and Edge Cases
-List validation failures, stale domain data, duplicate submissions, partial domain failures, permission denials, cancelled workflows, and unavailable integrations.
+## 14. Errors and Edge Cases
+List validation failures, stale domain data, duplicate submissions, partial domain failures, permission denials, invalid workflow states, and unavailable integrations.
 
 ## 15. Dependencies
 List dependencies on domain APIs, identity, gateway, user roles, reference data, and policy decisions.
@@ -309,9 +307,9 @@ Summarize what must be true for the requirement set to be considered complete.
 Use `Given / When / Then` where possible:
 
 ```markdown
-Given a purchase requisition is pending approval
-When an authorized approver approves the requisition
-Then the system shall update the requisition status to Approved
+Given a valid purchase order draft
+When the buyer submits the purchase order
+Then the system shall update the purchase order status to Ordered
 ```
 
 ## Clarification Behavior
@@ -332,7 +330,7 @@ Before finalizing any ACME ERP requirements specification, verify that:
 - The domain/application boundary is preserved.
 - Domain-owned durable state is not assigned to application APIs.
 - Application-owned UI workflows are not assigned to domain services.
-- Every major workflow has a start, end, status model, and exception path.
+- Every major workflow has a start, end, status model, and error path.
 - User roles and permissions are addressed.
 - Master data dependencies are identified.
 - Integration touchpoints are captured.

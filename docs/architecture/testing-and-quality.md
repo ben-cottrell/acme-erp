@@ -17,9 +17,9 @@ This document defines automated testing, analyzer, formatting, build, validation
 
 | Test type | Scope | Examples |
 |---|---|---|
-| Unit tests | Domain rules and application workflow decisions without infrastructure | Sales release criteria, PO approval threshold evaluation, inventory negative-balance prevention, fulfilment completion rules |
-| Vertical slice tests | Feature command/query behavior with realistic dependencies substituted or in-memory where appropriate | Goods receipt mismatch handling, buyer request intake, sales order validation |
-| API tests | Controller routing, authorization, validation, error responses, OpenAPI behavior | Required field validation, forbidden self-approval, business conflict responses |
+| Unit tests | Domain rules and application workflow decisions without infrastructure | Sales release criteria, purchase order state transitions, inventory negative-balance prevention, fulfilment completion rules |
+| Vertical slice tests | Feature command/query behavior with realistic dependency fakes or in-memory implementations where appropriate | Goods receipt validation, buyer request intake, sales order validation |
+| API tests | Controller routing, authorization, validation, error responses, OpenAPI behavior | Required field validation, forbidden operations, business conflict responses |
 | Integration tests | SQL Server, EF Core migrations, service clients, Authentik/Gravitee integration where feasible | Migration application, repository transaction behavior, service-to-service contract handling |
 | Contract tests | Cross-domain API and event payload compatibility | Sales release payload consumed by Fulfilment, Purchasing PO payload consumed by Inventory |
 | Smoke tests | Built services in local Kubernetes | `/healthz`, `/readyz`, `/openapi/v1.json`, domain and application placeholder routes |
@@ -33,34 +33,35 @@ Sales:
 - Required customer, channel, product, SKU where applicable, and quantity validation.
 - Availability check behavior and release eligibility.
 - Buyer request creation for non-routinely stocked products.
-- Sales Supervisor approval for controlled amendments and cancellations.
+- Draft edits succeed with a current concurrency token; non-Draft edits are rejected without mutation.
+- Submitted orders reject term mutations, and API contract tests verify their immutable state.
 
 Purchasing:
 
 - Required PO fields: supplier, item, SKU, barcode where available, quantity, unit cost, purchase date, expected arrival date.
-- Purchase orders over 10,000 require Purchasing Manager approval.
-- Buyers cannot approve their own purchase orders.
-- Post-submission amendments require business reason and approval where configured.
+- Draft edits and placement by an authorized Buyer.
+- Ordered purchase orders reject term mutations, and API contract tests verify their immutable state.
+- Only Received purchase orders may be closed.
 
 Inventory Management:
 
-- Stock count variance calculation and discrepancy review.
+- Stock checks preserve count-time recorded quantity, actual quantity, and variance without changing balances or creating stock movements.
 - Goods receipt matching against Purchasing PO data.
 - Prevention of unmatched receipts updating available stock.
 - Negative inventory balance prevention.
-- Reservation at fulfilment release and consumption at fulfilment completion.
+- Exact reservation at fulfilment release and atomic consumption of those quantities at full fulfilment completion.
 
 Order Fulfilment:
 
 - Fulfilment starts only from Sales-released orders.
-- Picked components validate against sales order requirements.
-- Shipping purchase and label availability are required before completion unless approved exception exists.
-- Partial fulfilment sends remaining quantities to Sales as backordered.
+- Pick confirmation requires every released line in its exact quantity and all required serials; under-picks, over-picks, and mismatches leave the task in Picking with validation errors.
+- Shipping purchase and label availability are required before completion.
+- Completion consumes every exact reservation quantity, stores the Inventory and Sales integration results idempotently, and produces one terminal Completed task.
+- Dependency, concurrency, and retry tests preserve the last committed valid state and never create an invalid lifecycle transition or duplicate external effect.
 
 Cross-cutting:
 
-- Authorization categories for read, create, update, approve, and cancel.
-- Local self-approval prevention.
+- Required permissions and data scopes for read, create, Draft update, submission or placement, and each defined workflow transition.
 - Service account scope and failed authorization behavior.
 
 ## Quality Gates

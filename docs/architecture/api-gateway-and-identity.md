@@ -11,7 +11,7 @@ This document defines Gravitee ingress, Authentik OAuth/OIDC integration, OpenAP
 - The initial release uses password-only login on ACME's protected internal network.
 - APIs use ASP.NET Core WebAPI Controllers.
 - API contracts use OpenAPI 3.0.
-- APIs remain responsible for business authorization, local self-approval rules, and business invariants.
+- APIs remain responsible for business authorization and business invariants.
 
 ## Ingress Topology
 
@@ -31,7 +31,7 @@ sequenceDiagram
     UI->>Gateway: Call paired application API route
     Gateway->>AppAPI: Forward token and request metadata
     AppAPI->>DomainAPI: Call domain API with user or service context
-    DomainAPI->>DomainAPI: Enforce local permissions, self-approval rules, validation, persistence, and domain rules
+    DomainAPI->>DomainAPI: Enforce local permissions, validation, persistence, and domain rules
     DomainAPI-->>AppAPI: Domain response
     AppAPI-->>Gateway: Application response
     Gateway-->>User: Response
@@ -59,10 +59,6 @@ The local developer gateway URL is `http://localhost:8082`. The Kubernetes Gravi
 | Warehouse Operator UI | `/apps/warehouse-operator/ui` | `/healthz`, `/readyz` | Not applicable |
 | Fulfilment Operator API | `/apps/fulfilment-operator/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
 | Fulfilment Operator UI | `/apps/fulfilment-operator/ui` | `/healthz`, `/readyz` | Not applicable |
-| Inventory Supervisor API | `/apps/inventory-supervisor/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
-| Inventory Supervisor UI | `/apps/inventory-supervisor/ui` | `/healthz`, `/readyz` | Not applicable |
-| Fulfilment Supervisor API | `/apps/fulfilment-supervisor/api` | `/healthz`, `/readyz` | `/openapi/v1.json` |
-| Fulfilment Supervisor UI | `/apps/fulfilment-supervisor/ui` | `/healthz`, `/readyz` | Not applicable |
 
 ## Gravitee Responsibilities
 
@@ -91,8 +87,6 @@ Every domain API enforces:
 - Required authenticated identity or service account identity.
 - Domain-level permission checks.
 - Data-scope restrictions by role, domain, application, channel, location, supplier, customer, or assignment where configured.
-- Local self-approval prevention for controlled actions.
-- Configurable approval thresholds and approval authority.
 - Customer data privacy restrictions.
 
 Domain API authorization must fail closed when authorization status cannot be determined. Application APIs also fail closed for route and workflow authorization, but they must not replace domain authorization decisions.
@@ -101,9 +95,9 @@ Domain API authorization must fail closed when authorization status cannot be de
 
 Authentik supplies identity and coarse role/group claims. ERP services map claims to domain and application permissions and data scopes according to each owning application or domain requirement.
 
-Initial MVP personas and identity subjects are Customer, Sales Assistant, Sales Supervisor, Buyer, Purchasing Manager, Warehouse Operator, Inventory Supervisor, Fulfilment Operator, Fulfilment Supervisor, Support User where enabled, and Integration Service Account where required.
+Initial MVP personas are Customer, Sales Assistant, Buyer, Warehouse Operator, and Fulfilment Operator. Authentik also represents scoped integration service accounts where required.
 
-Platform administration access does not imply business approval authority. Business approval authority must be explicitly assigned in the owning application/domain requirements.
+Platform administration access does not imply ERP business permissions. Each API grants only permissions explicitly mapped for its owning application or domain.
 
 ## Service-to-Service Communication
 
@@ -128,4 +122,4 @@ Platform administration access does not imply business approval authority. Busin
 - [ ] Gravitee performs gateway policy but APIs enforce business authorization.
 - [ ] Domain and application APIs publish OpenAPI 3.0 contracts.
 - [ ] Service accounts are scoped and non-interactive.
-- [ ] Self-approval rules and approval authority are enforced in domain APIs, not only in UI, application APIs, or gateway policy.
+- [ ] Domain permissions and data scopes are enforced in APIs, not only in UI or gateway policy.

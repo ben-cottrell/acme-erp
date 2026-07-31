@@ -42,16 +42,25 @@ erDiagram
     GoodsReceipts ||--|{ GoodsReceiptLines : contains
     PurchaseOrderSnapshots ||--o{ GoodsReceipts : validates
     PurchaseOrderLineSnapshots ||--o{ GoodsReceiptLines : matches
-    GoodsReceiptLines ||--o{ ReceiptExceptions : raises
-    ReceiptExceptions ||--o{ ReceiptExceptionDecisions : decides
+    Skus ||--o{ StockChecks : counts
+    Locations ||--o{ StockChecks : counts
     StockChecks ||--|{ StockCheckLines : contains
     StockBalances ||--o{ StockCheckLines : counts
-    StockCheckLines ||--o| StockDiscrepancies : detects
-    StockDiscrepancies ||--o| StockAdjustments : proposes
-    StockAdjustments ||--o{ StockAdjustmentDecisions : decides
 ```
 
-Movement source links and business Inventory exceptions use typed scalar references and are omitted from the ERD for readability.
+Movement source links use typed scalar references and are omitted from the ERD for readability.
+
+## Table Catalog
+
+| Area | Tables |
+|---|---|
+| Product and location | `Products`, `Skus`, `Barcodes`, `Warehouses`, `Locations`, `StockingConfigurations` |
+| Current stock | `StockBalances`, `SerialNumbers` |
+| Purchasing copies | `PurchaseOrderSnapshots`, `PurchaseOrderLineSnapshots` |
+| Reservations | `Reservations`, `ReservationLines`, `ReservationSerials` |
+| Movement ledger | `StockMovements`, `StockMovementSerials` |
+| Goods receipt | `GoodsReceipts`, `GoodsReceiptLines` |
+| Stock checks | `StockChecks`, `StockCheckLines` |
 
 ## Product and Location Configuration
 
@@ -147,7 +156,7 @@ Unique constraint: `UQ_Locations_WarehouseCode` on `(WarehouseId, LocationCode)`
 
 ### `StockBalances`
 
-One row stores the current quantity for a SKU, location, and stock state. Available-to-promise is the sum of `Available` rows; recorded on-hand is the sum of all physical states, including `Reserved`, `Quarantine`, `Damaged`, `Rejected`, and `NonAvailable`.
+One row stores the current quantity for a SKU, location, and stock state. Available-to-promise is the sum of `Available` rows; recorded on-hand is the sum of all physical states, including `Reserved`, `Quarantine`, `Damaged`, and `NonAvailable`.
 
 | Column | SQL type | Null | Rules |
 |---|---|---:|---|
@@ -171,12 +180,12 @@ Unique constraint: `UQ_StockBalances_SkuLocationState` on `(SkuId, LocationId, S
 | `SerialNumber` | `nvarchar(128)` | No | Globally unique normalized value |
 | `LocationId` | `uniqueidentifier` | Yes | FK to `Locations.Id`; null after physical exit |
 | `StockState` | `nvarchar(16)` | Yes | Physical state; null after exit |
-| `LifecycleStatus` | `nvarchar(16)` | No | `InStock`, `Reserved`, `Consumed`, `Disposed`, `Returned` |
+| `LifecycleStatus` | `nvarchar(16)` | No | `InStock`, `Reserved`, or `Consumed` |
 | `ReceivedAt` | `datetimeoffset(7)` | No | UTC |
 | `ExitedAt` | `datetimeoffset(7)` | Yes | UTC |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-Unique constraint: `UQ_SerialNumbers_SerialNumber`. Checks require location/state for `InStock` or `Reserved` and require both null for `Consumed` or `Disposed`.
+Unique constraint: `UQ_SerialNumbers_SerialNumber`. Checks require location/state for `InStock` or `Reserved` and require both null for `Consumed`.
 
 ## Purchasing Snapshot Tables
 
@@ -226,13 +235,16 @@ Unique constraint: `UQ_PurchaseOrderLineSnapshots_ExternalLineId`.
 | `Id` | `uniqueidentifier` | No | Inventory reservation reference |
 | `ExternalSalesOrderId` | `uniqueidentifier` | No | Sales-owned order |
 | `ExternalFulfilmentTaskId` | `uniqueidentifier` | Yes | Fulfilment task when available |
+| `SourceService` | `nvarchar(100)` | No | Authenticated command source |
+| `IdempotencyKey` | `nvarchar(200)` | No | Command replay identity; unique with source |
+| `CorrelationId` | `uniqueidentifier` | No | Release workflow correlation identity |
 | `Status` | `nvarchar(24)` | No | Reservation status catalog |
 | `RequestedAt` | `datetimeoffset(7)` | No | UTC |
 | `ReservedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `CompletedAt` | `datetimeoffset(7)` | Yes | Consumed/released/reversed time |
+| `CompletedAt` | `datetimeoffset(7)` | Yes | Consumed or technically released time |
 | `RowVersion` | `rowversion` | No | Aggregate concurrency token |
 
-An active `ExternalSalesOrderId` reservation is unique for statuses `Requested`, `Reserved`, or `PartiallyReserved`.
+An active `ExternalSalesOrderId` reservation is unique while status is `Reserved`. A unique constraint on `(SourceService, IdempotencyKey)` provides deterministic command replay.
 
 ### `ReservationLines`
 
@@ -247,14 +259,11 @@ Each row is one allocation against one `StockBalances` Available row.
 | `ExternalFulfilmentTaskLineId` | `uniqueidentifier` | Yes | Fulfilment line |
 | `SkuId` | `uniqueidentifier` | No | FK to `Skus.Id` |
 | `SourceStockBalanceId` | `uniqueidentifier` | No | FK to Available `StockBalances.Id` |
-| `RequestedQuantity` | `decimal(18,4)` | No | Greater than zero |
-| `ReservedQuantity` | `decimal(18,4)` | No | Between zero and requested |
-| `ConsumedQuantity` | `decimal(18,4)` | No | Non-negative; not above reserved |
-| `ReleasedQuantity` | `decimal(18,4)` | No | Non-negative; consumed plus released not above reserved |
+| `Quantity` | `decimal(18,4)` | No | Greater than zero; reserved, consumed, or technically released in full |
 | `Status` | `nvarchar(24)` | No | Line reservation status |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-Unique constraint: `UQ_ReservationLines_ReservationLineNumber` on `(ReservationId, LineNumber)`. Cross-column quantity checks enforce the documented bounds.
+Unique constraint: `UQ_ReservationLines_ReservationLineNumber` on `(ReservationId, LineNumber)`. Consumption and technical release require the exact line quantity.
 
 ### `ReservationSerials`
 
@@ -263,7 +272,7 @@ Unique constraint: `UQ_ReservationLines_ReservationLineNumber` on `(ReservationI
 | `Id` | `uniqueidentifier` | No | Primary key |
 | `ReservationLineId` | `uniqueidentifier` | No | FK to `ReservationLines.Id` |
 | `SerialNumberId` | `uniqueidentifier` | No | FK to `SerialNumbers.Id` |
-| `Status` | `nvarchar(16)` | No | `Reserved`, `Consumed`, `Released`, `Reversed` |
+| `Status` | `nvarchar(16)` | No | `Reserved`, `Consumed`, or `Released` |
 | `UpdatedAt` | `datetimeoffset(7)` | No | UTC |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
@@ -276,7 +285,7 @@ Unique constraint: `UQ_ReservationSerials_ReservationLineSerial`. A filtered uni
 | Column | SQL type | Null | Rules |
 |---|---|---:|---|
 | `Id` | `uniqueidentifier` | No | Primary key; append-only |
-| `MovementType` | `nvarchar(24)` | No | Receipt, reservation, release, consumption, reversal, adjustment, or state transfer |
+| `MovementType` | `nvarchar(24)` | No | `Receipt`, `Reservation`, `ReservationRelease`, or `Consumption` |
 | `SkuId` | `uniqueidentifier` | No | FK to `Skus.Id` |
 | `LocationId` | `uniqueidentifier` | No | FK to `Locations.Id` |
 | `FromStockState` | `nvarchar(16)` | Yes | Null for stock entering Inventory |
@@ -288,16 +297,15 @@ Unique constraint: `UQ_ReservationSerials_ReservationLineSerial`. A filtered uni
 | `ToQuantityAfter` | `decimal(18,4)` | Yes | Required and non-negative with target state |
 | `ReservationId` | `uniqueidentifier` | Yes | Optional FK to `Reservations.Id` |
 | `GoodsReceiptLineId` | `uniqueidentifier` | Yes | Optional FK to `GoodsReceiptLines.Id` |
-| `StockAdjustmentId` | `uniqueidentifier` | Yes | Optional FK to `StockAdjustments.Id` |
-| `ReversesStockMovementId` | `uniqueidentifier` | Yes | Optional self-FK to original movement |
 | `ExternalSalesOrderId` | `uniqueidentifier` | Yes | Sales source reference |
 | `ExternalFulfilmentTaskId` | `uniqueidentifier` | Yes | Fulfilment source reference |
 | `ExternalPurchaseOrderId` | `uniqueidentifier` | Yes | Purchasing source reference |
 | `ActorSubject` | `nvarchar(200)` | No | User/service actor |
 | `SourceService` | `nvarchar(100)` | No | Originating service/application |
+| `CorrelationId` | `uniqueidentifier` | No | Source workflow correlation identity |
 | `OccurredAt` | `datetimeoffset(7)` | No | UTC |
 
-Checks require at least one source or target state, valid states, quantity/before/after consistency, and exactly one primary local source for receipt, reservation, or adjustment movement types. Existing rows are never updated or deleted; corrections append a movement linked by `ReversesStockMovementId`.
+Checks require at least one source or target state, valid states, quantity/before/after consistency, and the local receipt or reservation source required by the movement type. Existing rows are never updated or deleted.
 
 ### `StockMovementSerials`
 
@@ -322,12 +330,14 @@ Unique constraint: `UQ_StockMovementSerials_MovementSerial`.
 | `Status` | `nvarchar(32)` | No | Receipt status catalog |
 | `ReceivedDate` | `date` | No | Business date |
 | `RecordedBySubject` | `nvarchar(200)` | No | Warehouse operator/service |
+| `SourceApplication` | `nvarchar(100)` | No | Authenticated command source |
+| `IdempotencyKey` | `nvarchar(200)` | No | Command replay identity; unique with source |
+| `CorrelationId` | `uniqueidentifier` | No | Receipt workflow correlation identity |
 | `CreatedAt` | `datetimeoffset(7)` | No | UTC |
 | `BookedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `ClosedAt` | `datetimeoffset(7)` | Yes | UTC |
 | `RowVersion` | `rowversion` | No | Aggregate concurrency token |
 
-Unique constraint: `UQ_GoodsReceipts_ReceiptNumber`.
+Unique constraints apply to `ReceiptNumber` and `(SourceApplication, IdempotencyKey)`.
 
 ### `GoodsReceiptLines`
 
@@ -336,45 +346,18 @@ Unique constraint: `UQ_GoodsReceipts_ReceiptNumber`.
 | `Id` | `uniqueidentifier` | No | Primary key |
 | `GoodsReceiptId` | `uniqueidentifier` | No | FK to `GoodsReceipts.Id` |
 | `LineNumber` | `int` | No | Positive |
-| `PurchaseOrderLineSnapshotId` | `uniqueidentifier` | Yes | FK when line matched |
-| `ExternalPurchaseOrderLineId` | `uniqueidentifier` | Yes | Purchasing line snapshot |
-| `SkuId` | `uniqueidentifier` | Yes | FK to `Skus.Id`; null for unknown item exception |
+| `PurchaseOrderLineSnapshotId` | `uniqueidentifier` | No | FK to `PurchaseOrderLineSnapshots.Id` |
+| `ExternalPurchaseOrderLineId` | `uniqueidentifier` | No | Purchasing line snapshot |
+| `SkuId` | `uniqueidentifier` | No | FK to `Skus.Id` |
 | `BarcodeId` | `uniqueidentifier` | Yes | Optional FK to `Barcodes.Id` |
 | `LocationId` | `uniqueidentifier` | No | FK to `Locations.Id` |
 | `ReceivedQuantity` | `decimal(18,4)` | No | Greater than zero |
-| `BookedQuantity` | `decimal(18,4)` | No | Non-negative and not above received |
-| `Condition` | `nvarchar(24)` | No | `Accepted`, `Damaged`, `Quarantine`, `Rejected`, `Unknown` |
-| `Status` | `nvarchar(24)` | No | `Pending`, `Matched`, `Exception`, `Booked`, `Rejected` |
+| `Condition` | `nvarchar(24)` | No | `Available`, `Quarantine`, `Damaged`, or `NonAvailable` |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-Unique constraint on `(GoodsReceiptId, LineNumber)`. Checks enforce quantity bounds and supported condition/status.
+Unique constraint on `(GoodsReceiptId, LineNumber)`. Checks enforce positive quantity and supported condition. Unknown products, unmatched PO lines, and over-receipts fail command validation without creating a receipt. Each quantity books to the stock state named by `Condition`; only `Available` contributes to available-to-promise.
 
-### `ReceiptExceptions`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `GoodsReceiptLineId` | `uniqueidentifier` | No | FK to `GoodsReceiptLines.Id` |
-| `ExceptionType` | `nvarchar(32)` | No | `Unmatched`, `UnknownItem`, `Damaged`, `Quarantine`, `Rejected`, `OverReceipt`, `UnderReceipt` |
-| `Status` | `nvarchar(24)` | No | `PendingReview`, `Approved`, `Rejected`, `Resolved`, `Closed` |
-| `RecordedBySubject` | `nvarchar(200)` | No | Cannot approve related resolution |
-| `Reason` | `nvarchar(1000)` | No | Operator reason |
-| `OpenedAt` | `datetimeoffset(7)` | No | UTC |
-| `ResolvedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Concurrency token |
-
-### `ReceiptExceptionDecisions`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only decision attempt |
-| `ReceiptExceptionId` | `uniqueidentifier` | No | FK to `ReceiptExceptions.Id` |
-| `Decision` | `nvarchar(16)` | No | `Approved`, `Rejected`, `Denied` |
-| `DecidedBySubject` | `nvarchar(200)` | No | Must differ from recorder for approval |
-| `Reason` | `nvarchar(1000)` | Yes | Required for reject/deny |
-| `DecidedAt` | `datetimeoffset(7)` | No | UTC |
-
-## Stock Check and Adjustment Tables
+## Stock Check Tables
 
 ### `StockChecks`
 
@@ -382,12 +365,16 @@ Unique constraint on `(GoodsReceiptId, LineNumber)`. Checks enforce quantity bou
 |---|---|---:|---|
 | `Id` | `uniqueidentifier` | No | Primary key |
 | `StockCheckNumber` | `nvarchar(32)` | No | Unique business number |
+| `SkuId` | `uniqueidentifier` | No | FK to `Skus.Id` |
+| `LocationId` | `uniqueidentifier` | No | FK to `Locations.Id` |
 | `Status` | `nvarchar(32)` | No | Stock-check status catalog |
-| `RecordedBySubject` | `nvarchar(200)` | No | Recorder cannot approve adjustment |
+| `RecordedBySubject` | `nvarchar(200)` | No | Acting warehouse operator or service |
+| `CompletedBySubject` | `nvarchar(200)` | Yes | Acting completion user/service; required in Completed state |
 | `StartedAt` | `datetimeoffset(7)` | No | UTC |
-| `CountedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `ClosedAt` | `datetimeoffset(7)` | Yes | UTC |
+| `CompletedAt` | `datetimeoffset(7)` | Yes | UTC; required in Completed state |
 | `RowVersion` | `rowversion` | No | Aggregate concurrency token |
+
+Unique constraint: `UQ_StockChecks_StockCheckNumber`.
 
 ### `StockCheckLines`
 
@@ -401,77 +388,30 @@ Unique constraint on `(GoodsReceiptId, LineNumber)`. Checks enforce quantity bou
 | `BarcodeId` | `uniqueidentifier` | Yes | Optional FK to `Barcodes.Id` |
 | `LocationId` | `uniqueidentifier` | No | FK to `Locations.Id` |
 | `StockState` | `nvarchar(16)` | No | Counted state |
-| `RecordedQuantity` | `decimal(18,4)` | No | Non-negative snapshot |
-| `ActualQuantity` | `decimal(18,4)` | No | Non-negative count |
-| `VarianceQuantity` | `decimal(18,4)` | No | `ActualQuantity - RecordedQuantity` |
-| `CountedAt` | `datetimeoffset(7)` | No | UTC |
+| `RecordedQuantity` | `decimal(18,4)` | Yes | Non-negative count-time snapshot; required on completion |
+| `ActualQuantity` | `decimal(18,4)` | Yes | Non-negative count; required on completion |
+| `VarianceQuantity` | `decimal(18,4)` | Yes | `ActualQuantity - RecordedQuantity`; required on completion |
+| `CountedAt` | `datetimeoffset(7)` | Yes | UTC; required on completion |
 | `RowVersion` | `rowversion` | No | Concurrency token |
 
-Unique constraint: `(StockCheckId, LineNumber)`. The arithmetic relationship is checked in SQL.
+Unique constraints apply to `(StockCheckId, LineNumber)` and `(StockCheckId, StockState)`. Checks require recorded/actual/variance/count time together on completion, enforce non-negative recorded and actual quantities, and enforce the arithmetic relationship. Every line must use the header SKU and location. Completing a check stores all count data atomically and does not update `StockBalances` or create `StockMovements`.
 
-### `StockDiscrepancies`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `StockCheckLineId` | `uniqueidentifier` | No | FK to `StockCheckLines.Id`; unique |
-| `Status` | `nvarchar(24)` | No | `PendingReview`, `AdjustmentProposed`, `Approved`, `Rejected`, `Investigating`, `Closed` |
-| `VarianceQuantity` | `decimal(18,4)` | No | Non-zero snapshot |
-| `EstimatedUnitValue` | `decimal(19,4)` | Yes | Optional policy input |
-| `EstimatedVarianceValue` | `decimal(19,4)` | Yes | Optional policy result |
-| `VariancePercentage` | `decimal(9,4)` | Yes | Optional policy result |
-| `Reason` | `nvarchar(1000)` | Yes | Review context |
-| `OpenedAt` | `datetimeoffset(7)` | No | UTC |
-| `ClosedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Concurrency token |
-
-### `StockAdjustments`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key |
-| `StockDiscrepancyId` | `uniqueidentifier` | No | FK to `StockDiscrepancies.Id`; unique |
-| `AdjustmentQuantity` | `decimal(18,4)` | No | Non-zero |
-| `Status` | `nvarchar(24)` | No | `Proposed`, `ApprovalRequired`, `Approved`, `Rejected`, `Posted`, `Cancelled` |
-| `RequestedBySubject` | `nvarchar(200)` | No | Cannot approve controlled adjustment |
-| `Reason` | `nvarchar(1000)` | No | Required |
-| `ValueThreshold` | `decimal(19,4)` | No | Configured policy snapshot |
-| `PercentageThreshold` | `decimal(9,4)` | No | Configured policy snapshot |
-| `EvaluatedValue` | `decimal(19,4)` | Yes | Applied value |
-| `EvaluatedPercentage` | `decimal(9,4)` | Yes | Applied percentage |
-| `CurrencyCode` | `char(3)` | No | Configured currency |
-| `RequiresApproval` | `bit` | No | Applied policy result |
-| `RequestedAt` | `datetimeoffset(7)` | No | UTC |
-| `PostedAt` | `datetimeoffset(7)` | Yes | UTC |
-| `RowVersion` | `rowversion` | No | Concurrency token |
-
-### `StockAdjustmentDecisions`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only decision attempt |
-| `StockAdjustmentId` | `uniqueidentifier` | No | FK to `StockAdjustments.Id` |
-| `Decision` | `nvarchar(16)` | No | `Approved`, `Rejected`, `Denied` |
-| `DecidedBySubject` | `nvarchar(200)` | No | Must differ from count/adjustment recorder for approval |
-| `Reason` | `nvarchar(1000)` | Yes | Required for reject/deny |
-| `DecidedAt` | `datetimeoffset(7)` | No | UTC |
-
-## Status Catalogs
+## Status Models
 
 | Area | Allowed values |
 |---|---|
-| Stock state | `Available`, `Reserved`, `Quarantine`, `Damaged`, `Rejected`, `NonAvailable` |
-| Reservation | `Requested`, `Reserved`, `PartiallyReserved`, `Rejected`, `Consumed`, `Released`, `Reversed` |
-| Goods receipt | `Open`, `Matched`, `PartiallyMatched`, `ExceptionPendingReview`, `Booked`, `Rejected`, `Closed` |
-| Stock check | `Open`, `Counted`, `NoVariance`, `DiscrepancyPendingReview`, `AdjustmentApproved`, `AdjustmentRejected`, `Closed` |
+| Stock state | `Available`, `Reserved`, `Quarantine`, `Damaged`, `NonAvailable` |
+| Reservation | `Reserved`, `Consumed`, `Released` |
+| Goods receipt | `Draft`, `Booked` |
+| Stock check | `Open`, `Completed` |
 
-All current-state values are checked in SQL. Inventory enforces transition graphs and state-specific guards from `requirements.md`.
+Valid receipt transition is `Draft -> Booked`; Booked is terminal. Valid stock-check transition is `Open -> Completed`; Completed is terminal and informational. A reservation moves from `Reserved` to `Consumed` after exact fulfilment consumption or to `Released` only for idempotent technical compensation of failed release orchestration. Reservation and stock-state changes remain constrained by exact quantities, source references, and non-negative balance rules.
 
 ## Local Foreign Keys and Delete Behavior
 
 All foreign keys use `ON DELETE NO ACTION`; all required FK columns are indexed. Local source links in `StockMovements` are optional only because movement types have different sources. Cross-database external IDs never receive foreign keys.
 
-Key local relationship groups are catalog to SKU, warehouse to location, SKU/location to balances and serials, PO snapshots to lines/receipts, reservations to allocation lines/serials, receipts to lines/exceptions/decisions, checks to lines/discrepancies/adjustments/decisions, and movements to local SKU/location/source/serial records.
+Key local relationship groups are catalog to SKU, warehouse to location, SKU/location to balances and serials, PO snapshots to lines/receipts, reservations to allocation lines/serials, receipts to lines, checks to lines, and movements to local SKU/location/source/serial records.
 
 ## Indexes for Required Queries
 
@@ -488,20 +428,18 @@ Key local relationship groups are catalog to SKU, warehouse to location, SKU/loc
 | `IX_StockMovements_Sku_OccurredAt` on `(SkuId, OccurredAt DESC, Id)` | SKU ledger operations |
 | `IX_StockMovements_Location_OccurredAt` on `(LocationId, OccurredAt DESC, Id)` | Location ledger operations |
 | `IX_GoodsReceipts_ExternalPurchaseOrderId` on `(ExternalPurchaseOrderId, Status, Id)` | PO receipt lookup |
-| `IX_ReceiptExceptions_Status_OpenedAt` on `(Status, OpenedAt, Id)` | Receipt exception queue |
-| `IX_StockDiscrepancies_Status_OpenedAt` on `(Status, OpenedAt, Id)` | Discrepancy queue |
+| `IX_StockChecks_Status_CompletedAt` on `(Status, CompletedAt, Id)` | Open and completed count search |
 
 ## Transactional Invariants and Concurrency
 
 - Mutate affected `StockBalances` only when optimistic `RowVersion` checks succeed; a conflict rejects the command without changing quantities.
-- Reserve by decreasing the Available balance and increasing the matching Reserved balance, then append one transfer movement and update reservation lines/serials in one transaction. Total physical on-hand remains unchanged.
-- Release by decreasing Reserved and increasing Available with a compensating transfer movement. Consume by decreasing Reserved with no target state and append a consumption movement. Never make any balance negative.
-- Reverse a completed consumption by appending a reversal movement linked to the original and increasing the policy-approved target state. Never edit or delete the original movement.
-- Book a matched accepted receipt by increasing the appropriate state balance, creating/updating serials, appending movement rows, and updating receipt lines/header in one transaction. Exception quantities do not enter Available until an authorized resolution is committed.
-- Post an adjustment only after approval policy and self-approval checks. Update the balance, append the adjustment movement, and close/update discrepancy state atomically.
-- Capture `RecordedQuantity` when a stock-check line is created. A later balance change does not rewrite the snapshot; adjustment posting revalidates current balance and may require renewed review.
+- Reserve the exact requested quantity by decreasing Available and increasing Reserved, then append a reservation movement and update reservation lines/serials in one transaction. Total physical on-hand remains unchanged.
+- Technically release an unused reservation after failed release orchestration by decreasing Reserved and increasing Available with a reservation-release movement. Consume an exact active reservation by decreasing Reserved with no target state and append a consumption movement. Never make any balance negative.
+- Book a validated receipt by increasing the stock state selected from line condition, creating or updating serials, appending movement rows, and updating receipt lines and header in one transaction. Only `Available` quantities contribute to available-to-promise.
+- Reject unknown products, unmatched PO lines, invalid quantities, and over-receipts before persistence. A rejected command does not change receipt, balance, serial, or movement rows.
+- Complete a stock check by storing count-time recorded quantities, actual quantities, calculated variances, actor, and completion time in one transaction without updating balances, serials, reservations, or movements.
 - For serialized SKUs, the service verifies that affected serial records and movement serial rows equal the integral movement quantity. SQL constraints cannot enforce this cross-row count.
-- State-transition legality, one active reservation across multiple allocation rows, serialized quantity reconciliation, self-approval, and sums across balances are domain rules enforced inside these transactions.
+- State-transition legality, one active reservation across multiple allocation rows, serialized quantity reconciliation, and sums across balances are domain rules enforced inside these transactions.
 - Never hold a database transaction open across Purchasing, Sales, or Fulfilment HTTP calls.
 
 ## External References
@@ -511,46 +449,48 @@ Key local relationship groups are catalog to SKU, warehouse to location, SKU/loc
 | Purchase order, line, and supplier external IDs | Purchasing | No |
 | `ExternalSalesOrderId`, `ExternalSalesOrderLineId` | Sales | No |
 | `ExternalFulfilmentTaskId`, `ExternalFulfilmentTaskLineId` | Order Fulfilment | No |
-| Recorder, approver, actor, and service subjects | Authentik/platform identity | No |
+| Recorder, actor, and service subjects | Authentik/platform identity | No |
 
 ## Requirement Traceability
 
 | Requirement | Persistence coverage |
 |---|---|
 | `INV-DOM-001` | Products, SKUs, unique barcodes, locations, stocking flags, serialization policy, active state, and concurrency |
-| `INV-DOM-002` | Purchasing snapshots, receipt matching, conditions, exception/decision state, atomic booking, and movement evidence |
-| `INV-DOM-003` | Stock-check quantity snapshots, actual/variance checks, discrepancy state, and adjustment outcome |
-| `INV-DOM-004` | Policy snapshots, approval requirement, requester/decider identities, denied attempts, and atomic posting |
-| `INV-DOM-005` | Append-only typed stock movements, source links, prior/new quantities/states, serial links, actor, and time |
-| `INV-DOM-006` | Non-negative balance checks plus transaction/concurrency rules before every decrement |
-| `INV-DOM-007` | Indexed balance states, stocked configuration, and authoritative Inventory query source |
-| `INV-DOM-008` | Reservation header, allocations, serials, external Sales/Fulfilment IDs, and Available-to-Reserved transfer |
-| `INV-DOM-009` | Reservation consumption/release/reversal quantities, immutable movements, and accepted external references |
-| `INV-DOM-010` | Product, balance, reservation, discrepancy, and receipt-exception indexes |
+| `INV-DOM-002` | Unique balance keys, non-negative checks, reservation state, and optimistic transaction guards |
+| `INV-DOM-003` | Purchasing snapshots, required receipt matching, positive quantities, atomic booking, and movement evidence |
+| `INV-DOM-004` | Receipt condition directs quantity to Available, Quarantine, Damaged, or NonAvailable stock |
+| `INV-DOM-005` | Completed stock checks preserve count-time recorded, actual, and variance quantities without stock mutation |
+| `INV-DOM-006` | Append-only receipt, reservation, technical release, and consumption movements with source and actor evidence |
+| `INV-DOM-007` | Indexed balances and stocked configuration support authoritative availability queries |
+| `INV-DOM-008` | Reservation header, exact allocations, serials, and external Sales/Fulfilment references |
+| `INV-DOM-009` | Exact consumption updates reservations, balances, serials, and immutable movement references atomically |
+| `INV-DOM-010` | Product, balance, receipt, stock-check, reservation, and movement indexes support required searches |
 
-Authorization, scanner/form validation, transition decisions, policy evaluation, service calls, pagination, data serialization, and cross-row reconciliation remain domain/API responsibilities.
+Authorization, scanner/form validation, transition decisions, service calls, pagination, data serialization, and cross-row reconciliation remain domain/API responsibilities.
 
 ### Business Rule Traceability
 
 | Rule | Persistence or domain disposition |
 |---|---|
-| `INV-BR-001` | Stock-check line snapshots identify balance, SKU, optional barcode, location, state, recorded/actual quantities, and checked variance |
-| `INV-BR-002` | Receipt lines link to Purchasing snapshots before booking; unmatched lines remain exceptions |
-| `INV-BR-003` | Conditions and receipt-exception states prevent unresolved quantities entering Available |
-| `INV-BR-004` | Discrepancy/adjustment state is separate from current balances; posting transaction is the only balance mutation path |
-| `INV-BR-005` | Value/percentage threshold snapshots, evaluated values, approval state, and decisions support configurable policy |
-| `INV-BR-006` | Recorder/requester and decider subjects support self-approval rejection and retained denial evidence |
-| `INV-BR-007` | Every movement has typed local/external source references; source-shape checks apply by movement type |
-| `INV-BR-008` | `Quantity >= 0` checks plus optimistic transactional decrement guards prohibit negative stock |
-| `INV-BR-009` | Reservation allocations and Available-to-Reserved movement atomically reduce available-to-promise |
-| `INV-BR-010` | SKU serialization policy, unique serial records, reservation/movement serial links, and cross-row reconciliation guard |
+| `INV-BR-001` | Unique constraints preserve product, SKU, and barcode identifiers after deactivation |
+| `INV-BR-002` | Active configuration checks guard new receipt, reservation, and consumption mutations |
+| `INV-BR-003` | Positive receipt quantities and Purchasing snapshot totals support remaining-quantity validation |
+| `INV-BR-004` | Only Available balance rows contribute to available-to-promise |
+| `INV-BR-005` | Non-negative checks and transactional guards prevent over-reservation and over-consumption |
+| `INV-BR-006` | Serialization policy, unique serial records, and receipt/consumption movement serial links support exact unit counts |
+| `INV-BR-007` | Completed stock-check lines preserve count-time evidence and have no balance or movement mutation path |
+| `INV-BR-008` | Every movement has typed local and external source references with no cross-database key |
+| `INV-BR-009` | Reservations and movements retain Sales order, Fulfilment task, and correlation context |
+| `INV-BR-010` | Configuration and balance `RowVersion` values reject stale writes |
 
-## Seed and Lifecycle Policy
+## Retention and Seed Policy
 
 - Seed one deterministic MVP warehouse and one deterministic default location. Additional bins are loaded through rerunnable Inventory-owned environment tooling.
 - Load products, SKUs, barcodes, opening balances, and serials through deterministic Inventory tooling, not EF model seed data.
-- Never physically delete stock movements, movement serials, booked receipts, posted adjustments, or decision records.
+- Retain stock movements, movement serials, booked receipts, and completed stock checks for the ERP retention period.
+- Retain current stock balances, active reservations, and serial lifecycle records while operationally relevant.
 - Deactivate catalog/configuration records instead of deleting records referenced by business records.
+- Purge only unreferenced inactive catalog data under an explicit retention job; never cascade-delete ledger or source evidence.
 
 ## Excluded Schema
 
@@ -562,6 +502,17 @@ This design excludes Purchasing PO ownership, Sales orders, fulfilment tasks, fi
 - Configure decimal precision explicitly and never use floating-point types for quantities, values, or percentages.
 - Keep all Purchasing, Sales, and Fulfilment IDs scalar with no cross-domain navigation.
 - Persist status strings exactly as documented; do not map enum ordinals.
-- Prevent updates/deletes to stock-movement ledger rows and append-only decision records in application persistence behavior.
+- Prevent updates or deletes to stock-movement ledger rows in application persistence behavior.
 - Use `__InventoryManagementMigrationsHistory`; inspect migrations for cascade deletes, negative-stock loopholes, cross-database FKs, destructive ledger changes, or accidental lot/expiry scope.
-- Add SQL Server integration tests for unique catalog identifiers, balance uniqueness/non-negativity, concurrent decrement conflict, atomic reservation/receipt/adjustment posting, movement immutability, serial uniqueness, self-approval denial, checks, and migration application.
+
+## Proposed Persistence Tests
+
+- Apply all migrations to an empty SQL Server database and verify `__InventoryManagementMigrationsHistory`.
+- Verify unique catalog identifiers, location codes, balance keys, PO snapshot IDs, receipt numbers, check numbers, and serial numbers.
+- Verify non-positive quantities, unsupported statuses, unmatched receipt lines, unknown SKUs, over-receipts, and negative balance outcomes reject writes without partial state.
+- Verify concurrent balance decrements produce one success and one `DbUpdateConcurrencyException` without a negative quantity.
+- Verify reservation, technical reservation release, consumption, and receipt booking update balances, source state, serials, and movements atomically.
+- Verify receipt conditions enter only Available, Quarantine, Damaged, or NonAvailable and only Available contributes to available-to-promise.
+- Verify completing a stock check persists recorded, actual, and variance quantities while leaving balances, reservations, serials, and movements unchanged.
+- Verify movement rows are immutable.
+- Verify every FK uses `NO ACTION` and no migration creates a cross-database FK.

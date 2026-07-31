@@ -7,7 +7,7 @@ This document defines the local Docker Desktop Kubernetes runtime architecture a
 ## Runtime Goals
 
 - Run the complete ERP locally using Docker Desktop, Kubernetes, and Skaffold.
-- Include SQL Server, Authentik, Gravitee, all domain API services, all application API services, all application UI services, and local configuration dependencies.
+- Include SQL Server, Authentik, Gravitee, four domain API services, five application API/UI pairs, and local configuration dependencies.
 - Keep generated local secrets out of source control.
 - Provide repeatable bootstrap and validation scripts for developers.
 
@@ -46,6 +46,8 @@ flowchart TB
         FulfilmentOperatorUi[Fulfilment Operator UI]
         SalesAssistantApi[Sales Assistant API]
         SalesAssistantUi[Sales Assistant UI]
+        CustomerOrderingApi[Customer Ordering API]
+        CustomerOrderingUi[Customer Ordering UI]
         BuyerApi[Buyer API]
         BuyerUi[Buyer UI]
     end
@@ -121,7 +123,7 @@ This mode expects the local Gravitee gateway to be reachable at `http://localhos
 kubectl get service gravitee-apim-gateway -n erp-local
 ```
 
-The validation script does not create gateway exposure. It checks `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, `/apps/fulfilment-operator/ui`, `/apps/inventory-supervisor/ui`, and `/apps/fulfilment-supervisor/ui` through `http://localhost:8082`.
+The validation script does not create gateway exposure. It checks `/apps/sales-assistant/ui`, `/apps/customer-ordering/ui`, `/apps/buyer/ui`, `/apps/warehouse-operator/ui`, and `/apps/fulfilment-operator/ui` through `http://localhost:8082`.
 
 Gravitee route publication is configuration-driven. The database-less gateway watches Kubernetes ConfigMaps labeled `managed-by=gravitee.io` and `gio-type=apidefinitions.gravitee.io`; the local route definitions live in `build/k8s/gravitee/routes/*.yaml`. If external UI validation cannot reach the gateway or returns `404` for every UI route, validation fails because gateway exposure or ConfigMap synchronization is missing or incorrect.
 

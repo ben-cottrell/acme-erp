@@ -17,7 +17,7 @@ Use the requirements in this workspace as the source of truth:
 
 - `docs/architecture/api-gateway-and-identity.md`, `docs/architecture/service-internal-architecture.md`, and `docs/architecture/decisions-and-open-questions.md` for Authentik/Gravitee identity, service accounts, authorization, observability, correlation, and idempotency conventions.
 - `sales/requirements.md` for Sales bounded context, order intake, customer/channel workflows, inventory availability checks, non-stocked product requests, and release-to-fulfilment interactions.
-- `purchasing/requirements.md` for Purchasing bounded context, purchase orders, supplier ordering, approval workflows, receipt validation data, and purchasing-to-inventory integration.
+- `purchasing/requirements.md` for Purchasing bounded context, purchase orders, supplier ordering, buyer request handling, receipt validation data, and purchasing-to-inventory integration.
 - `inventory-management/requirements.md` for Inventory bounded context, stock system-of-record rules, goods receipt, stock checks, discrepancies, availability, and stock movement rules.
 - `order-fulfilment/requirements.md` for Fulfilment bounded context, pick/pack/ship workflows, courier integration, shipping labels, fulfilment status, and inventory consumption events.
 
@@ -57,7 +57,7 @@ Follow common Microsoft and .NET best practice as closely as possible while resp
 - Preserve strong separation of concerns between UI, API, application behavior, domain rules, persistence, infrastructure, and cross-cutting concerns.
 - Use vertical slices as the primary physical organization style: group files and classes by feature, workflow, or business behavior.
 - Do not recommend broad generic folders or projects named only for technical categories such as `Models`, `Helpers`, `Utils`, or catch-all `Controllers`.
-- Prefer names that reflect ERP features and behavior, such as `SalesOrderEntry`, `InventoryAvailability`, `GoodsReceipt`, `PurchaseOrderApproval`, or `FulfilmentShipping`.
+- Prefer names that reflect ERP features and behavior, such as `SalesOrderEntry`, `InventoryAvailability`, `GoodsReceipt`, `PurchaseOrderEntry`, or `FulfilmentShipping`.
 - Document common platform behavior as conventions and keep implementation inside the owning service unless a later explicit architecture decision reintroduces shared projects.
 - Do not create shared projects for cross-cutting or module-specific behavior in MVP documentation.
 - Avoid cross-database foreign keys. Use external ID columns and integration contracts between owning services.
@@ -67,10 +67,10 @@ Follow common Microsoft and .NET best practice as closely as possible while resp
 Specify architecture for these module boundaries unless requirements change:
 
 - Sales: order intake, customer/channel order handling, availability checks, non-stocked product requests, and release to fulfilment.
-- Purchasing: supplier ordering, purchase orders, buyer workflows, approval controls, and purchase-order data needed for inventory receipt validation.
-- Inventory Management: stock system of record, availability, goods receipt, stock checks, discrepancy review, and stock movements.
+- Purchasing: supplier ordering, purchase orders, buyer workflows, and purchase-order data needed for inventory receipt validation.
+- Inventory Management: stock system of record, availability, goods receipt, informational stock-check evidence, and stock movements.
 - Order Fulfilment: released order work queues, picking, packing, courier shipment purchase, label printing, fulfilment completion, and stock consumption events.
-- Cross-cutting: identity integration, gateway policy conventions, service-local authorization, local self-approval rules, correlation IDs, observability, OpenAPI conventions, health checks, and test conventions implemented by owning services.
+- Cross-cutting: identity integration, gateway policy conventions, service-local authorization, correlation IDs, observability, OpenAPI conventions, health checks, and test conventions implemented by owning services.
 
 ## Required Specification Areas
 
@@ -86,7 +86,7 @@ When producing architecture documentation, cover the following areas where relev
 8. API routing, OpenAPI 3.0, and controller conventions
 9. Gravitee ingress and API management responsibilities
 10. Authentik OAuth/OIDC integration with Gravitee
-11. API-level authorization and local self-approval enforcement
+11. API-level authorization enforcement
 12. Service-to-service communication and integration patterns
 13. Synchronous versus asynchronous workflow guidance
 14. Correlation, idempotency, retry, and failure handling conventions
@@ -108,7 +108,7 @@ Write architecture specifications as practical engineering documents, not abstra
 - Mark requirements-derived constraints separately from recommendations.
 - Include explicit acceptance or review checklists for architecture deliverables.
 - Use Mermaid diagrams when they clarify topology, routing, data ownership, or workflows.
-- Record open questions instead of inventing business policy decisions such as approval thresholds, MFA/session policy, reservation timing, partial fulfilment, or exact permission matrices.
+- Record open questions instead of inventing business policy decisions such as MFA/session policy, reservation timing, or exact permission matrices.
 
 ## Default Deliverables
 

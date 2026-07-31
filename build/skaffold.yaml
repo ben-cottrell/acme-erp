@@ -64,22 +64,6 @@ build:
       context: .
       docker:
         dockerfile: src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui/Dockerfile
-    - image: acme-erp/inventory-supervisor-api
-      context: .
-      docker:
-        dockerfile: src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api/Dockerfile
-    - image: acme-erp/inventory-supervisor-ui
-      context: .
-      docker:
-        dockerfile: src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui/Dockerfile
-    - image: acme-erp/fulfilment-supervisor-api
-      context: .
-      docker:
-        dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api/Dockerfile
-    - image: acme-erp/fulfilment-supervisor-ui
-      context: .
-      docker:
-        dockerfile: src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui/Dockerfile
 manifests:
   rawYaml:
     - build/k8s/namespaces/*.yaml

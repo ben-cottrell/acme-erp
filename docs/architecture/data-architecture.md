@@ -54,13 +54,13 @@ All owning APIs read their database connection from `ConnectionStrings:DomainDat
 - Store booleans as `bit`. Store statuses and other bounded classifications as descriptive `nvarchar` values protected by check constraints; do not persist enum ordinals.
 - Add a non-null SQL Server `rowversion` concurrency token named `RowVersion` to mutable aggregate roots and mutable current-state rows identified by each domain design. Append-only records do not use concurrency tokens.
 - Use `ON DELETE NO ACTION` for business relationships. Retained business records change lifecycle state instead of being cascade-deleted. Master and reference records use an active flag where deactivation is required. Do not add a generic soft-delete column.
-- Enforce row-local positive, non-negative, bounded-value, and valid-JSON rules with check constraints. Enforce state-transition graphs, self-approval, and cross-row aggregate invariants in domain/application code within a local database transaction.
+- Enforce row-local positive, non-negative, bounded-value, and valid-JSON rules with check constraints. Enforce state-transition graphs and cross-row aggregate invariants in domain/application code within a local database transaction.
 - Use unique constraints or unique indexes for business numbers, stable codes, barcodes, serial numbers, and external identities. Use filtered unique indexes when an optional external identity must be unique only when populated.
 - Index foreign keys and the documented operational query filters. Prefer composite indexes whose leading columns match equality filters followed by stable sort columns.
 
 ## JSON Details and Immutable Business Records
 
-- Approval decisions and inventory stock movements are append-only after insertion.
+- Inventory stock movements are append-only after insertion.
 - Optional prior values, new values, changed fields, or provider metadata may use `nvarchar(max)` JSON columns protected by `ISJSON` check constraints.
 
 ## External Reference Examples
@@ -90,11 +90,28 @@ Use a local transaction for changes inside one domain database. Use integration 
 
 | Workflow | Consistency guidance |
 |---|---|
-| Sales availability check | Synchronous query to Inventory Management for current availability during order entry and release checks. |
-| Sales release to fulfilment | Inventory reserves stock at release and Fulfilment receives the released work before Sales records the released state. |
-| Inventory goods receipt | Inventory validates against Purchasing PO data before booking matched goods into stock. Mismatches remain non-available until resolved. |
-| Fulfilment completion | Fulfilment completes after pick, pack, shipping purchase, and label generation or approved exception; Inventory consumes stock at completion; Sales receives completion status. |
+| Sales availability check | Synchronous informational query to Inventory Management for current availability during order entry and release checks; the query does not reserve or mutate stock. |
+| Sales release to fulfilment | Inventory reserves every required line quantity at release and Fulfilment receives the exact released work before Sales records the released state. |
+| Inventory goods receipt | Inventory validates against Purchasing PO data before booking accepted quantities into stock. Unknown, ineligible, mismatched, or excess quantities are rejected without a receipt or stock change. |
+| Inventory stock check | Inventory records count-time balance, actual quantity, and variance as an informational completed check without changing a stock balance or creating a movement. |
+| Fulfilment completion | Fulfilment completes only after every line is picked exactly, packed, and has an accepted shipping purchase and label; Inventory atomically consumes every exact reservation quantity; Sales receives one Completed update. |
 | Buyer request | Sales sends non-routinely stocked product request to Purchasing; Purchasing owns buyer queue status and returns status feedback. |
+
+```mermaid
+sequenceDiagram
+	participant Sales
+	participant Inventory
+	participant Fulfilment
+	Sales->>Inventory: Query current availability
+	Inventory-->>Sales: Informational available quantity
+	Sales->>Inventory: Reserve every required line quantity
+	Inventory-->>Sales: Exact reservation IDs
+	Sales->>Fulfilment: Release exact lines and reservation IDs
+	Fulfilment->>Fulfilment: Confirm exact pick, pack, shipment, and label
+	Fulfilment->>Inventory: Consume every exact reservation quantity
+	Inventory-->>Fulfilment: Immutable movement IDs
+	Fulfilment->>Sales: Record one Completed update
+```
 
 ## Inventory State Rules
 
@@ -103,8 +120,9 @@ Use a local transaction for changes inside one domain database. Use integration 
 - Damaged goods, quarantine stock, and rejected receipts are non-available stock states until resolved.
 - Serialized computer systems and serialized components require serial number tracking.
 - Lot and expiry tracking are out of scope unless later configured for specific products.
+- Completed stock checks are informational records and do not change balances or create stock movements.
 - Reservations reduce available-to-promise quantity at fulfilment release.
-- Fulfilment consumption creates stock movement records at fulfilment completion.
+- Full fulfilment consumption atomically creates stock movement records for every exact reservation quantity at completion.
 
 ## Data Seeding
 
@@ -123,5 +141,7 @@ Use a local transaction for changes inside one domain database. Use integration 
 - [ ] Cross-domain references use external ID columns.
 - [ ] EF Core migrations are owned by the database-owning domain.
 - [ ] Inventory reservation and consumption timing matches requirements.
+- [ ] Stock checks are informational and cannot change balances or create stock movements.
+- [ ] Fulfilment completion consumes every exact reservation quantity atomically.
 - [ ] The owning domain's `database-design.md` covers every table, column, relationship, constraint, index, and transaction changed by the migration.
 - [ ] SQL types, lengths, status checks, JSON checks, delete behavior, and `rowversion` mappings follow the shared physical conventions.

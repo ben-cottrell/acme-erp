@@ -28,8 +28,8 @@ Examples:
 - `SalesOrderEntry`
 - `InventoryAvailability`
 - `GoodsReceipt`
-- `StockDiscrepancyReview`
-- `PurchaseOrderApproval`
+- `StockCheck`
+- `PurchaseOrderEntry`
 - `BuyerRequestReview`
 - `FulfilmentPicking`
 - `FulfilmentShipping`
@@ -82,11 +82,13 @@ Use technical folders only when they support a clear boundary that cuts across m
 ## Domain and Workflow Rules
 
 - Status transitions are explicit and tested.
-- Approval thresholds and local self-approval rules are configurable, not hard-coded constants in domain logic.
 - Domain models use `System.Guid` identifiers backed by SQL Server `UNIQUEIDENTIFIER` columns.
 - Cross-domain references are named external IDs, not navigation properties to another domain's database.
 - Negative inventory balances are prohibited by Inventory Management domain rules.
-- Inventory reservation happens at fulfilment release; inventory consumption happens at fulfilment completion.
+- Inventory availability and completed stock checks are informational; a stock check cannot change balances or create movements.
+- Inventory reservation covers every required line at fulfilment release; inventory consumes those exact quantities atomically at full fulfilment completion.
+- Sales order and purchase order terms are mutable only in Draft and are fixed by submission or placement.
+- Order Fulfilment confirms picking only when every released line and required serial matches exactly, then follows the defined packing, shipping, label, and completion transitions.
 
 ## Integration Rules
 
@@ -108,5 +110,5 @@ Use technical folders only when they support a clear boundary that cuts across m
 - [ ] UI services have no database access.
 - [ ] Application API services have no database access.
 - [ ] Domain API services own persistence and migrations.
-- [ ] Controlled actions enforce local permissions and self-approval rules in domain APIs where relevant.
+- [ ] Domain APIs enforce required permissions, data scopes, and state transitions.
 - [ ] Cross-domain references use external IDs.
