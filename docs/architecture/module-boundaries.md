@@ -15,7 +15,7 @@ The architecture no longer treats each ERP module as a full-stack `API + UI + da
 - Application UIs call only their paired application APIs.
 - Application APIs do not own databases, EF Core migrations, or durable business state.
 - Application APIs call one or more domain APIs to read or mutate durable business state.
-- Domain APIs remain authoritative for business authorization, validation, persistence, domain invariants, operational history, and local self-approval rules.
+- Domain APIs remain authoritative for business authorization, validation, persistence, domain invariants, and local self-approval rules.
 
 ## Domain Boundary Matrix
 

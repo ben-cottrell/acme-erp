@@ -2,7 +2,7 @@
 
 ## Status
 
-This document defines database ownership, EF Core, identifier, reference, migration, operational history, and consistency conventions.
+This document defines database ownership, EF Core, identifier, reference, migration, and consistency conventions.
 
 It is the authoritative source for physical conventions shared by all domain databases. Each domain-local `database-design.md` is authoritative for that database's tables, columns, relationships, constraints, indexes, and transaction boundaries. The adjacent domain `requirements.md` remains authoritative for business semantics. Resolve conflicts in documentation before generating or changing an EF Core migration.
 
@@ -58,12 +58,10 @@ All owning APIs read their database connection from `ConnectionStrings:DomainDat
 - Use unique constraints or unique indexes for business numbers, stable codes, barcodes, serial numbers, and external identities. Use filtered unique indexes when an optional external identity must be unique only when populated.
 - Index foreign keys and the documented operational query filters. Prefer composite indexes whose leading columns match equality filters followed by stable sort columns.
 
-## History and JSON Details
+## JSON Details and Immutable Business Records
 
-- Status history, operational activity history, approval decisions, and inventory stock movements are append-only after insertion.
-- History tables expose typed columns for commonly queried identity, action, status, outcome, time, and business references.
+- Approval decisions and inventory stock movements are append-only after insertion.
 - Optional prior values, new values, changed fields, or provider metadata may use `nvarchar(max)` JSON columns protected by `ISJSON` check constraints.
-- Operational history supports the owning domain's business workflows. It does not recreate the de-scoped Security and Audit bounded context, compliance evidence store, or central audit-retention policy.
 
 ## External Reference Examples
 
@@ -82,7 +80,6 @@ All owning APIs read their database connection from `ConnectionStrings:DomainDat
 - Migrations are generated and applied per owning service database.
 - A domain may use an adjacent domain-owned persistence project only when it improves separation without sharing persistence across domains or applications.
 - Migrations must not create cross-database foreign keys.
-- Migrations must preserve status and activity history tables during schema evolution.
 - Local database initialization and seed data must be deterministic and safe to rerun in the local Kubernetes environment.
 - EF Core configurations must explicitly map documented SQL types, lengths, defaults, check constraints, indexes, concurrency tokens, delete behavior, and migration history table names rather than relying on provider defaults.
 - Generate a migration only after the requested domain or vertical slice has requirements-backed entities and complete configurations. Empty baseline migrations require an explicit request.
@@ -109,17 +106,6 @@ Use a local transaction for changes inside one domain database. Use integration 
 - Reservations reduce available-to-promise quantity at fulfilment release.
 - Fulfilment consumption creates stock movement records at fulfilment completion.
 
-## Operational History Data
-
-Operational history records must include enough information to identify identity, time, source, action, outcome, and the reference record for the owning business workflow.
-
-Minimum operational history coverage:
-
-- Sales order creation, amendments, cancellation, release, and buyer request submission.
-- Purchase order creation, submission, approval, amendment, cancellation, and receipt status changes.
-- Inventory stock counts, discrepancies, approvals, receipts, adjustments, stock movements, and reversals.
-- Fulfilment picking, packing, shipping purchase, label printing, completion, partial fulfilment, exceptions, and reversals.
-
 ## Data Seeding
 
 - MVP seed data may include ACME's initial business personas/role claims, 1,000-product catalog baseline, 10 to 20 suppliers, one warehouse, configured bins where needed, and approximately 100 B2B customer accounts.
@@ -136,7 +122,6 @@ Minimum operational history coverage:
 - [ ] No migration creates a cross-database foreign key.
 - [ ] Cross-domain references use external ID columns.
 - [ ] EF Core migrations are owned by the database-owning domain.
-- [ ] Status and activity history are retained according to the owning domain's operational data policy.
 - [ ] Inventory reservation and consumption timing matches requirements.
 - [ ] The owning domain's `database-design.md` covers every table, column, relationship, constraint, index, and transaction changed by the migration.
 - [ ] SQL types, lengths, status checks, JSON checks, delete behavior, and `rowversion` mappings follow the shared physical conventions.

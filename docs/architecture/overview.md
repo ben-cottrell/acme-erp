@@ -65,7 +65,7 @@ The MVP no longer includes a Security and Audit bounded context, Security Admini
 
 | Domain bounded context | Domain API responsibility | Database ownership | UI ownership |
 |---|---|---|---|
-| Sales | Sales order state, customer account reference data for MVP, order channels, buyer request state, release-to-fulfilment decisions, sales operational history | Sales database | None |
+| Sales | Sales order state, customer account reference data for MVP, order channels, buyer request state, release-to-fulfilment decisions | Sales database | None |
 | Purchasing | Supplier reference data for MVP, purchase orders, buyer request queue state, purchasing approvals, purchase order receipt visibility | Purchasing database | None |
 | Inventory Management | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, stock checks, stock movements | Inventory database | None |
 | Order Fulfilment | Fulfilment task state, pick/pack/ship/completion rules, courier shipment records, label references, fulfilment exceptions | Fulfilment database | None |
@@ -122,7 +122,7 @@ flowchart LR
 
 Gateway responsibilities include ingress, route publication, authentication integration, coarse-grained access policy, API subscription policy where needed, and OpenAPI exposure.
 
-Domain API services remain responsible for business authorization, local self-approval rules, validation, persistence, and operational history. Application APIs enforce workflow and route authorization for user experience before calling domain APIs, but they do not replace domain API authorization.
+Domain API services remain responsible for business authorization, local self-approval rules, validation, and persistence. Application APIs enforce workflow and route authorization for user experience before calling domain APIs, but they do not replace domain API authorization.
 
 ## Data Ownership Baseline
 
@@ -187,9 +187,9 @@ Each domain keeps its implementation-authoritative `database-design.md` beside i
 - Partial fulfilment shall be allowed. Unfulfilled stocked items remain on backorder, and non-routinely stocked items are routed through the buyer request process.
 - Authentik shall provide password-only authentication for the initial protected-network release. MFA is deferred unless ACME later exposes the ERP outside the protected network or requires privileged-user MFA.
 - Sessions shall use a 60 minute idle timeout and an 8 hour absolute timeout. Account lockout shall be enforced through Authentik after repeated failed login attempts.
-- The MVP does not include a Security and Audit bounded context, Security Administration application, Audit Reporting application, or active auditing/compliance workflows. Operational history remains owned by the domain that owns the business state.
+- The MVP does not include a Security and Audit bounded context, Security Administration application, Audit Reporting application, or active auditing/compliance workflows.
 - Local self-approval rules shall prevent users from approving controlled business actions that they created or requested. Users may hold multiple operational roles when each owning domain allows the resulting permissions.
-- All user and external client ingress shall pass through Gravitee. Internal Kubernetes service calls are permitted after ingress for trusted application-to-domain and domain-to-domain APIs where contracts, service identity, authorization, and operational-history requirements are enforced by the called API.
+- All user and external client ingress shall pass through Gravitee. Internal Kubernetes service calls are permitted after ingress for trusted application-to-domain and domain-to-domain APIs where contracts, service identity, and authorization are enforced by the called API.
 
 ## MVP Scope Decisions
 

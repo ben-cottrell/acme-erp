@@ -24,20 +24,16 @@ erDiagram
     Suppliers ||--o{ SupplierContacts : has
     Suppliers ||--o{ PurchaseOrders : receives
     PurchaseOrders ||--|{ PurchaseOrderLines : contains
-    PurchaseOrders ||--o{ PurchaseOrderStatusHistory : records
     PurchaseOrders ||--o{ PurchaseOrderChangeRequests : controls
     PurchaseOrders ||--o{ PurchaseOrderApprovals : requires
     PurchaseOrderChangeRequests ||--o{ PurchaseOrderApprovals : authorizes
     PurchaseOrders ||--o{ PurchaseOrderExceptions : exposes
     BuyerRequests o|--o| PurchaseOrders : links
     BuyerRequests o|--o| PurchaseOrderLines : satisfies
-    BuyerRequests ||--o{ BuyerRequestStatusHistory : records
     PurchaseOrders ||--o{ ReceiptVisibilities : mirrors
     ReceiptVisibilities ||--|{ ReceiptLineVisibilities : contains
     PurchaseOrderLines ||--o{ ReceiptLineVisibilities : mirrors
 ```
-
-`PurchasingActivityHistory` uses typed scalar business references and is intentionally omitted from the ERD.
 
 ## Supplier Tables
 
@@ -122,18 +118,6 @@ Unique constraint: `UQ_PurchaseOrders_PurchaseOrderNumber`. Checks constrain `St
 
 Unique constraint: `UQ_PurchaseOrderLines_OrderLineNumber` on `(PurchaseOrderId, LineNumber)`. Checks require positive quantity, non-negative unit cost, and a supported status.
 
-### `PurchaseOrderStatusHistory`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only |
-| `PurchaseOrderId` | `uniqueidentifier` | No | FK to `PurchaseOrders.Id` |
-| `PriorStatus` | `nvarchar(32)` | Yes | Null only for creation |
-| `NewStatus` | `nvarchar(32)` | No | PO status catalog |
-| `ChangedBySubject` | `nvarchar(200)` | No | User/service subject |
-| `Reason` | `nvarchar(1000)` | Yes | Required where business rule demands |
-| `OccurredAt` | `datetimeoffset(7)` | No | UTC |
-
 ### `PurchaseOrderChangeRequests`
 
 | Column | SQL type | Null | Rules |
@@ -215,18 +199,6 @@ This table records both initial PO approval and controlled amendment/cancellatio
 
 Unique constraints: `UQ_BuyerRequests_ExternalSalesBuyerRequestId` and a filtered unique link to `LinkedPurchaseOrderLineId` when populated.
 
-### `BuyerRequestStatusHistory`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only |
-| `BuyerRequestId` | `uniqueidentifier` | No | FK to `BuyerRequests.Id` |
-| `PriorStatus` | `nvarchar(32)` | Yes | Null only for intake |
-| `NewStatus` | `nvarchar(32)` | No | Buyer-request status catalog |
-| `ChangedBySubject` | `nvarchar(200)` | No | User/service subject |
-| `Reason` | `nvarchar(1000)` | Yes | Decision/clarification reason |
-| `OccurredAt` | `datetimeoffset(7)` | No | UTC |
-
 ## Receipt Visibility Tables
 
 ### `ReceiptVisibilities`
@@ -256,27 +228,6 @@ Unique constraints: `UQ_BuyerRequests_ExternalSalesBuyerRequestId` and a filtere
 
 Unique constraints apply to `ExternalInventoryReceiptLineId` and `(ReceiptVisibilityId, PurchaseOrderLineId, ExternalInventoryReceiptLineId)`.
 
-## Operational History
-
-### `PurchasingActivityHistory`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only |
-| `EntityType` | `nvarchar(64)` | No | Bounded Purchasing entity name |
-| `EntityId` | `uniqueidentifier` | No | Purchasing-owned ID |
-| `PurchaseOrderId` | `uniqueidentifier` | Yes | Searchable PO reference; no polymorphic FK |
-| `BuyerRequestId` | `uniqueidentifier` | Yes | Searchable queue reference; no polymorphic FK |
-| `Action` | `nvarchar(64)` | No | Controlled action |
-| `PriorStatus` | `nvarchar(32)` | Yes | Optional |
-| `NewStatus` | `nvarchar(32)` | Yes | Optional |
-| `Outcome` | `nvarchar(24)` | No | `Succeeded`, `Rejected`, `Denied`, `Failed` |
-| `ActorSubject` | `nvarchar(200)` | No | User/service subject |
-| `SourceApplication` | `nvarchar(100)` | No | Caller |
-| `Reason` | `nvarchar(1000)` | Yes | Optional |
-| `ChangesJson` | `nvarchar(max)` | Yes | Valid sanitized JSON |
-| `OccurredAt` | `datetimeoffset(7)` | No | UTC |
-
 ## Status Catalogs
 
 | Area | Allowed values |
@@ -295,10 +246,9 @@ All relationships use `ON DELETE NO ACTION` and indexed FK columns.
 | Dependent | Principal |
 |---|---|
 | `SupplierContacts`, `PurchaseOrders` | `Suppliers` |
-| `PurchaseOrderLines`, `PurchaseOrderStatusHistory`, `PurchaseOrderChangeRequests`, `PurchaseOrderApprovals`, `PurchaseOrderExceptions`, `ReceiptVisibilities` | `PurchaseOrders` |
+| `PurchaseOrderLines`, `PurchaseOrderChangeRequests`, `PurchaseOrderApprovals`, `PurchaseOrderExceptions`, `ReceiptVisibilities` | `PurchaseOrders` |
 | `PurchaseOrderApprovals` | Optional `PurchaseOrderChangeRequests` |
 | `BuyerRequests` | Optional linked `PurchaseOrders` and `PurchaseOrderLines` |
-| `BuyerRequestStatusHistory` | `BuyerRequests` |
 | `ReceiptLineVisibilities` | `ReceiptVisibilities` and `PurchaseOrderLines` |
 
 ## Indexes for Required Queries
@@ -314,17 +264,15 @@ All relationships use `ON DELETE NO ACTION` and indexed FK columns.
 | `IX_BuyerRequests_Assignee_Status` on `(AssignedBuyerSubject, Status, UpdatedAt, Id)` | Assigned queue |
 | `IX_ReceiptVisibilities_Status_UpdatedAt` on `(ReceiptStatus, UpdatedAt, Id)` | Receipt status review |
 | `IX_ReceiptVisibilities_ExceptionState_UpdatedAt` on `(ExceptionState, UpdatedAt, Id)` where `ExceptionState IS NOT NULL` | Receipt exception visibility |
-| `IX_PurchasingActivityHistory_PO_OccurredAt` on `(PurchaseOrderId, OccurredAt DESC, Id)` | PO history |
-| `IX_PurchasingActivityHistory_Actor_Action_OccurredAt` on `(ActorSubject, Action, OccurredAt DESC, Id)` | Approval/change reporting |
 
 ## Transactions and Concurrency
 
-- Create a PO, lines, and initial status/activity history atomically. Recalculate `TotalAmount` from persisted lines in the same transaction.
-- Apply transitions and amendments only with the current PO/line `RowVersion`; append status/activity history in the same transaction.
+- Create a PO and lines atomically. Recalculate `TotalAmount` from persisted lines in the same transaction.
+- Apply transitions and amendments only with the current PO/line `RowVersion`.
 - Persist the threshold and evaluated amount used for each approval. The approver must differ from the creator/requester before an approval decision commits.
 - Apply an approved change only after revalidating PO and receipt state under optimistic concurrency. Partially received state may reject quantity, supplier, cost, date, or cancellation changes.
-- Record an accepted Sales buyer request and its initial history in one transaction. Record each accepted queue decision and resulting Sales-visible status atomically.
-- Apply each valid Inventory receipt update by updating copied receipt visibility, PO state/history, and any business exception atomically.
+- Record an accepted Sales buyer request in one transaction. Record each accepted queue decision and resulting Sales-visible status atomically.
+- Apply each valid Inventory receipt update by updating copied receipt visibility, current PO state, and any business exception atomically.
 - Do not hold a local transaction across Sales or Inventory HTTP calls.
 
 ## External References
@@ -340,14 +288,14 @@ All relationships use `ON DELETE NO ACTION` and indexed FK columns.
 | Requirement | Persistence coverage |
 |---|---|
 | `PUR-DOM-001` | Active, uniquely coded suppliers and default contact enforcement |
-| `PUR-DOM-002` | PO header/lines, required dates/costs/quantities, initial histories, and atomic creation |
-| `PUR-DOM-003` | Checked current status, append-only status history, and transactional transition enforcement |
-| `PUR-DOM-004` | Threshold/evaluated amount snapshots, approval records, requester/approver identities, and denied-attempt history |
-| `PUR-DOM-005` | Unique Sales external request identity, Purchasing-owned queue state/history, optional local PO link, and accepted Sales-visible status |
+| `PUR-DOM-002` | PO header/lines, required dates/costs/quantities, and atomic creation |
+| `PUR-DOM-003` | Checked current status, optimistic concurrency, and transactional transition enforcement |
+| `PUR-DOM-004` | Threshold/evaluated amount snapshots, approval records, requester/approver identities, and denied decisions |
+| `PUR-DOM-005` | Unique Sales external request identity, Purchasing-owned queue state, optional local PO link, and accepted Sales-visible status |
 | `PUR-DOM-006` | Indexed PO/supplier/line records provide the authoritative receipt-matching query source |
 | `PUR-DOM-007` | Inventory receipt header/line copies carry external IDs, business status, exception state, and update time |
-| `PUR-DOM-008` | Change requests, JSON field diffs, reasons, approval links, receipt-aware concurrency, and status/activity history |
-| `PUR-DOM-009` | Purpose-built PO, arrivals, buyer queue, approval, receipt exception, and history indexes |
+| `PUR-DOM-008` | Change requests, JSON field diffs, reasons, approval links, and receipt-aware concurrency |
+| `PUR-DOM-009` | Purpose-built PO, arrivals, buyer queue, approval, and receipt exception indexes |
 
 Authorization, field-level validation, status transitions, policy evaluation, Inventory product validation, and API response shaping remain domain/API responsibilities.
 
@@ -362,14 +310,14 @@ Authorization, field-level validation, status transitions, policy evaluation, In
 | `PUR-BR-005` | Indexed authoritative PO/line records expose receipt-matching data without copying stock ownership |
 | `PUR-BR-006` | Persisted threshold/evaluated amounts and approval state; threshold calculation remains configurable domain logic |
 | `PUR-BR-007` | Creator/requester and decider identities support self-approval rejection and retained denial evidence |
-| `PUR-BR-008` | Draft state, `RowVersion`, and append-only activity history protect direct draft amendments |
+| `PUR-BR-008` | Draft state and `RowVersion` protect direct draft amendments |
 | `PUR-BR-009` | Typed change requests, field-diff JSON, reason, approval, status, and receipt-aware transaction guard |
-| `PUR-BR-010` | Checked buyer-request states, required reasons, optional local PO links, and status history |
+| `PUR-BR-010` | Checked buyer-request states, required reasons, and optional local PO links |
 
 ## Seed and Lifecycle Policy
 
 - Do not EF-seed suppliers or contacts. Load the 10 to 20 MVP suppliers through rerunnable Purchasing-owned environment tooling.
-- Do not physically delete POs, lines, histories, approvals, change requests, buyer requests, receipt visibility, exceptions, or activity history.
+- Do not physically delete POs, lines, approvals, change requests, buyer requests, receipt visibility, or exceptions.
 
 ## Excluded Schema
 
@@ -380,5 +328,5 @@ This design excludes supplier onboarding and contracts, tendering, scorecards, I
 - Explicitly map every SQL type, length, check, unique/filter index, `rowversion`, and `DeleteBehavior.NoAction`.
 - Keep all Sales and Inventory IDs scalar with no cross-domain navigation.
 - Persist status strings exactly as documented, never enum ordinals.
-- Use `__PurchasingMigrationsHistory`; inspect migrations for cross-database FKs, cascade deletes, missing policy/history fields, or destructive history operations.
+- Use `__PurchasingMigrationsHistory`; inspect migrations for cross-database FKs, cascade deletes, missing policy fields, or destructive schema operations.
 - Add SQL Server integration tests for PO/supplier uniqueness, positive quantities, non-negative costs, date checks, status checks, self-approval denial, optimistic concurrency, and migration application.

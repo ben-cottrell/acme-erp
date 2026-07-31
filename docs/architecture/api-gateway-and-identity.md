@@ -31,13 +31,13 @@ sequenceDiagram
     UI->>Gateway: Call paired application API route
     Gateway->>AppAPI: Forward token and request metadata
     AppAPI->>DomainAPI: Call domain API with user or service context
-    DomainAPI->>DomainAPI: Enforce local permissions, self-approval rules, validation, persistence, history, and domain rules
+    DomainAPI->>DomainAPI: Enforce local permissions, self-approval rules, validation, persistence, and domain rules
     DomainAPI-->>AppAPI: Domain response
     AppAPI-->>Gateway: Application response
     Gateway-->>User: Response
 ```
 
-Internal Kubernetes service calls are permitted after ingress for trusted ERP service-to-service communication when the called API enforces service identity, authorization, contract validation, and operational-history requirements.
+Internal Kubernetes service calls are permitted after ingress for trusted ERP service-to-service communication when the called API enforces service identity, authorization, and contract validation.
 
 The local developer gateway URL is `http://localhost:8082`. The Kubernetes Gravitee gateway service is exposed to the workstation by the local Helm values as a Docker Desktop `LoadBalancer` on port `8082`; non-gateway platform and ERP services remain internal to the `erp-local` namespace. Local Gravitee runs in database-less gateway-only mode, synchronizing API definitions from Kubernetes ConfigMaps under `build/k8s/gravitee/routes` instead of deploying the APIM Management API, portal, UI, MongoDB, or Elasticsearch. Authentik OAuth/OIDC redirect URIs and allowed origins for local development must use `http://localhost:8082` when OAuth application bootstrap is automated.
 
@@ -94,7 +94,6 @@ Every domain API enforces:
 - Local self-approval prevention for controlled actions.
 - Configurable approval thresholds and approval authority.
 - Customer data privacy restrictions.
-- Operational history for controlled actions and denied actions where the owning domain requires it.
 
 Domain API authorization must fail closed when authorization status cannot be determined. Application APIs also fail closed for route and workflow authorization, but they must not replace domain authorization decisions.
 
@@ -104,11 +103,11 @@ Authentik supplies identity and coarse role/group claims. ERP services map claim
 
 Initial MVP personas and identity subjects are Customer, Sales Assistant, Sales Supervisor, Buyer, Purchasing Manager, Warehouse Operator, Inventory Supervisor, Fulfilment Operator, Fulfilment Supervisor, Support User where enabled, and Integration Service Account where required.
 
-Platform administration access does not imply business approval authority. Business approval authority must be explicitly assigned in the owning application/domain requirements and recorded in local operational history when used.
+Platform administration access does not imply business approval authority. Business approval authority must be explicitly assigned in the owning application/domain requirements.
 
 ## Service-to-Service Communication
 
-- Service calls use authenticated service identities or delegated user context where the workflow requires user traceability.
+- Service calls use authenticated service identities or delegated user context where the workflow requires the initiating user identity.
 - Application APIs call domain APIs using delegated user context or scoped service identity according to the workflow contract.
 - Application UIs call only their paired application APIs.
 - Domain APIs do not call application APIs.

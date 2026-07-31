@@ -27,7 +27,7 @@ The Sales Assistant UI calls only the Sales Assistant API. The Sales Assistant A
 - Sales order create, amend, submit, release, cancel/request-cancel, and controlled approval initiation through Sales.
 - Non-routinely stocked product request submission through Sales and status display from Sales/Purchasing visibility.
 - Fulfilment release, fulfilment progress, partial fulfilment, backorder, completion, and exception visibility.
-- Search, filtering, operational dashboards, order change history, exception queues, CSV export, accessibility, and deterministic validation presentation.
+- Search, filtering, operational dashboards, exception queues, CSV export, accessibility, and deterministic validation presentation.
 
 ### Out of Scope
 
@@ -53,7 +53,7 @@ Sales users need one internal workflow for turning customer requests into valid 
 - **Handle unavailable stock**: user sees Inventory availability state, can save/submit pending inventory state, or route non-stocked items through the Sales buyer request path.
 - **Submit buyer request**: user enters requested product details and reason; Sales creates the request and Purchasing status is later shown in the order workspace.
 - **Release to fulfilment**: user requests release only when Sales reports eligibility; the accepted release or business-rule rejection is shown.
-- **Monitor order**: user searches orders, views status history, fulfilment progress, partial fulfilment/backorder state, and customer-impacting exceptions.
+- **Monitor order**: user searches orders and views current status, fulfilment progress, partial fulfilment/backorder state, and customer-impacting exceptions.
 - **Supervisor approval**: supervisor opens queue, reviews reason and change context, approves or rejects controlled action through Sales.
 
 ## 7. Functional Requirements
@@ -67,7 +67,6 @@ Sales users need one internal workflow for turning customer requests into valid 
 | SA-APP-005 | Fulfilment visibility | The application shall show fulfilment status, shipment reference, partial fulfilment, backorder, and exceptions from Sales and Order Fulfilment read contracts. | Must | Given fulfilment updates exist, when the order is opened, then status and exception details are displayed without the app mutating fulfilment state. |
 | SA-APP-006 | Search and dashboards | The application shall support search and filtering by customer, channel, product/SKU, status, date, buyer request state, fulfilment state, and exception type. | Should | Given filters are applied, when results load, then the API queries domain contracts and returns paginated results with no local database. |
 | SA-APP-007 | Approval workflow | The application shall provide Sales Supervisor approval/rejection actions for controlled sales changes when Sales reports approval is required. | Must | Given an approval is pending, when a supervisor approves or rejects it, then Sales records the decision; self-approval or unauthorized approval is denied and shown to the user. |
-| SA-APP-008 | History | The application shall display sales order status history, amendment history, approval history, and release history available from Sales. | Should | Given a user has permission, when history is requested, then entries show actor, date/time, action, status, and reason where supplied. |
 
 ## 8. UI, Accessibility, and Usability Requirements
 
@@ -111,28 +110,24 @@ Sales users need one internal workflow for turning customer requests into valid 
 
 ## 12. Security and Permissions
 
-The application shall enforce route-level and screen-level access for Sales Assistant and Sales Supervisor roles. Sales remains authoritative for business authorization, approval authority, customer data access, self-approval rules, validation, persistence, and operational history. Unauthorized domain responses shall be shown as denied actions, not hidden success.
+The application shall enforce route-level and screen-level access for Sales Assistant and Sales Supervisor roles. Sales remains authoritative for business authorization, approval authority, customer data access, self-approval rules, validation, and persistence. Unauthorized domain responses shall be shown as denied actions, not hidden success.
 
-## 13. Operational History and Traceability
-
-The application shall display Sales-provided status history, approval history, buyer request history, release status, and fulfilment visibility where the user has permission. CSV outputs containing customer/order data shall call authorized Sales report/query endpoints.
-
-## 14. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - Order entry interactions shall provide clear feedback for domain validation and returned availability state.
 - Search results shall be paginated and avoid blocking the UI on large result sets.
 - The application shall remain stateless apart from user session/request context and shall not introduce application persistence.
 - Error messages shall distinguish validation denial, authorization denial, and business conflict responses.
 
-## 15. Dependencies
+## 14. Dependencies
 
-- Sales for orders, lifecycle, release, buyer request origination, approvals, and sales operational history.
+- Sales for orders, lifecycle, release, buyer request origination, and approvals.
 - Inventory Management for product, SKU, barcode, and availability data.
 - Purchasing for buyer request status through Sales/Purchasing contracts.
 - Order Fulfilment for fulfilment visibility through Sales/fulfilment read contracts.
 - Authentik and Gravitee for identity and route access.
 
-## 16. Assumptions and MVP Defaults
+## 15. Assumptions and MVP Defaults
 
 - Sales Assistant is for internal authenticated users only.
 - The application performs orchestration and presentation only; all durable state belongs to domain services.
@@ -142,6 +137,6 @@ The application shall display Sales-provided status history, approval history, b
 - The Support User role is not enabled for Sales Assistant in MVP; customer fields are visible only to Sales Assistant and Sales Supervisor users with Sales authorization.
 - Sales users see domain status names and concise domain-provided reasons; customer-facing wording is handled only by Customer Ordering.
 
-## 17. Acceptance Summary
+## 16. Acceptance Summary
 
-The Sales Assistant requirements are complete for MVP when they define order capture, availability review, buyer request submission, release, fulfilment visibility, supervisor approval, search/reporting, security, operational history visibility, and explicit MVP defaults without assigning durable domain state to the application.
+The Sales Assistant requirements are complete for MVP when they define order capture, availability review, buyer request submission, release, fulfilment visibility, supervisor approval, search/reporting, security, and explicit MVP defaults without assigning durable domain state to the application.

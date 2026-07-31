@@ -23,7 +23,6 @@ Resolve conflicts before changing the EF Core model or generating a migration. S
 erDiagram
     FulfilmentTasks ||--|{ FulfilmentTaskLines : contains
     FulfilmentTasks ||--|| FulfilmentDeliveryDetails : snapshots
-    FulfilmentTasks ||--o{ FulfilmentTaskStatusHistory : records
     FulfilmentTasks ||--o{ PickRecords : executes
     PickRecords ||--|{ PickRecordLines : contains
     FulfilmentTaskLines ||--o{ PickRecordLines : satisfies
@@ -42,8 +41,6 @@ erDiagram
     FulfilmentTasks ||--o{ InventoryReferences : records
     FulfilmentTaskLines ||--o{ InventoryReferences : concerns
 ```
-
-`FulfilmentActivityHistory` uses typed scalar references and is omitted from the ERD.
 
 ## Released Work Tables
 
@@ -117,18 +114,6 @@ One immutable released delivery snapshot per task.
 | `ShipFromRegion` | `nvarchar(100)` | Yes | Snapshot |
 | `ShipFromPostalCode` | `nvarchar(20)` | No | Snapshot |
 | `ShipFromCountryCode` | `char(2)` | No | Snapshot |
-
-### `FulfilmentTaskStatusHistory`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only |
-| `FulfilmentTaskId` | `uniqueidentifier` | No | FK to `FulfilmentTasks.Id` |
-| `PriorStatus` | `nvarchar(32)` | Yes | Null only at intake |
-| `NewStatus` | `nvarchar(32)` | No | Task status catalog |
-| `ChangedBySubject` | `nvarchar(200)` | No | User/service subject |
-| `Reason` | `nvarchar(1000)` | Yes | Optional business reason |
-| `OccurredAt` | `datetimeoffset(7)` | No | UTC |
 
 ## Pick and Pack Tables
 
@@ -316,26 +301,6 @@ Unique constraint on `(FulfilmentCompletionId, FulfilmentTaskLineId)`. Domain lo
 
 Checks require the external reference appropriate to `ReferenceType`. Filtered unique indexes make Inventory reservation and movement IDs unique when present.
 
-## Operational History
-
-### `FulfilmentActivityHistory`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only |
-| `EntityType` | `nvarchar(64)` | No | Bounded Fulfilment entity name |
-| `EntityId` | `uniqueidentifier` | No | Fulfilment-owned ID |
-| `FulfilmentTaskId` | `uniqueidentifier` | Yes | Searchable task reference; no polymorphic FK |
-| `Action` | `nvarchar(64)` | No | Controlled action |
-| `PriorStatus` | `nvarchar(32)` | Yes | Optional |
-| `NewStatus` | `nvarchar(32)` | Yes | Optional |
-| `Outcome` | `nvarchar(24)` | No | `Succeeded`, `Rejected`, `Denied`, `Failed` |
-| `ActorSubject` | `nvarchar(200)` | No | User/service subject |
-| `SourceApplication` | `nvarchar(100)` | No | Caller |
-| `Reason` | `nvarchar(1000)` | Yes | Optional |
-| `DetailsJson` | `nvarchar(max)` | Yes | Valid sanitized JSON |
-| `OccurredAt` | `datetimeoffset(7)` | No | UTC |
-
 ## Status Catalogs
 
 | Area | Allowed values |
@@ -349,7 +314,7 @@ SQL checks limit current values. Order Fulfilment enforces transition graphs and
 
 ## Local Foreign Keys and Delete Behavior
 
-All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The local graph consists of task-owned lines/delivery/history, picks and lines/serials, packages and lines, accepted shipment purchases/labels, exceptions/decisions, completion lines, and accepted Inventory references. External Sales, Inventory, courier, and identity references never receive SQL foreign keys.
+All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The local graph consists of task-owned lines/delivery, picks and lines/serials, packages and lines, accepted shipment purchases/labels, exceptions/decisions, completion lines, and accepted Inventory references. External Sales, Inventory, courier, and identity references never receive SQL foreign keys.
 
 ## Indexes for Required Queries
 
@@ -362,21 +327,19 @@ All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The
 | `IX_FulfilmentExceptions_Status_Type_OpenedAt` on `(Status, ExceptionType, OpenedAt, Id)` | Supervisor exception queue |
 | `IX_ShipmentPurchases_TrackingReference` filtered unique on `TrackingReference` | Tracking lookup |
 | `IX_ShipmentPurchases_Provider_Status_PurchasedAt` on `(Provider, Status, PurchasedAt, Id)` | Shipment review |
-| `IX_FulfilmentCompletions_Task_Sequence` on `(FulfilmentTaskId, SequenceNumber)` | Completion history |
-| `IX_FulfilmentActivityHistory_Task_OccurredAt` on `(FulfilmentTaskId, OccurredAt DESC, Id)` | Task history |
-| `IX_FulfilmentActivityHistory_Actor_Action_OccurredAt` on `(ActorSubject, Action, OccurredAt DESC, Id)` | Supervisor reporting |
+| `IX_FulfilmentCompletions_Task_Sequence` on `(FulfilmentTaskId, SequenceNumber)` | Completion sequencing |
 
 ## Transactions and Concurrency
 
-- Intake an accepted released Sales payload, delivery snapshot, lines, and initial status/activity history in one transaction.
-- Apply task transitions only with `FulfilmentTasks.RowVersion`; update affected lines and append status/activity history atomically.
+- Intake an accepted released Sales payload, delivery snapshot, and lines in one transaction.
+- Apply task transitions only with `FulfilmentTasks.RowVersion` and update affected lines atomically.
 - Record picks and serials in one transaction, then update cumulative line quantities. Quantity, SKU, serial, damage, short-pick, or substitution mismatches open an exception instead of silently progressing.
 - Confirm packing only when package lines reconcile with accepted picks. Update package and task state under optimistic concurrency.
 - Persist a shipment purchase only after the courier accepts it and returns the required provider, shipment, and tracking references.
 - Label evidence changes the task to `LabelPrinted` only when a label reference exists or an approved override permits progression.
-- Create a completion, its lines, accepted Inventory references, task status, and activity history in one transaction after Inventory and Sales accept their required business updates.
+- Create a completion, its lines, accepted Inventory references, and current task status in one transaction after Inventory and Sales accept their required business updates.
 - Partial completion requires an approved exception and stores fulfilled/backordered quantities sent to Sales. Cumulative completion quantities cannot exceed released requirements.
-- Record reversal as a new completion plus an accepted Inventory reversal reference and status history; never mutate the original completion or provider evidence.
+- Record reversal as a new completion plus an accepted Inventory reversal reference; never mutate the original completion or provider evidence.
 - Self-approval, cumulative pick/pack/completion reconciliation, serial uniqueness across picks, transition legality, and completion guards are cross-row domain rules enforced inside local transactions.
 - Never hold a database transaction open across Sales, Inventory, or courier HTTP calls.
 
@@ -394,14 +357,14 @@ All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The
 | Requirement | Persistence coverage |
 |---|---|
 | `FUL-DOM-001` | Unique Sales order identity, released header/line/delivery snapshots, and atomic intake |
-| `FUL-DOM-002` | Checked current task/line states, append-only status history, concurrency, and transactional transition rules |
+| `FUL-DOM-002` | Checked current task/line states, concurrency, and transactional transition rules |
 | `FUL-DOM-003` | Pick attempts/lines/serials, actual Inventory IDs, quantity/condition evidence, and exception links |
 | `FUL-DOM-004` | Typed exceptions, recorder identity, approval decisions/denials, reasons, and self-approval transaction guard |
 | `FUL-DOM-005` | Accepted shipment purchase, provider/shipment/tracking references, and label references |
 | `FUL-DOM-006` | Completion/line records, package/shipment/label evidence, and accepted Inventory references |
 | `FUL-DOM-007` | Approved business exception, partial completion lines, and cumulative fulfilled/backordered quantities |
 | `FUL-DOM-008` | Typed accepted Inventory reservation/consumption/reversal references with unique external IDs |
-| `FUL-DOM-009` | Purpose-built task, assignment, SKU, business exception, shipment, completion, and activity indexes |
+| `FUL-DOM-009` | Purpose-built task, assignment, SKU, business exception, shipment, and completion indexes |
 
 Authorization, payload/schema validation, transition decisions, provider adapter behavior, Inventory/Sales calls, pagination, CSV shaping, and cumulative cross-row validation remain domain/API responsibilities.
 
@@ -422,7 +385,7 @@ Authorization, payload/schema validation, transition decisions, provider adapter
 
 - Do not EF-seed fulfilment tasks, courier transactions, labels, or workflow examples.
 - Courier provider and service-level configuration belongs to environment/application configuration; persisted values are transaction snapshots.
-- Never physically delete released snapshots, pick/pack evidence, accepted shipment purchases, labels, decisions, completions, Inventory references, task history, or activity history.
+- Never physically delete released snapshots, pick/pack evidence, accepted shipment purchases, labels, decisions, completions, or Inventory references.
 
 ## Excluded Schema
 
@@ -433,6 +396,6 @@ This design excludes Sales order/customer ownership, product master and stock ba
 - Explicitly map every SQL type, maximum length, decimal precision, check, unique/filter index, `rowversion`, and `DeleteBehavior.NoAction`.
 - Keep all Sales, Inventory, courier, and identity references scalar with no cross-domain navigation.
 - Persist status strings exactly as documented, never enum ordinals.
-- Treat status history, exception decisions, completion evidence, and activity history as append-only in persistence behavior.
-- Use `__OrderFulfilmentMigrationsHistory`; inspect migrations for cross-database FKs, cascade deletes, label blobs, provider-specific credentials, missing business references, or destructive history changes.
+- Treat exception decisions and completion evidence as append-only in persistence behavior.
+- Use `__OrderFulfilmentMigrationsHistory`; inspect migrations for cross-database FKs, cascade deletes, label blobs, provider-specific credentials, missing business references, or destructive schema changes.
 - Add SQL Server integration tests for unique Sales order intake, quantity checks, serial uniqueness, self-approval denial, optimistic task concurrency, completion guards, provider reference uniqueness, status checks, and migration application.

@@ -2,20 +2,19 @@
 
 ## 1. Purpose
 
-The Inventory Management bounded context owns the durable stock system of record for MVP product/SKU/barcode/stocking configuration, recorded stock, availability, reservations, goods receipts, stock checks, stock movements, discrepancy state, and inventory operational history records.
+The Inventory Management bounded context owns the durable stock system of record for MVP product/SKU/barcode/stocking configuration, recorded stock, availability, reservations, goods receipts, stock checks, stock movements, and discrepancy state.
 
-Inventory Management exposes WebAPI contracts and owns the Inventory database. It is authoritative for inventory validation, stock balance changes, reservation and consumption decisions, discrepancy handling, receipt booking, inventory authorization, and inventory operational history. Warehouse, supervisor, sales, fulfilment, and reporting screens are owned by application services.
+Inventory Management exposes WebAPI contracts and owns the Inventory database. It is authoritative for inventory validation, stock balance changes, reservation and consumption decisions, discrepancy handling, receipt booking, and inventory authorization. Warehouse, supervisor, sales, fulfilment, and reporting screens are owned by application services.
 
 ## 2. Domain Scope
 
 ### In Scope
 
 - Product, SKU, barcode, stocking, location, and serialized-product configuration needed for the MVP.
-- Recorded stock balances, available-to-promise quantities, reservations, non-available stock states, and immutable stock movement history.
+- Recorded stock balances, available-to-promise quantities, reservations, non-available stock states, and the immutable stock movement ledger.
 - Stock checks, actual count capture, variance calculation, discrepancy review state, and authorized adjustment posting.
 - Goods receipt state, purchase order matching, receipt exceptions, and stock booking.
 - Availability, reservation, consumption, and reversal contracts for Sales and Order Fulfilment.
-- Inventory operational history records, query endpoints, and CSV source data for inventory workflows.
 
 ### Out of Scope
 
@@ -27,9 +26,9 @@ Inventory Management exposes WebAPI contracts and owns the Inventory database. I
 
 ## 3. Business Context
 
-ACME needs one trustworthy inventory record that supports sales availability, buyer receiving, warehouse stock control, and fulfilment execution. Inventory must prevent negative stock, preserve traceability for every balance change, and separate operational entry from approval decisions where discrepancies or receipt exceptions occur.
+ACME needs one trustworthy inventory record that supports sales availability, buyer receiving, warehouse stock control, and fulfilment execution. Inventory must prevent negative stock, link every balance change to its source, and separate operational entry from approval decisions where discrepancies or receipt exceptions occur.
 
-The MVP outcome is a controlled inventory workflow where stock can be received, checked, reserved, consumed, adjusted with authorization, queried by other domains, and traced without application services owning inventory state.
+The MVP outcome is a controlled inventory workflow where stock can be received, checked, reserved, consumed, adjusted with authorization, and queried by other domains without application services owning inventory state.
 
 ## 4. Stakeholders and Roles
 
@@ -54,15 +53,15 @@ The MVP outcome is a controlled inventory workflow where stock can be received, 
 | ID | Capability | Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|---|
 | INV-DOM-001 | Product configuration | The system shall maintain active/inactive product, SKU, barcode, stocking, location, and serialization configuration required for inventory validation. | Must | Given an active SKU exists, when Sales, Purchasing, or Fulfilment queries it, then Inventory returns current validation data and identifiers; inactive products cannot be used for new controlled transactions unless policy allows exception handling. |
-| INV-DOM-002 | Goods receipt | The system shall validate goods receipt entries against Purchasing purchase order data before increasing available inventory. | Must | Given received quantities match an eligible PO line, when the receipt is booked, then Inventory records receipt and movement history; given mismatch, damage, over-receipt, or unknown item, then Inventory creates a receipt exception without increasing available stock. |
+| INV-DOM-002 | Goods receipt | The system shall validate goods receipt entries against Purchasing purchase order data before increasing available inventory. | Must | Given received quantities match an eligible PO line, when the receipt is booked, then Inventory records the receipt and corresponding stock movement; given mismatch, damage, over-receipt, or unknown item, then Inventory creates a receipt exception without increasing available stock. |
 | INV-DOM-003 | Stock checks | The system shall maintain stock check records, actual counts, variance calculations, discrepancy state, and adjustment outcomes. | Must | Given actual count equals recorded stock, when the count is posted, then the check closes without adjustment; given variance exists, then Inventory creates discrepancy state pending authorized outcome. |
 | INV-DOM-004 | Adjustment approval | The system shall require authorized supervisor approval for controlled inventory adjustments according to configurable value, percentage, and self-approval rules. | Must | Given an adjustment exceeds policy or was created by the same user, when approval is attempted by an unauthorized or conflicted actor, then Inventory rejects the approval and records the denial. |
-| INV-DOM-005 | Stock movements | The system shall record every inventory balance change as an immutable stock movement linked to a source document or authorized manual adjustment. | Must | Given stock changes through receipt, adjustment, reservation release, consumption, or reversal, when the transaction completes, then the movement history identifies source, actor/service, quantity, and prior/new state. |
+| INV-DOM-005 | Stock movements | The system shall record every inventory balance change in an immutable stock movement ledger linked to a source document or authorized manual adjustment. | Must | Given stock changes through receipt, adjustment, reservation release, consumption, or reversal, when the transaction completes, then the movement identifies its source, actor/service, quantity, and prior/new state. |
 | INV-DOM-006 | Non-negative stock | The system shall prevent recorded stock from becoming negative. | Must | Given a command would reduce recorded quantity below zero, when Inventory validates it, then the command is rejected without applying the balance change. |
 | INV-DOM-007 | Availability | The system shall expose availability and stocked-product status for Sales and Order Fulfilment without allowing consumers to mutate balances directly. | Must | Given an authorized availability query, when Inventory responds, then it includes product/SKU identifiers, available quantity or availability state, and any non-available restrictions. |
 | INV-DOM-008 | Reservation | The system shall reserve stock at fulfilment release for a valid Sales order and fulfilment task. | Must | Given Sales releases an eligible order and stock is available, when Inventory receives a valid reservation request, then available-to-promise is reduced and a reservation reference is returned. |
-| INV-DOM-009 | Consumption | The system shall consume reserved stock at fulfilment completion and support authorized reversal where fulfilment is corrected. | Must | Given Order Fulfilment completes a task with valid reservation references, when Inventory consumes stock, then recorded stock and reservation state update with movement history; invalid references are rejected without changing stock. |
-| INV-DOM-010 | Inventory queries | The system shall expose search/reporting contracts for products, stock balances, movements, reservations, discrepancies, receipt exceptions, and operational history. | Should | Given an authorized query with filters, when Inventory processes it, then results are paginated, scoped by permission, and exportable where policy allows. |
+| INV-DOM-009 | Consumption | The system shall consume reserved stock at fulfilment completion and support authorized reversal where fulfilment is corrected. | Must | Given Order Fulfilment completes a task with valid reservation references, when Inventory consumes stock, then recorded stock and reservation state update with a corresponding stock movement; invalid references are rejected without changing stock. |
+| INV-DOM-010 | Inventory queries | The system shall expose search/reporting contracts for products, current stock balances, reservations, discrepancies, and receipt exceptions. | Should | Given an authorized query with filters, when Inventory processes it, then results are paginated, scoped by permission, and exportable where policy allows. |
 
 ## 7. Business Rules and Validation Rules
 
@@ -74,7 +73,7 @@ The MVP outcome is a controlled inventory workflow where stock can be received, 
 | INV-BR-004 | Discrepancies do not update recorded stock until reviewed or resolved according to authority. | Discrepancies | Inventory approval workflow | Auto-close only when no variance exists. |
 | INV-BR-005 | Adjustments over configured value or variance thresholds require Inventory Supervisor approval. | Adjustments | Inventory authorization | Existing docs mention 2,000 value or 10 percent variance as placeholders. |
 | INV-BR-006 | The user who recorded a count or receipt exception may not approve the related adjustment or exception resolution. | Approval control | Inventory approval workflow | Enforced even if the UI hides the action. |
-| INV-BR-007 | Every balance change must trace to a source document or authorized manual adjustment. | Stock movements | Inventory persistence | Source may be PO receipt, stock check, fulfilment task, reversal, or manual adjustment. |
+| INV-BR-007 | Every balance change must reference a source document or authorized manual adjustment. | Stock movements | Inventory persistence | Source may be PO receipt, stock check, fulfilment task, reversal, or manual adjustment. |
 | INV-BR-008 | Negative inventory balances are prohibited. | Stock changes | Inventory validation | Backorder belongs to Sales/Fulfilment status, not negative stock. |
 | INV-BR-009 | Reservations reduce available-to-promise quantity at fulfilment release. | Reservations | Inventory reservation workflow | Reservation command must carry external sales/fulfilment IDs. |
 | INV-BR-010 | Serial number tracking is required for serialized computer systems and serialized components; lot and expiry tracking are deferred unless configured later. | Serialized products | Inventory validation | MVP default from existing requirements. |
@@ -98,7 +97,6 @@ The MVP outcome is a controlled inventory workflow where stock can be received, 
 | Stock Movement | Inventory Management | Yes | Immutable source, quantity, prior/new state, actor/service, and timestamp. | PO, sales order, fulfilment task, adjustment references. |
 | Goods Receipt | Inventory Management | Conditional | PO reference, received quantity, condition, exception state. | Purchasing purchase order external ID. |
 | Discrepancy/Adjustment | Inventory Management | Conditional | Counted quantity, variance, reason, approval status, approver, self-approval outcome. | Stock check and actor identities. |
-| Inventory Activity History | Inventory Management | Yes | Actor/service, action, outcome, prior/new values, and timestamp. | Inventory-owned operational history. |
 
 ## 10. Integration Requirements
 
@@ -115,7 +113,6 @@ The MVP outcome is a controlled inventory workflow where stock can be received, 
 | Report / Query | Audience | Purpose | Filters | Export Needs |
 |---|---|---|---|---|
 | Stock Balance Search | Warehouse, Sales, Fulfilment, Supervisors | Review current stock and availability. | SKU, barcode, location, stock state, availability. | CSV for operational review. |
-| Stock Movement History | Inventory Supervisor | Trace every balance change. | SKU, location, source document, date, actor, movement type. | CSV for operational review. |
 | Discrepancy Queue | Inventory Supervisor | Review count variances and pending adjustments. | Age, variance, value, location, SKU, recorder, status. | CSV optional. |
 | Receipt Exception Queue | Warehouse, Inventory Supervisor, Buyer | Manage mismatches and damaged/quarantined receipts. | Supplier, PO, SKU, exception type, status, age. | CSV optional. |
 
@@ -125,13 +122,7 @@ Inventory Management shall enforce authorization for product configuration, stoc
 
 Inventory Supervisor approval is required for controlled adjustments, receipt exception resolution where policy requires review, and reversal/correction actions that affect stock. The actor who records a count, receipt exception, or adjustment request shall not approve the related controlled action. Service-to-service inventory mutations shall be scoped to the source domain and authorized for the requested action.
 
-## 13. Operational History and Traceability
-
-Inventory shall record operational history for product configuration changes, stock checks, count submissions, discrepancies, adjustment approvals/rejections, receipt booking, receipt exceptions, reservation, consumption, reversal, stock state changes, and authorization denials.
-
-Operational history records shall include actor/service, source application or domain, entity IDs, source document references, prior/new quantities or states, reason/comments where supplied, outcome, and timestamp.
-
-## 14. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - Inventory commands that mutate stock shall be transactionally consistent within the Inventory database.
 - Availability and stock queries shall be paginated where result sets can grow.
@@ -139,14 +130,14 @@ Operational history records shall include actor/service, source application or d
 - Validation errors shall be deterministic and suitable for scanner-assisted and form-based application workflows.
 - Inventory services shall not depend on application UI projects or application-owned persistence.
 
-## 15. Dependencies
+## 14. Dependencies
 
 - Purchasing for purchase order receipt-matching data and receipt status feedback.
-- Sales for availability checks and sales order references used in reservation traceability.
+- Sales for availability checks and sales order references used by reservations.
 - Order Fulfilment for reservation, consumption, reversal, and fulfilment task references.
 - Gravitee and Authentik for authenticated ingress, identity, and service accounts.
 
-## 16. Assumptions and MVP Defaults
+## 15. Assumptions and MVP Defaults
 
 - Inventory owns MVP product/SKU/barcode/stocking configuration until a dedicated product master is introduced.
 - The MVP inventory adjustment approval thresholds are 2,000 in the configured company currency or 10 percent variance, whichever is reached first.
@@ -156,8 +147,7 @@ Operational history records shall include actor/service, source application or d
 - Reservations are initiated at fulfilment release and consumption occurs at fulfilment completion.
 - MVP uses a single logical warehouse with simple location codes and stock states of Available, Reserved, Quarantine, Damaged, Rejected, and Non-Available.
 - Reservation expiry is not automated in MVP; unreleased or unfulfilled reservations remain until fulfilment completion, cancellation, or supervisor release.
-- Inventory activity history is retained according to Inventory-owned operational data policy; no central compliance-retention baseline applies in MVP.
 
-## 17. Acceptance Summary
+## 16. Acceptance Summary
 
-The Inventory Management requirements are complete for MVP when they define authoritative inventory state ownership, product/stock/receipt/discrepancy/reservation workflows, cross-domain contracts, approval and self-approval rules, operational history, reporting needs, and explicit MVP defaults without assigning UI workflows or durable inventory state to application services.
+The Inventory Management requirements are complete for MVP when they define authoritative inventory state ownership, product/stock/receipt/discrepancy/reservation workflows, cross-domain contracts, approval and self-approval rules, reporting needs, and explicit MVP defaults without assigning UI workflows or durable inventory state to application services.

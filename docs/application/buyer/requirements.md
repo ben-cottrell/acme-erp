@@ -84,7 +84,6 @@ Buyers need a focused workbench for supplier ordering and Sales buyer requests w
 | Quantity/unit cost/dates | Purchasing | PO submission. | Yes | Positive quantity; unit cost required; date validation from Purchasing. |
 | Buyer request | Purchasing/Sales context | Non-stocked workflow. | Conditional | Show request state and reason. |
 | Receipt status | Purchasing/Inventory visibility | PO monitoring. | Conditional | Show partial, received, and business exception state. |
-| Approval history | Purchasing | Control review. | Conditional | Show requester, approver, date, decision, reason. |
 
 ## 10. Orchestration and Integration Requirements
 
@@ -108,26 +107,22 @@ Buyers need a focused workbench for supplier ordering and Sales buyer requests w
 
 ## 12. Security and Permissions
 
-The application shall enforce route and screen access for Buyer and Purchasing Manager roles. Purchasing remains authoritative for PO validation, approval authority, self-approval restrictions, persistence, buyer request decisions, and operational history. Inventory remains authoritative for product data and receipt booking. The app shall show denial reasons from domains and shall not bypass self-approval restrictions.
+The application shall enforce route and screen access for Buyer and Purchasing Manager roles. Purchasing remains authoritative for PO validation, approval authority, self-approval restrictions, persistence, and buyer request decisions. Inventory remains authoritative for product data and receipt booking. The app shall show denial reasons from domains and shall not bypass self-approval restrictions.
 
-## 13. Operational History and Traceability
-
-The application shall display Purchasing-provided PO status history, approval history, amendment history, buyer request decisions, and receipt visibility. CSV outputs for purchasing data shall use authorized Purchasing query endpoints.
-
-## 14. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - PO workbench and queues shall be paginated and filterable.
 - The app shall remain stateless and shall not persist PO drafts beyond request/session behavior unless a domain API owns the draft.
 - Validation and denial messages shall be clear enough for corrective user action.
 
-## 15. Dependencies
+## 14. Dependencies
 
-- Purchasing for supplier data, PO lifecycle, approvals, buyer request decisions, receipt visibility, and operational history.
+- Purchasing for supplier data, PO lifecycle, approvals, buyer request decisions, and receipt visibility.
 - Inventory Management for product/SKU/barcode validation and receipt status source data.
 - Sales for originating buyer request context through Purchasing/Sales contracts.
 - Authentik and Gravitee for identity, ingress, and role claims.
 
-## 16. Assumptions and MVP Defaults
+## 15. Assumptions and MVP Defaults
 
 - Supplier reference data is Purchasing-owned for MVP.
 - Buyer application users are authenticated internal users.
@@ -137,6 +132,6 @@ The application shall display Purchasing-provided PO status history, approval hi
 - Buyer request screens show Sales order reference, requested product description, quantity, requested-by role, request date, and reason; customer personal data is not shown unless Purchasing/Sales explicitly authorizes it.
 - Buyers may close partially received purchase orders only when Purchasing reports a close action is available; no additional application-specific approval flow is added for MVP.
 
-## 17. Acceptance Summary
+## 16. Acceptance Summary
 
-The Buyer requirements are complete for MVP when they define PO authoring, approvals, buyer request handling, product validation, receipt visibility, search/reporting, security, operational history visibility, and explicit MVP defaults without assigning durable purchasing, inventory, or sales state to the application.
+The Buyer requirements are complete for MVP when they define PO authoring, approvals, buyer request handling, product validation, receipt visibility, search/reporting, security, and explicit MVP defaults without assigning durable purchasing, inventory, or sales state to the application.

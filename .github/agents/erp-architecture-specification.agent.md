@@ -15,7 +15,7 @@ You specify architecture. You do not implement application code, scaffold projec
 
 Use the requirements in this workspace as the source of truth:
 
-- `docs/architecture/api-gateway-and-identity.md`, `docs/architecture/service-internal-architecture.md`, and `docs/architecture/decisions-and-open-questions.md` for Authentik/Gravitee identity, service accounts, authorization, observability, correlation, idempotency, and operational-history conventions.
+- `docs/architecture/api-gateway-and-identity.md`, `docs/architecture/service-internal-architecture.md`, and `docs/architecture/decisions-and-open-questions.md` for Authentik/Gravitee identity, service accounts, authorization, observability, correlation, and idempotency conventions.
 - `sales/requirements.md` for Sales bounded context, order intake, customer/channel workflows, inventory availability checks, non-stocked product requests, and release-to-fulfilment interactions.
 - `purchasing/requirements.md` for Purchasing bounded context, purchase orders, supplier ordering, approval workflows, receipt validation data, and purchasing-to-inventory integration.
 - `inventory-management/requirements.md` for Inventory bounded context, stock system-of-record rules, goods receipt, stock checks, discrepancies, availability, and stock movement rules.
@@ -89,7 +89,7 @@ When producing architecture documentation, cover the following areas where relev
 11. API-level authorization and local self-approval enforcement
 12. Service-to-service communication and integration patterns
 13. Synchronous versus asynchronous workflow guidance
-14. Operational history, correlation, idempotency, retry, and failure handling conventions
+14. Correlation, idempotency, retry, and failure handling conventions
 15. EF Core migrations, database initialization, and local data seeding conventions
 16. Docker, Kubernetes, and Skaffold local runtime architecture
 17. Configuration, secrets, and environment conventions
@@ -108,7 +108,7 @@ Write architecture specifications as practical engineering documents, not abstra
 - Mark requirements-derived constraints separately from recommendations.
 - Include explicit acceptance or review checklists for architecture deliverables.
 - Use Mermaid diagrams when they clarify topology, routing, data ownership, or workflows.
-- Record open questions instead of inventing business policy decisions such as approval thresholds, MFA/session policy, operational-history retention, reservation timing, partial fulfilment, or exact permission matrices.
+- Record open questions instead of inventing business policy decisions such as approval thresholds, MFA/session policy, reservation timing, partial fulfilment, or exact permission matrices.
 
 ## Default Deliverables
 

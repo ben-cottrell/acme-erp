@@ -5,7 +5,7 @@
 This document is the implementation-authoritative relational design for the Sales domain database. Read it with:
 
 - `requirements.md` in this folder for Sales business semantics and state transitions.
-- `../../architecture/data-architecture.md` for shared SQL Server, EF Core, identifier, type, history, and migration conventions.
+- `../../architecture/data-architecture.md` for shared SQL Server, EF Core, identifier, type, and migration conventions.
 - `../../architecture/domain-and-application-boundaries.md` for ownership boundaries.
 
 If these sources conflict, resolve the documentation before changing the EF Core model or generating a migration. This design covers Sales-owned durable state and copied integration visibility only. It creates no relationship to another database.
@@ -33,7 +33,6 @@ erDiagram
     SalesOrders ||--|| SalesOrderContacts : snapshots
     SalesOrders ||--|{ SalesOrderAddresses : snapshots
     SalesOrders ||--|{ SalesOrderLines : contains
-    SalesOrders ||--o{ SalesOrderStatusHistory : records
     SalesOrders ||--o{ SalesOrderChangeRequests : controls
     SalesOrderChangeRequests ||--o{ SalesOrderApprovals : decides
     SalesOrders ||--o{ SalesOrderExceptions : exposes
@@ -43,8 +42,6 @@ erDiagram
     SalesFulfilmentReferences ||--o{ SalesFulfilmentLineVisibility : contains
     SalesOrderLines ||--o| SalesFulfilmentLineVisibility : mirrors
 ```
-
-`SalesActivityHistory` uses typed scalar identifiers and is omitted from the ERD for readability.
 
 ## Customer and Channel Tables
 
@@ -204,20 +201,6 @@ Unique constraint: `UQ_SalesOrderLines_OrderLineNumber` on `(SalesOrderId, LineN
 
 ## Lifecycle and Control Tables
 
-### `SalesOrderStatusHistory`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only |
-| `SalesOrderId` | `uniqueidentifier` | No | FK to `SalesOrders.Id` |
-| `PriorStatus` | `nvarchar(32)` | Yes | Null only for creation |
-| `NewStatus` | `nvarchar(32)` | No | Sales status catalog |
-| `ChangedBySubject` | `nvarchar(200)` | No | User/service subject |
-| `Reason` | `nvarchar(1000)` | Yes | Optional business reason |
-| `OccurredAt` | `datetimeoffset(7)` | No | UTC |
-
-Checks constrain both status columns to the Sales status catalog.
-
 ### `SalesOrderChangeRequests`
 
 | Column | SQL type | Null | Rules |
@@ -313,26 +296,6 @@ Filtered unique index on `ExternalPurchasingBuyerRequestId` when non-null.
 | `BackorderedQuantity` | `decimal(18,4)` | No | Non-negative |
 | `Status` | `nvarchar(32)` | No | Copied line status |
 
-## Operational History
-
-### `SalesActivityHistory`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only |
-| `EntityType` | `nvarchar(64)` | No | Bounded Sales entity name |
-| `EntityId` | `uniqueidentifier` | No | Sales-owned record ID |
-| `SalesOrderId` | `uniqueidentifier` | Yes | Searchable order reference; no polymorphic FK |
-| `Action` | `nvarchar(64)` | No | Controlled action |
-| `PriorStatus` | `nvarchar(32)` | Yes | Optional |
-| `NewStatus` | `nvarchar(32)` | Yes | Optional |
-| `Outcome` | `nvarchar(24)` | No | `Succeeded`, `Rejected`, `Denied`, `Failed` |
-| `ActorSubject` | `nvarchar(200)` | No | User/service subject |
-| `SourceApplication` | `nvarchar(100)` | No | Caller |
-| `Reason` | `nvarchar(1000)` | Yes | Optional |
-| `ChangesJson` | `nvarchar(max)` | Yes | Valid sanitized JSON |
-| `OccurredAt` | `datetimeoffset(7)` | No | UTC |
-
 ## Status Catalogs
 
 | Area | Allowed values |
@@ -351,7 +314,7 @@ All foreign keys use `ON DELETE NO ACTION`. Required relationships are indexed. 
 |---|---|
 | `CustomerContacts`, `CustomerAccountUsers`, `CustomerAddresses`, `SalesOrders` | `CustomerAccounts` |
 | `SalesOrders` | `SalesChannels` |
-| `SalesOrderContacts`, `SalesOrderAddresses`, `SalesOrderLines`, `SalesOrderStatusHistory`, `SalesOrderChangeRequests`, `SalesOrderExceptions`, `SalesFulfilmentReferences` | `SalesOrders` |
+| `SalesOrderContacts`, `SalesOrderAddresses`, `SalesOrderLines`, `SalesOrderChangeRequests`, `SalesOrderExceptions`, `SalesFulfilmentReferences` | `SalesOrders` |
 | `SalesOrderContacts` | Optional `CustomerContacts` |
 | `SalesOrderAddresses` | Optional `CustomerAddresses` |
 | `SalesOrderApprovals` | `SalesOrderChangeRequests` |
@@ -362,24 +325,21 @@ All foreign keys use `ON DELETE NO ACTION`. Required relationships are indexed. 
 
 | Index | Purpose |
 |---|---|
-| `IX_SalesOrders_Customer_Status_CreatedAt` on `(CustomerAccountId, Status, CreatedAt DESC, Id)` | Customer-scoped history with stable sorting |
+| `IX_SalesOrders_Customer_Status_CreatedAt` on `(CustomerAccountId, Status, CreatedAt DESC, Id)` | Customer-scoped order search with stable sorting |
 | `IX_SalesOrders_Status_UpdatedAt` on `(Status, UpdatedAt, Id)` | Operational queues and age sorting |
 | `IX_SalesOrders_Channel_CreatedAt` on `(SalesChannelId, CreatedAt DESC, Id)` | Channel reporting |
 | `IX_SalesOrderLines_ExternalSkuId` on `(ExternalSkuId, SalesOrderId)` | SKU order search |
 | `IX_SalesOrderExceptions_Status_Type_OpenedAt` on `(Status, ExceptionType, OpenedAt, Id)` | Exception queue |
 | `IX_SalesBuyerRequests_Status_UpdatedAt` on `(Status, UpdatedAt, Id)` | Buyer-request visibility |
 | `IX_SalesFulfilmentReferences_Status_UpdatedAt` on `(FulfilmentStatus, UpdatedAt, Id)` | Fulfilment visibility |
-| `IX_SalesOrderStatusHistory_Order_OccurredAt` on `(SalesOrderId, OccurredAt, Id)` | Ordered status history |
-| `IX_SalesActivityHistory_Order_OccurredAt` on `(SalesOrderId, OccurredAt DESC, Id)` | Sales change history |
-| `IX_SalesActivityHistory_Actor_Action_OccurredAt` on `(ActorSubject, Action, OccurredAt DESC, Id)` | Supervisor reporting |
 
 ## Transactions and Concurrency
 
-- Create an order, its contact/address snapshots, lines, initial status history, and activity history in one transaction.
-- Apply every valid status transition with the current `SalesOrders.RowVersion`, append status/activity history, and update affected line state in one transaction.
+- Create an order, its contact/address snapshots, and lines in one transaction.
+- Apply every valid status transition with the current `SalesOrders.RowVersion` and update affected line state in one transaction.
 - Record a change request and policy result before approval. Apply an approved change only after re-reading the request and order under optimistic concurrency; requester and approver subjects must differ.
 - Record a buyer request after Purchasing accepts it and mark Sales released only after Fulfilment accepts the release contract.
-- Apply valid Purchasing or Fulfilment business updates, update copied visibility, and append Sales history in one transaction.
+- Apply valid Purchasing or Fulfilment business updates and update copied visibility in one transaction.
 - Do not hold a database transaction open across an HTTP call.
 
 ## External References
@@ -389,22 +349,22 @@ All foreign keys use `ON DELETE NO ACTION`. Required relationships are indexed. 
 | `ExternalProductId`, `ExternalSkuId`, `ExternalBarcodeId` | Inventory Management | No |
 | `ExternalPurchasingBuyerRequestId`, `ExternalPurchaseOrderId` | Purchasing | No |
 | `ExternalFulfilmentTaskId`, `ExternalFulfilmentTaskLineId` | Order Fulfilment | No |
-| `ExternalIdentitySubject` and actor subject columns | Authentik/platform identity | No |
+| Customer, requester, approver, and creator subject columns | Authentik/platform identity | No |
 
 ## Requirement Traceability
 
 | Requirement | Persistence coverage |
 |---|---|
-| `SAL-DOM-001` | Customer references, channels, order snapshots, lines, and initial histories are committed atomically |
+| `SAL-DOM-001` | Customer references, channels, order snapshots, and lines are committed atomically |
 | `SAL-DOM-002` | Required `SalesChannelId`, seeded `SalesChannels`, and channel indexes preserve origin |
 | `SAL-DOM-003` | External Inventory IDs and line stocked state persist accepted validation outcomes |
 | `SAL-DOM-004` | Current line and order states record the business result of accepted availability checks |
 | `SAL-DOM-005` | `SalesBuyerRequests` owns origination context and copies Purchasing IDs/status without a cross-database FK |
-| `SAL-DOM-006` | Checked current status, append-only status history, and transactional transition rules |
+| `SAL-DOM-006` | Checked current status, optimistic concurrency, and transactional transition rules |
 | `SAL-DOM-007` | Delivery snapshots and the accepted fulfilment reference persist release evidence |
-| `SAL-DOM-008` | Fulfilment header/line visibility and order status history persist accepted fulfilment updates |
+| `SAL-DOM-008` | Fulfilment header/line visibility and current order status persist accepted fulfilment updates |
 | `SAL-DOM-009` | Change requests, approvals, policy snapshots, reasons, self-approval evidence, and optimistic concurrency |
-| `SAL-DOM-010` | Purpose-built order, line, exception, buyer-request, fulfilment, and history indexes |
+| `SAL-DOM-010` | Purpose-built order, line, exception, buyer-request, and fulfilment indexes |
 
 Business authorization, field-level validation, allowed status transitions, Inventory calls, and response shaping remain API/domain responsibilities. Persistence supplies the durable evidence and constraints they require.
 
@@ -421,13 +381,12 @@ Business authorization, field-level validation, allowed status transitions, Inve
 | `SAL-BR-007` | Policy amount/currency, approval requirement, requester, and decision evidence; threshold evaluation remains configurable domain logic |
 | `SAL-BR-008` | Change request/approval records and order `RowVersion` protect coordinated amendments |
 | `SAL-BR-009` | Unique customer subject mapping and indexed `CustomerAccountId`; authorization enforces authenticated scope |
-| `SAL-BR-010` | Typed append-only activity rows with actor, action, statuses, outcome, reason, and time |
 
 ## Seed and Lifecycle Policy
 
 - Seed deterministic `SalesAssistant` and `CustomerOrdering` channel rows.
 - Load customer accounts, contacts, users, and addresses through rerunnable Sales-owned environment tooling, not EF model seed data.
-- Do not physically delete orders, lines, snapshots, status history, approvals, exceptions, buyer-request context, fulfilment visibility, or activity history.
+- Do not physically delete orders, lines, snapshots, approvals, exceptions, buyer-request context, or fulfilment visibility.
 
 ## Excluded Schema
 
@@ -438,6 +397,6 @@ This MVP design intentionally excludes product master tables, inventory balances
 - Map every type, maximum length, check constraint, unique/filter index, `rowversion`, and `DeleteBehavior.NoAction` explicitly.
 - Keep external IDs as scalar properties with no navigation properties.
 - Configure value conversions for statuses to their documented strings, never numeric enum ordinals.
-- Configure history and decision entities as append-only in application behavior; migrations must not replace them with temporal or central audit tables without a design change.
-- Use `__SalesMigrationsHistory` and inspect every generated migration for cross-database references, cascade deletes, unbounded payload columns, missing checks, or destructive history changes.
+- Configure decision entities as append-only in application behavior; migrations must not replace them with central audit tables without a design change.
+- Use `__SalesMigrationsHistory` and inspect every generated migration for cross-database references, cascade deletes, unbounded payload columns, missing checks, or destructive schema changes.
 - Add SQL Server integration tests for customer scope, positive quantities, status checks, optimistic concurrency, and migration application.

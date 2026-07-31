@@ -102,26 +102,22 @@ ACME wants customers to submit orders without rekeying by internal sales staff w
 
 ## 12. Security and Permissions
 
-The application shall require authenticated customer identity and customer account scope for all order submission and status workflows. Sales remains authoritative for customer-scoped order access, validation, persistence, and operational history. Inventory remains authoritative for product and availability data. Application presentation shall not reveal cross-customer data or internal-only exception detail.
+The application shall require authenticated customer identity and customer account scope for all order submission and status workflows. Sales remains authoritative for customer-scoped order access, validation, and persistence. Inventory remains authoritative for product and availability data. Application presentation shall not reveal cross-customer data or internal-only exception detail.
 
-## 13. Operational History and Traceability
-
-The application shall provide Sales with submission channel and customer identity/scope so Sales can record customer order submissions. Customer-visible order history comes from Sales. Any customer personal data displayed must be limited to the authenticated customer's scope.
-
-## 14. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - The UI shall present clear progress, success, and validation states for order submission.
 - The application shall not cache sensitive customer data beyond normal request/session needs.
 - Search/status queries shall be paginated where result sets can grow.
 
-## 15. Dependencies
+## 14. Dependencies
 
-- Sales for customer account reference, order submission, customer-scoped status, and operational history.
+- Sales for customer account reference, order submission, and customer-scoped status.
 - Inventory Management for active products and availability indicators.
 - Authentik and Gravitee for authentication, customer identity claims, and ingress.
 - Sales-owned customer data access rules for customer-scoped privacy and visibility.
 
-## 16. Assumptions and MVP Defaults
+## 15. Assumptions and MVP Defaults
 
 - Customer Ordering is authenticated-only for MVP.
 - Guest checkout, anonymous order tracking, self-registration, payment capture, and account recovery are excluded.
@@ -130,6 +126,6 @@ The application shall provide Sales with submission channel and customer identit
 - Customer-safe status wording uses Sales status names, with internal technical detail hidden by the application.
 - Customers cannot cancel or amend submitted orders in MVP; they must contact ACME through existing support channels.
 
-## 17. Acceptance Summary
+## 16. Acceptance Summary
 
 The Customer Ordering requirements are complete for MVP when they define authenticated order entry, customer scoping, product/availability display, Sales submission, customer-visible status, privacy/security, and explicit MVP defaults without assigning sales or inventory ownership to the application.

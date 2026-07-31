@@ -99,31 +99,26 @@ Warehouse users need quick, reliable capture of physical counts and received goo
 
 | View / Report | Audience | Purpose | Filters | Export Needs |
 |---|---|---|---|---|
-| Count Task List | Warehouse Operator | Find open/recent counts. | Location, SKU, status, date. | None for MVP. |
+| Count Task List | Warehouse Operator | Find open counts. | Location, SKU, status, date. | None for MVP. |
 | Receipt Worklist | Warehouse Operator | Receive expected POs. | PO, supplier, expected arrival, status. | None for MVP. |
-| Recent Submissions | Warehouse Operator | Verify submitted counts/receipts. | Operator, date, status, product. | None for MVP. |
 | Receipt Exceptions | Warehouse Operator | See items routed to supervisor. | Exception type, PO, SKU, status. | CSV handled by supervisor/reporting apps. |
 
 ## 12. Security and Permissions
 
-The application shall enforce Warehouse Operator route and screen access. Inventory Management remains authoritative for stock checks, receipts, discrepancies, stock movements, authorization, approval rules, and operational history. Purchasing remains authoritative for PO data. The app shall not expose approval actions for discrepancies or receipt exceptions.
+The application shall enforce Warehouse Operator route and screen access. Inventory Management remains authoritative for stock checks, receipts, discrepancies, stock movements, authorization, and approval rules. Purchasing remains authoritative for PO data. The app shall not expose approval actions for discrepancies or receipt exceptions.
 
-## 13. Operational History and Traceability
-
-The application shall send operator identity, source application, and submission context to Inventory Management for count and receipt history. Operators may view submitted status and exception state; broader CSV outputs belong to Inventory Supervisor workflows.
-
-## 14. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - Primary count and receipt workflows shall remain usable with intermittent validation failures by preserving unsent input.
 - The application shall not maintain a local stock cache or PO cache beyond request/session needs.
 
-## 15. Dependencies
+## 14. Dependencies
 
-- Inventory Management for stock checks, product/location validation, receipts, exceptions, and operational history.
+- Inventory Management for stock checks, product/location validation, receipts, and exceptions.
 - Purchasing for PO lookup and receipt eligibility context.
 - Authentik and Gravitee for identity, ingress, and route policy.
 
-## 16. Assumptions and MVP Defaults
+## 15. Assumptions and MVP Defaults
 
 - Warehouse automation hardware integrations are out of scope; scanner-friendly input is sufficient for MVP.
 - Warehouse Operators cannot approve discrepancies or receipt exceptions.
@@ -134,6 +129,6 @@ The application shall send operator identity, source application, and submission
 - MVP uses the single logical warehouse and simple location codes defined by Inventory Management.
 - MVP receipt condition choices are Good, Damaged, Quarantine, and Rejected.
 
-## 17. Acceptance Summary
+## 16. Acceptance Summary
 
-The Warehouse Operator requirements are complete for MVP when they define stock count and goods receipt workflows, scanner-friendly input, Inventory/Purchasing orchestration, exception routing, security, operational history context, and explicit MVP defaults without assigning inventory or purchasing state to the application.
+The Warehouse Operator requirements are complete for MVP when they define stock count and goods receipt workflows, scanner-friendly input, Inventory/Purchasing orchestration, exception routing, security, and explicit MVP defaults without assigning inventory or purchasing state to the application.

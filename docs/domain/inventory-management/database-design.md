@@ -38,7 +38,7 @@ erDiagram
     Skus ||--o{ StockMovements : moves
     Locations ||--o{ StockMovements : occurs
     StockMovements ||--o{ StockMovementSerials : identifies
-    SerialNumbers ||--o{ StockMovementSerials : traces
+    SerialNumbers ||--o{ StockMovementSerials : identifies
     GoodsReceipts ||--|{ GoodsReceiptLines : contains
     PurchaseOrderSnapshots ||--o{ GoodsReceipts : validates
     PurchaseOrderLineSnapshots ||--o{ GoodsReceiptLines : matches
@@ -51,7 +51,7 @@ erDiagram
     StockAdjustments ||--o{ StockAdjustmentDecisions : decides
 ```
 
-Movement source links, operational history, and business Inventory exceptions use typed scalar references and are omitted from the ERD for readability.
+Movement source links and business Inventory exceptions use typed scalar references and are omitted from the ERD for readability.
 
 ## Product and Location Configuration
 
@@ -456,28 +456,6 @@ Unique constraint: `(StockCheckId, LineNumber)`. The arithmetic relationship is 
 | `Reason` | `nvarchar(1000)` | Yes | Required for reject/deny |
 | `DecidedAt` | `datetimeoffset(7)` | No | UTC |
 
-## Operational History
-
-### `InventoryActivityHistory`
-
-| Column | SQL type | Null | Rules |
-|---|---|---:|---|
-| `Id` | `uniqueidentifier` | No | Primary key; append-only |
-| `EntityType` | `nvarchar(64)` | No | Bounded Inventory entity name |
-| `EntityId` | `uniqueidentifier` | No | Inventory-owned ID |
-| `SkuId` | `uniqueidentifier` | Yes | Searchable SKU reference |
-| `Action` | `nvarchar(64)` | No | Controlled action |
-| `PriorState` | `nvarchar(32)` | Yes | Optional |
-| `NewState` | `nvarchar(32)` | Yes | Optional |
-| `PriorQuantity` | `decimal(18,4)` | Yes | Optional |
-| `NewQuantity` | `decimal(18,4)` | Yes | Optional |
-| `Outcome` | `nvarchar(24)` | No | `Succeeded`, `Rejected`, `Denied`, `Failed` |
-| `ActorSubject` | `nvarchar(200)` | No | User/service subject |
-| `SourceApplication` | `nvarchar(100)` | No | Caller |
-| `Reason` | `nvarchar(1000)` | Yes | Optional |
-| `ChangesJson` | `nvarchar(max)` | Yes | Valid sanitized JSON |
-| `OccurredAt` | `datetimeoffset(7)` | No | UTC |
-
 ## Status Catalogs
 
 | Area | Allowed values |
@@ -505,15 +483,13 @@ Key local relationship groups are catalog to SKU, warehouse to location, SKU/loc
 | `IX_StockBalances_Location_State_Sku` on `(LocationId, StockState, SkuId)` include `Quantity` | Location/state balance search |
 | `IX_StockBalances_Sku_State` on `(SkuId, StockState, LocationId)` include `Quantity` | Availability calculation |
 | `IX_SerialNumbers_Sku_Status` on `(SkuId, LifecycleStatus, LocationId)` | Serialized stock lookup |
-| `IX_Reservations_ExternalSalesOrderId` on `(ExternalSalesOrderId, Status, Id)` | Sales reservation traceability |
+| `IX_Reservations_ExternalSalesOrderId` on `(ExternalSalesOrderId, Status, Id)` | Sales reservation lookup |
 | `IX_Reservations_ExternalFulfilmentTaskId` on `(ExternalFulfilmentTaskId, Status, Id)` | Fulfilment operations |
-| `IX_StockMovements_Sku_OccurredAt` on `(SkuId, OccurredAt DESC, Id)` | Movement history |
-| `IX_StockMovements_Location_OccurredAt` on `(LocationId, OccurredAt DESC, Id)` | Location movement history |
+| `IX_StockMovements_Sku_OccurredAt` on `(SkuId, OccurredAt DESC, Id)` | SKU ledger operations |
+| `IX_StockMovements_Location_OccurredAt` on `(LocationId, OccurredAt DESC, Id)` | Location ledger operations |
 | `IX_GoodsReceipts_ExternalPurchaseOrderId` on `(ExternalPurchaseOrderId, Status, Id)` | PO receipt lookup |
 | `IX_ReceiptExceptions_Status_OpenedAt` on `(Status, OpenedAt, Id)` | Receipt exception queue |
 | `IX_StockDiscrepancies_Status_OpenedAt` on `(Status, OpenedAt, Id)` | Discrepancy queue |
-| `IX_InventoryActivityHistory_Sku_OccurredAt` on `(SkuId, OccurredAt DESC, Id)` | SKU operational history |
-| `IX_InventoryActivityHistory_Actor_Action_OccurredAt` on `(ActorSubject, Action, OccurredAt DESC, Id)` | Supervisor reporting |
 
 ## Transactional Invariants and Concurrency
 
@@ -521,7 +497,7 @@ Key local relationship groups are catalog to SKU, warehouse to location, SKU/loc
 - Reserve by decreasing the Available balance and increasing the matching Reserved balance, then append one transfer movement and update reservation lines/serials in one transaction. Total physical on-hand remains unchanged.
 - Release by decreasing Reserved and increasing Available with a compensating transfer movement. Consume by decreasing Reserved with no target state and append a consumption movement. Never make any balance negative.
 - Reverse a completed consumption by appending a reversal movement linked to the original and increasing the policy-approved target state. Never edit or delete the original movement.
-- Book a matched accepted receipt by increasing the appropriate state balance, creating/updating serials, appending movement rows, updating receipt lines/header, and writing activity history in one transaction. Exception quantities do not enter Available until an authorized resolution is committed.
+- Book a matched accepted receipt by increasing the appropriate state balance, creating/updating serials, appending movement rows, and updating receipt lines/header in one transaction. Exception quantities do not enter Available until an authorized resolution is committed.
 - Post an adjustment only after approval policy and self-approval checks. Update the balance, append the adjustment movement, and close/update discrepancy state atomically.
 - Capture `RecordedQuantity` when a stock-check line is created. A later balance change does not rewrite the snapshot; adjustment posting revalidates current balance and may require renewed review.
 - For serialized SKUs, the service verifies that affected serial records and movement serial rows equal the integral movement quantity. SQL constraints cannot enforce this cross-row count.
@@ -543,14 +519,14 @@ Key local relationship groups are catalog to SKU, warehouse to location, SKU/loc
 |---|---|
 | `INV-DOM-001` | Products, SKUs, unique barcodes, locations, stocking flags, serialization policy, active state, and concurrency |
 | `INV-DOM-002` | Purchasing snapshots, receipt matching, conditions, exception/decision state, atomic booking, and movement evidence |
-| `INV-DOM-003` | Stock-check quantity snapshots, actual/variance checks, discrepancy state, adjustment outcome, and history |
+| `INV-DOM-003` | Stock-check quantity snapshots, actual/variance checks, discrepancy state, and adjustment outcome |
 | `INV-DOM-004` | Policy snapshots, approval requirement, requester/decider identities, denied attempts, and atomic posting |
 | `INV-DOM-005` | Append-only typed stock movements, source links, prior/new quantities/states, serial links, actor, and time |
 | `INV-DOM-006` | Non-negative balance checks plus transaction/concurrency rules before every decrement |
 | `INV-DOM-007` | Indexed balance states, stocked configuration, and authoritative Inventory query source |
 | `INV-DOM-008` | Reservation header, allocations, serials, external Sales/Fulfilment IDs, and Available-to-Reserved transfer |
 | `INV-DOM-009` | Reservation consumption/release/reversal quantities, immutable movements, and accepted external references |
-| `INV-DOM-010` | Product, balance, movement, reservation, discrepancy, receipt exception, and history indexes |
+| `INV-DOM-010` | Product, balance, reservation, discrepancy, and receipt-exception indexes |
 
 Authorization, scanner/form validation, transition decisions, policy evaluation, service calls, pagination, CSV shaping, and serialized cross-row reconciliation remain domain/API responsibilities.
 
@@ -573,7 +549,7 @@ Authorization, scanner/form validation, transition decisions, policy evaluation,
 
 - Seed one deterministic MVP warehouse and one deterministic default location. Additional bins are loaded through rerunnable Inventory-owned environment tooling.
 - Load products, SKUs, barcodes, opening balances, and serials through deterministic Inventory tooling, not EF model seed data.
-- Never physically delete stock movements, movement serials, booked receipts, posted adjustments, status/decision records, or activity history.
+- Never physically delete stock movements, movement serials, booked receipts, posted adjustments, or decision records.
 - Deactivate catalog/configuration records instead of deleting records referenced by business records.
 
 ## Excluded Schema
@@ -586,6 +562,6 @@ This design excludes Purchasing PO ownership, Sales orders, fulfilment tasks, fi
 - Configure decimal precision explicitly and never use floating-point types for quantities, values, or percentages.
 - Keep all Purchasing, Sales, and Fulfilment IDs scalar with no cross-domain navigation.
 - Persist status strings exactly as documented; do not map enum ordinals.
-- Prevent updates/deletes to movement and append-only history entities in application persistence behavior.
-- Use `__InventoryManagementMigrationsHistory`; inspect migrations for cascade deletes, negative-stock loopholes, cross-database FKs, destructive movement/history changes, or accidental lot/expiry scope.
+- Prevent updates/deletes to stock-movement ledger rows and append-only decision records in application persistence behavior.
+- Use `__InventoryManagementMigrationsHistory`; inspect migrations for cascade deletes, negative-stock loopholes, cross-database FKs, destructive ledger changes, or accidental lot/expiry scope.
 - Add SQL Server integration tests for unique catalog identifiers, balance uniqueness/non-negativity, concurrent decrement conflict, atomic reservation/receipt/adjustment posting, movement immutability, serial uniqueness, self-approval denial, checks, and migration application.

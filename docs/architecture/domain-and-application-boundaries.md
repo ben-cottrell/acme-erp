@@ -23,10 +23,10 @@ This document defines the target split between domain bounded contexts and user-
 
 | Domain bounded context | Domain API | Database | Owns | Does not own |
 |---|---|---|---|---|
-| Sales | `Acme.Erp.Sales.Api` | Sales database | Customer account reference data for MVP, sales orders, order channels, buyer request state, release-to-fulfilment decisions, sales status history, sales operational history | User interface flows, picking, packing, shipping, purchase order authoring, stock balance updates |
-| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, purchase order approval state, buyer request queue state, purchase order receipt visibility, purchasing operational history | User interface flows, goods receipt booking, inventory balances, sales order entry, finance postings |
-| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, reservations, goods receipts, stock checks, stock movements, discrepancy state, inventory operational history | User interface flows, purchase order authoring, sales order authoring, courier shipment purchase |
-| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, pick/pack/ship/completion rules, courier shipment purchase records, label references, fulfilment exceptions, fulfilment operational history | User interface flows, sales order creation, product master ownership, stock balance authority |
+| Sales | `Acme.Erp.Sales.Api` | Sales database | Customer account reference data for MVP, sales orders, order channels, buyer request state, release-to-fulfilment decisions | User interface flows, picking, packing, shipping, purchase order authoring, stock balance updates |
+| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, purchase order approval state, buyer request queue state, purchase order receipt visibility | User interface flows, goods receipt booking, inventory balances, sales order entry, finance postings |
+| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, reservations, goods receipts, stock checks, stock movements, discrepancy state | User interface flows, purchase order authoring, sales order authoring, courier shipment purchase |
+| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, pick/pack/ship/completion rules, courier shipment purchase records, label references, fulfilment exceptions | User interface flows, sales order creation, product master ownership, stock balance authority |
 
 ## Application Services
 
@@ -89,6 +89,6 @@ flowchart LR
 - [ ] Every application UI calls only its paired application API.
 - [ ] Application APIs do not connect to SQL Server or own EF Core migrations.
 - [ ] Application APIs communicate with domain APIs for all durable business state changes.
-- [ ] Domain APIs remain responsible for business authorization, validation, persistence, operational history, and domain invariants.
+- [ ] Domain APIs remain responsible for business authorization, validation, persistence, and domain invariants.
 - [ ] Cross-domain references use external ID columns and integration contracts.
 - [ ] All ingress is routed through Gravitee with Authentik-backed identity.

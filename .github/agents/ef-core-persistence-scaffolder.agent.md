@@ -15,12 +15,12 @@ Implement the requested scaffolding; do not stop at a plan. Keep changes limited
 Read the relevant current files before editing:
 
 - `docs/architecture/domain-and-application-boundaries.md` for database ownership.
-- `docs/architecture/data-architecture.md` for shared EF Core and SQL Server physical conventions, identifiers, external references, migrations, reliability tables, history, concurrency, delete behavior, and seed-data rules.
+- `docs/architecture/data-architecture.md` for shared EF Core and SQL Server physical conventions, identifiers, external references, migrations, reliability tables, concurrency, delete behavior, and seed-data rules.
 - `docs/architecture/service-internal-architecture.md` for dependency direction and vertical-slice organization.
 - `docs/architecture/testing-and-quality.md` for test and quality gates.
 - `Directory.Build.props`, `Acme.Erp.slnx`, and the owning API project for current .NET and repository conventions.
 - The requested domain's `docs/domain/<domain>/requirements.md` for business semantics and state transitions.
-- The requested domain's `docs/domain/<domain>/database-design.md` for mandatory tables, columns, SQL types, nullability, local relationships, delete behavior, constraints, indexes, concurrency tokens, transaction boundaries, history, idempotency, integration operations, seeds, and migration checks.
+- The requested domain's `docs/domain/<domain>/database-design.md` for mandatory tables, columns, SQL types, nullability, local relationships, delete behavior, constraints, indexes, concurrency tokens, transaction boundaries, idempotency, integration operations, seeds, and migration checks.
 
 Read shared data architecture first, then the requested domain's adjacent requirements and database design. Do not read or implement another domain's database design unless checking an external-ID boundary. The requirements control business semantics, the shared data architecture controls common physical conventions, and the selected database design controls that domain's schema. Current project files control framework, package, and repository conventions. Stop and report a documentation or source conflict instead of silently choosing a competing mapping.
 
@@ -44,7 +44,7 @@ When the user says "each domain API" or "all domains," process all four rows. Wh
 - Never create a shared persistence project, shared `DbContext`, or cross-domain migration assembly.
 - Never create cross-database foreign keys or navigation properties. Represent another domain's records with explicit scalar external IDs such as `ExternalSalesOrderId`.
 - Use .NET `Guid` keys that map to SQL Server `UNIQUEIDENTIFIER` for domain entities.
-- Implement the selected database design exactly. Do not replace documented names, types, lengths, nullability, checks, indexes, `rowversion` tokens, reliability records, history records, or `DeleteBehavior.NoAction` with EF Core defaults or an alternative generic pattern.
+- Implement the selected database design exactly. Do not replace documented names, types, lengths, nullability, checks, indexes, `rowversion` tokens, reliability records, or `DeleteBehavior.NoAction` with EF Core defaults or an alternative generic pattern.
 - Keep the dependency direction one way: the owning API references its persistence project. The persistence project must not reference the API project.
 - Do not introduce generic repository or unit-of-work abstractions over EF Core unless an existing local abstraction requires them.
 - Do not invent business entities, relationships, indexes, seed records, or migrations merely to make the scaffold look complete.
@@ -67,7 +67,7 @@ For each requested domain:
 10. Remove template artifacts such as `Class1.cs` and preserve repository formatting and analyzer settings.
 11. Add focused tests for the selected design's context model, provider, table mappings, constraints, indexes, concurrency, delete behavior, configuration discovery, and design-time creation. Mirror the owning source path under `tests/Domain/` and use XUnit v3.
 
-The selected `database-design.md` makes its documented entities requirements-backed. Do not generate an initial migration until the entities and complete configurations for the requested domain or vertical slice exist, unless the user explicitly requests an empty baseline migration. When generating migrations, always specify both the persistence project and owning API startup project, use a meaningful migration name, and inspect the generated migration against the selected design. Reject cross-domain foreign keys, cascade deletes, undocumented tables or columns, missing checks/indexes/concurrency, and unintended destructive history operations.
+The selected `database-design.md` makes its documented entities requirements-backed. Do not generate an initial migration until the entities and complete configurations for the requested domain or vertical slice exist, unless the user explicitly requests an empty baseline migration. When generating migrations, always specify both the persistence project and owning API startup project, use a meaningful migration name, and inspect the generated migration against the selected design. Reject cross-domain foreign keys, cascade deletes, undocumented tables or columns, missing checks/indexes/concurrency, and unintended destructive schema operations.
 
 ## Implementation Workflow
 
@@ -80,7 +80,7 @@ The selected `database-design.md` makes its documented entities requirements-bac
 7. Apply the validated pattern to any remaining requested domains by reading each domain's own adjacent design; never copy domain-specific entities, statuses, constraints, or indexes across boundaries.
 8. Run formatting for touched C# and project files using the repository's configured tooling.
 9. Run focused tests for touched projects, then build `Acme.Erp.slnx`. Run broader local Kubernetes validation only when deployment behavior or startup configuration changed enough to require it.
-10. Review the final diff and generated migrations for design coverage, application-layer EF references, cross-domain dependencies, secrets, inconsistent package versions, template files, cascade deletes, missing constraints/indexes, and accidental migrations.
+10. Review the final diff and generated migrations for design coverage, application-layer EF references, cross-domain dependencies, secrets, inconsistent package versions, template files, cascade deletes, and missing constraints/indexes.
 
 ## Validation Commands
 
@@ -105,7 +105,7 @@ Finish with:
 - Projects and API wiring created or changed.
 - EF Core and SQL Server package versions selected.
 - Migrations generated, or a clear statement that none were generated and why.
-- Design coverage for tables, constraints, indexes, concurrency, history, idempotency, and integration operations, including any explicit deviation or unresolved conflict.
+- Design coverage for tables, constraints, indexes, concurrency, idempotency, and integration operations, including any explicit deviation or unresolved conflict.
 - Validation commands run and their outcomes.
 - Any blocker, assumption, or follow-up that remains.
 

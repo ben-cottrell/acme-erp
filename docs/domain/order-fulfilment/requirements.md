@@ -2,9 +2,9 @@
 
 ## 1. Purpose
 
-The Order Fulfilment bounded context owns durable fulfilment task state, pick/pack/ship/completion rules, courier shipment purchase records, label references, fulfilment exceptions, fulfilment status history, and fulfilment operational history records.
+The Order Fulfilment bounded context owns durable fulfilment task state, pick/pack/ship/completion rules, courier shipment purchase records, label references, and fulfilment exceptions.
 
-Order Fulfilment exposes WebAPI contracts and owns the Fulfilment database. It is authoritative for fulfilment task lifecycle, fulfilment authorization, courier transaction references, exception approval, completion decisions, and fulfilment operational history. Fulfilment operator, supervisor, sales visibility, and reporting screens are owned by application services.
+Order Fulfilment exposes WebAPI contracts and owns the Fulfilment database. It is authoritative for fulfilment task lifecycle, fulfilment authorization, courier transaction references, exception approval, and completion decisions. Fulfilment operator, supervisor, sales visibility, and reporting screens are owned by application services.
 
 ## 2. Domain Scope
 
@@ -15,7 +15,7 @@ Order Fulfilment exposes WebAPI contracts and owns the Fulfilment database. It i
 - Component requirement, picked quantity, short pick, substitution, damaged component, and packing validation.
 - MVP courier shipment purchase path, label reference storage, and tracking reference.
 - Inventory reservation, consumption, and reversal request contracts.
-- Fulfilment status updates to Sales and fulfilment history/reporting data.
+- Fulfilment status updates to Sales and current-state reporting data.
 
 ### Out of Scope
 
@@ -28,14 +28,14 @@ Order Fulfilment exposes WebAPI contracts and owns the Fulfilment database. It i
 
 ACME needs released sales demand to become controlled warehouse fulfilment work without Sales or application services owning warehouse state. Fulfilment must validate picks against released requirements, coordinate inventory consumption, purchase courier shipping where needed, preserve label evidence, and report progress back to Sales.
 
-The MVP outcome is a reliable fulfilment lifecycle where released orders can be picked, packed, shipped, completed, partially fulfilled, or placed into exception state with supervisor control and operational traceability.
+The MVP outcome is a reliable fulfilment lifecycle where released orders can be picked, packed, shipped, completed, partially fulfilled, or placed into exception state with supervisor control.
 
 ## 4. Stakeholders and Roles
 
 | Role | Description | Responsibilities | Domain Permissions |
 |---|---|---|---|
 | Fulfilment Operator | Warehouse user executing tasks. | Pick, pack, request shipping purchase, print labels through applications, complete tasks, record exceptions. | Update assigned fulfilment task steps where policy allows. |
-| Fulfilment Supervisor | Control role for fulfilment exceptions. | Approve short picks, substitutions, shipping overrides, cancellations after picking starts, and completion reversals. | Approve/reject controlled fulfilment actions and view fulfilment history. |
+| Fulfilment Supervisor | Control role for fulfilment exceptions. | Approve short picks, substitutions, shipping overrides, cancellations after picking starts, and completion reversals. | Approve/reject controlled fulfilment actions and view current task state. |
 | Sales Assistant/Sales Supervisor | Sales users needing fulfilment visibility. | Monitor released order progress and customer-impacting exceptions. | Query fulfilment status through Sales or authorized reporting contracts. |
 
 ## 5. Domain Capabilities and Workflows
@@ -58,7 +58,7 @@ The MVP outcome is a reliable fulfilment lifecycle where released orders can be 
 | FUL-DOM-006 | Completion | The system shall complete a fulfilment task only when required pick, pack, shipping purchase, label, Sales update, and Inventory consumption conditions are satisfied or an approved business exception exists. | Must | Given required conditions pass, when completion is requested, then Inventory accepts the consumption, Sales accepts the fulfilment update, and the task becomes Completed or Partially Fulfilled as appropriate. |
 | FUL-DOM-007 | Partial fulfilment | The system shall support partial fulfilment where approved and report remaining quantities to Sales as backordered. | Must | Given a supervisor approves partial fulfilment, when completion occurs for available quantities, then Sales receives fulfilled and backordered quantities. |
 | FUL-DOM-008 | Inventory coordination | The system shall request Inventory reservation, consumption, and reversal using Sales order, fulfilment task, and Inventory business references. | Must | Given a valid request, when Inventory accepts it, then Order Fulfilment records the resulting reservation or stock movement reference. |
-| FUL-DOM-009 | Fulfilment queries | The system shall expose query contracts for task queues, business exceptions, shipment references, completion history, and operational reporting. | Should | Given an authorized query, when filters are supplied, then results are role-scoped and include the requested business state. |
+| FUL-DOM-009 | Fulfilment queries | The system shall expose query contracts for current task queues, business exceptions, shipment references, and completion state. | Should | Given an authorized query, when filters are supplied, then results are role-scoped and include the requested current business state. |
 
 ## 7. Business Rules and Validation Rules
 
@@ -68,7 +68,7 @@ The MVP outcome is a reliable fulfilment lifecycle where released orders can be 
 | FUL-BR-002 | Picked components must match released order requirements unless a controlled exception is approved. | Picking | Pick validation | Product master remains Inventory-owned. |
 | FUL-BR-003 | Courier shipping must be purchased before a courier label is printed unless a manual exception is authorized. | Shipping | Shipping workflow | MVP supports one provider path. |
 | FUL-BR-004 | Orders cannot be completed until pick, pack, shipping, label, Sales, and Inventory conditions are satisfied or an authorized business exception is approved. | Completion | Completion workflow | Sales and Inventory must accept their respective updates before completion is recorded. |
-| FUL-BR-005 | Inventory consumption must be traceable to fulfilment task, sales order, and reservation. | Consumption | Inventory integration | Inventory owns stock movements. |
+| FUL-BR-005 | Inventory consumption must reference the fulfilment task, sales order, and reservation. | Consumption | Inventory integration | Inventory owns stock movements. |
 | FUL-BR-006 | Partial fulfilment must report remaining quantities to Sales as backordered. | Partial fulfilment | Completion workflow | Customer wording belongs to applications/Sales visibility. |
 | FUL-BR-007 | Fulfilment Supervisor approval is required for controlled exceptions and reversals. | Exceptions | Authorization | Operator who records an exception cannot approve it. |
 | FUL-BR-008 | Royal Mail is the default first courier provider unless ACME supplies a different existing courier account before implementation starts. | Courier | Provider integration | Existing requirement retained as MVP assumption. |
@@ -99,7 +99,6 @@ The MVP outcome is a reliable fulfilment lifecycle where released orders can be 
 | Shipment Purchase Record | Order Fulfilment | Conditional | Courier, accepted amount if returned, tracking, and label reference. | Courier transaction ID. |
 | Label Reference | Order Fulfilment | Conditional | Stored reference or provider label ID; printable file storage is implementation-specific. | Courier provider. |
 | Reservation/Consumption Reference | Inventory Management | Conditional | External IDs only; Inventory owns stock mutation. | Inventory reservation/movement IDs. |
-| Fulfilment Activity History | Order Fulfilment | Yes | Actor/service, action, prior/new state, outcome, and timestamp. | Order Fulfilment-owned operational history. |
 
 ## 10. Integration Requirements
 
@@ -117,9 +116,8 @@ The MVP outcome is a reliable fulfilment lifecycle where released orders can be 
 |---|---|---|---|---|
 | Fulfilment Task Queue | Operators, Supervisors | Prioritize released work. | Status, age, channel, SKU, priority, operator. | CSV optional for workload review. |
 | Exception Queue | Fulfilment Supervisor | Resolve short picks, substitutions, damage, packing issues, cancellations, reversals, and policy decisions. | Exception type, age, SKU, operator, sales order. | CSV for supervisor review. |
-| Shipment and Label References | Fulfilment Supervisor | Trace courier purchases and labels. | Courier, tracking, date, order, status. | CSV for operational review. |
+| Shipment and Label References | Fulfilment Supervisor | Review accepted courier purchases and labels. | Courier, tracking, date, order, status. | CSV for operational review. |
 | Partial Fulfilment/Backorder Report | Sales, Fulfilment Supervisor | Track remaining quantities. | Customer, order, SKU, date, status. | CSV optional. |
-| Completion History | Fulfilment Supervisor | Review completed or reversed tasks. | Date, actor, order, SKU, exception, approval. | CSV for operational review. |
 
 ## 12. Security, Authorization, and Approval Controls
 
@@ -127,26 +125,20 @@ Order Fulfilment shall enforce authorization for task intake, assignment, pick, 
 
 Fulfilment Supervisor approval is required for short pick, substitution, partial fulfilment, shipping override, cancellation after picking starts, and completion reversal. The operator who records an exception or requests reversal shall not approve the related controlled action. Courier and service integrations shall use scoped service identities.
 
-## 13. Operational History and Traceability
-
-Order Fulfilment shall record operational history for release intake, task creation, assignment changes, pick/pack actions, business exceptions, supervisor decisions, accepted shipment purchases, label references, completion, partial fulfilment, cancellation, reversal, accepted Sales and Inventory updates, and authorization denials.
-
-Operational history records shall include actor/service, source application/domain, task and sales order IDs, prior/new state, quantities where relevant, reason/comments, provider transaction references where applicable, outcome, and timestamp.
-
-## 14. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - Task queue queries shall support pagination and stable sorting by status, age, and priority-related fields.
 - Label references and courier transaction details shall be retrievable for operational review.
 - The Fulfilment API shall remain independent of application UI projects and application-owned persistence.
 
-## 15. Dependencies
+## 14. Dependencies
 
 - Sales for released order contracts and accepted customer-visible status updates.
 - Inventory Management for product/component validation and accepted reservation, consumption, and reversal references.
 - Courier service for accepted MVP shipment purchase, label references, and tracking.
 - Gravitee and Authentik for authenticated ingress and service identity.
 
-## 16. Assumptions and MVP Defaults
+## 15. Assumptions and MVP Defaults
 
 - Royal Mail is the default MVP courier provider.
 - MVP supports one standard courier service level, PDF/browser label output, and no rate shopping or courier contract management.
@@ -155,8 +147,8 @@ Operational history records shall include actor/service, source application/doma
 - Returns/RMA, failed delivery processing, refunds, and finance postings are deferred.
 - Fulfilment task queues use status and age as the default ordering inputs.
 - Partial fulfilment requires Fulfilment Supervisor approval and does not require customer confirmation in MVP.
-- Courier label references and shipment history are retained according to Order Fulfilment-owned operational data policy; no central compliance-retention baseline applies in MVP.
+- Accepted courier label and shipment records are retained as fulfilment business evidence.
 
-## 17. Acceptance Summary
+## 16. Acceptance Summary
 
-The Order Fulfilment requirements are complete for MVP when they define authoritative fulfilment state ownership, release intake, pick/pack/ship/completion workflows, Inventory and Sales integrations, courier references, supervisor approvals, operational history, reporting needs, and explicit MVP defaults without assigning UI workflows or durable fulfilment state to application services.
+The Order Fulfilment requirements are complete for MVP when they define authoritative fulfilment state ownership, release intake, pick/pack/ship/completion workflows, Inventory and Sales integrations, courier references, supervisor approvals, reporting needs, and explicit MVP defaults without assigning UI workflows or durable fulfilment state to application services.

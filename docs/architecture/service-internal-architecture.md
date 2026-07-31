@@ -59,7 +59,6 @@ Use technical folders only when they support a clear boundary that cuts across m
 - Domain API services are the only processes that connect to domain databases.
 - EF Core migrations are owned by the database-owning domain API service or an adjacent domain-owned persistence project.
 - Public API contracts use OpenAPI 3.0.
-- Controlled actions record operational history with user/service identity, timestamp, action, outcome, and reference record.
 
 ## Application WebAPI Service Rules
 
@@ -98,9 +97,8 @@ Use technical folders only when they support a clear boundary that cuts across m
 ## Error and Failure Handling
 
 - Validation failures return clear client errors and do not mutate state.
-- Authorization failures fail closed and are recorded in operational history when the owning domain requires it.
+- Authorization failures fail closed.
 - Application workflow failures roll back the transaction when the requested business change cannot be completed.
-- Operational-history recording failures are surfaced according to the owning domain's failure policy instead of being ignored.
 
 ## Review Checklist
 
@@ -110,5 +108,5 @@ Use technical folders only when they support a clear boundary that cuts across m
 - [ ] UI services have no database access.
 - [ ] Application API services have no database access.
 - [ ] Domain API services own persistence and migrations.
-- [ ] Controlled actions enforce local permissions, self-approval rules, and operational history in domain APIs where relevant.
+- [ ] Controlled actions enforce local permissions and self-approval rules in domain APIs where relevant.
 - [ ] Cross-domain references use external IDs.

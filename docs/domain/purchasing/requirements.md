@@ -2,15 +2,15 @@
 
 ## 1. Purpose
 
-The Purchasing bounded context owns durable supplier-backed purchase orders, MVP supplier reference data, purchasing approval state, buyer request queue decisions, purchase order receipt visibility, purchasing status history, and purchasing operational history records.
+The Purchasing bounded context owns durable supplier-backed purchase orders, MVP supplier reference data, purchasing approval state, buyer request queue decisions, and purchase order receipt visibility.
 
-Purchasing exposes WebAPI contracts and owns the Purchasing database. It is authoritative for purchase order validation, purchasing approval rules, buyer request handling, purchasing authorization, and purchasing operational history. Buyer workbench, purchasing manager screens, warehouse receipt presentation, and reporting screens are owned by application services.
+Purchasing exposes WebAPI contracts and owns the Purchasing database. It is authoritative for purchase order validation, purchasing approval rules, buyer request handling, and purchasing authorization. Buyer workbench, purchasing manager screens, warehouse receipt presentation, and reporting screens are owned by application services.
 
 ## 2. Domain Scope
 
 ### In Scope
 
-- Purchase order creation, amendment, submission, approval, ordering, cancellation, closure, status transitions, and operational history.
+- Purchase order creation, amendment, submission, approval, ordering, cancellation, closure, and status transitions.
 - Supplier reference data for the 10 to 20 active MVP suppliers.
 - Buyer request queue decisions for non-routinely stocked product requests from Sales.
 - Purchase order lookup contracts for Inventory Management goods receipt matching.
@@ -26,7 +26,7 @@ Purchasing exposes WebAPI contracts and owns the Purchasing database. It is auth
 
 ## 3. Business Context
 
-ACME needs buyers to create controlled purchase orders for suppliers and to respond to Sales requests for non-stocked products while giving Inventory Management reliable purchase order data for receipt matching. Purchasing must prevent unauthorized approval, retain receipt visibility, and preserve decision history for amendments and approvals.
+ACME needs buyers to create controlled purchase orders for suppliers and to respond to Sales requests for non-stocked products while giving Inventory Management reliable purchase order data for receipt matching. Purchasing must prevent unauthorized approval and retain current receipt visibility.
 
 The MVP outcome is a simple purchasing workflow where POs can be authored, approved when policy requires, made available for receipt, updated with receipt status, and reported without applications or Inventory owning Purchasing state.
 
@@ -52,14 +52,14 @@ The MVP outcome is a simple purchasing workflow where POs can be authored, appro
 | ID | Capability | Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|---|
 | PUR-DOM-001 | Supplier reference | The system shall maintain MVP supplier reference data required for purchase order creation and reporting. | Must | Given a supplier is inactive or unknown, when a PO is submitted, then Purchasing rejects the PO or blocks submission according to policy. |
-| PUR-DOM-002 | PO creation | The system shall accept purchase order commands only when supplier, item, SKU/barcode where available, quantity, unit cost, purchase date, and expected arrival date are present. | Must | Given required data is complete and authorized, when a Buyer creates a PO, then Purchasing persists it with status history; missing required fields produce validation errors and no partial controlled state. |
+| PUR-DOM-002 | PO creation | The system shall accept purchase order commands only when supplier, item, SKU/barcode where available, quantity, unit cost, purchase date, and expected arrival date are present. | Must | Given required data is complete and authorized, when a Buyer creates a PO, then Purchasing persists it in Draft state; missing required fields produce validation errors and no partial controlled state. |
 | PUR-DOM-003 | PO lifecycle | The system shall maintain explicit PO states for Draft, Submitted, Approval Required, Approved, Ordered, Partially Received, Received, Closed, Cancelled, Rejected, and Exception. | Must | Given a transition is invalid for current state or receipt status, when requested, then Purchasing rejects it and records no state change. |
 | PUR-DOM-004 | Approval control | The system shall enforce configurable approval thresholds and self-approval prevention for controlled purchasing actions. | Must | Given a PO exceeds configured threshold, when submitted, then it requires Purchasing Manager approval; given the creator attempts approval, then the action is denied. |
 | PUR-DOM-005 | Buyer requests | The system shall receive Sales-originated buyer requests and maintain Purchasing-owned queue decisions without taking ownership of Sales order state. | Must | Given a buyer request is accepted, rejected, returned, or linked to a PO, when status changes, then Purchasing records the decision and sends the status update to Sales. |
 | PUR-DOM-006 | Receipt matching support | The system shall expose eligible PO details to Inventory Management for goods receipt matching. | Must | Given Inventory requests an eligible PO, when Purchasing responds, then the response includes supplier, item, SKU/barcode, ordered quantity, unit cost, dates, and current PO status. |
-| PUR-DOM-007 | Receipt visibility | The system shall consume Inventory receipt status and exception updates as copied visibility for purchasing workflows. | Must | Given Inventory reports partial receipt or exception, when Purchasing accepts the update, then PO receipt visibility and status history reflect the copied state without Purchasing booking stock. |
+| PUR-DOM-007 | Receipt visibility | The system shall consume Inventory receipt status and exception updates as copied visibility for purchasing workflows. | Must | Given Inventory reports partial receipt or exception, when Purchasing accepts the update, then current PO receipt visibility and status reflect the copied state without Purchasing booking stock. |
 | PUR-DOM-008 | Amendment and cancellation | The system shall support draft amendments and controlled post-submission amendments/cancellations with business reason and approval where required. | Must | Given an approved or partially received PO is amended, when controlled fields change, then Purchasing requires approval or rejects the change if receipt state prevents it. |
-| PUR-DOM-009 | Purchasing queries | The system shall expose query contracts for open POs, expected arrivals, buyer requests, receipt status, approvals, amendments, and operational history. | Should | Given an authorized query with filters, when Purchasing processes it, then results are permission-scoped and include the requested business state. |
+| PUR-DOM-009 | Purchasing queries | The system shall expose query contracts for open POs, expected arrivals, buyer requests, current receipt status, pending approvals, and amendable orders. | Should | Given an authorized query with filters, when Purchasing processes it, then results are permission-scoped and include the requested current business state. |
 
 ## 7. Business Rules and Validation Rules
 
@@ -72,7 +72,7 @@ The MVP outcome is a simple purchasing workflow where POs can be authored, appro
 | PUR-BR-005 | Purchase orders used for inventory booking must be available to Inventory Management. | Receipt matching | Purchasing API | Inventory books stock, not Purchasing. |
 | PUR-BR-006 | POs over configured approval threshold require Purchasing Manager approval. | Approval | Purchasing authorization | Existing docs mention 10,000 as placeholder. |
 | PUR-BR-007 | Buyers may not approve their own purchase orders or controlled amendments. | Approval control | Purchasing authorization | Enforced by domain. |
-| PUR-BR-008 | Buyers may amend draft POs without approval. | Amendments | Purchasing state model | Purchasing records change history. |
+| PUR-BR-008 | Buyers may amend draft POs without approval. | Amendments | Purchasing state model | The current draft reflects the accepted changes. |
 | PUR-BR-009 | Post-submission changes to supplier, quantity, unit cost, expected arrival date, or cancellation require business reason and approval when approved, ordered, or partially received. | Controlled amendments | Purchasing workflow | Receipt state can block changes. |
 | PUR-BR-010 | Sales buyer requests may be accepted, linked to a PO, rejected with reason, returned for clarification, or closed. | Buyer requests | Purchasing workflow | Sales owns originating request context. |
 
@@ -102,7 +102,6 @@ The MVP outcome is a simple purchasing workflow where POs can be authored, appro
 | Purchase Order Line | Purchasing | Yes | Item, SKU/barcode where available, quantity, unit cost, expected arrival date. | Inventory product/SKU external IDs. |
 | Buyer Request Queue Item | Purchasing | Conditional | Sales request ID, requested item, quantity, decision state, reason. | Sales buyer request external ID. |
 | Receipt Visibility | Inventory Management copy | Conditional | Received quantity, receipt status, exception state, receipt date. | Inventory receipt external ID. |
-| Purchasing Activity History | Purchasing | Yes | Actor/service, action, prior/new state, outcome, and timestamp. | Purchasing-owned operational history. |
 
 ## 10. Integration Requirements
 
@@ -122,7 +121,6 @@ The MVP outcome is a simple purchasing workflow where POs can be authored, appro
 | Open PO Search | Buyer, Purchasing Manager | Manage active purchase orders. | PO number, supplier, SKU, status, buyer, expected arrival date. | CSV for operational review. |
 | Expected Arrivals | Buyer, Warehouse, Inventory Supervisor | Plan receipts. | Date range, supplier, SKU, PO status. | CSV optional. |
 | Buyer Request Queue | Buyer, Purchasing Manager | Process non-stocked requests. | Request state, Sales order, SKU/description, age, buyer. | CSV optional. |
-| Approval History | Purchasing Manager | Review controlled decisions. | Approver, requester, threshold, date, status. | CSV for operational review. |
 | Receipt Exception Visibility | Buyer, Inventory Supervisor | Monitor PO receipt problems. | Supplier, PO, SKU, exception type, age. | CSV optional. |
 
 ## 12. Security, Authorization, and Approval Controls
@@ -131,27 +129,21 @@ Purchasing shall enforce authorization for supplier reference maintenance, PO cr
 
 Purchasing Manager approval is required for configured high-value POs and controlled post-submission amendments/cancellations. Buyers cannot approve their own POs or controlled amendments. Platform administration access does not imply purchasing approval authority unless the user also has explicit Purchasing Manager permission.
 
-## 13. Operational History and Traceability
-
-Purchasing shall record operational history for supplier reference changes, PO creation, submission, approval, rejection, amendment, cancellation, ordering, receipt visibility updates, buyer request decisions, and authorization denials.
-
-Operational history records shall include actor/service, source application/domain, PO and buyer request IDs, prior/new state, changed controlled fields, reason/comments, outcome, and timestamp.
-
-## 14. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - Query contracts shall support pagination and stable sorting for open PO and buyer request queues.
 - Purchasing validation errors shall be deterministic and field-addressable for application presentation.
-- Structured logs, metrics, health checks, and operational history shall support operational diagnosis.
+- Structured logs, metrics, and health checks shall support operational diagnosis.
 - Purchasing services shall not depend on application UI projects or application-owned persistence.
 
-## 15. Dependencies
+## 14. Dependencies
 
 - Inventory Management for product/SKU/barcode validation and receipt status feedback.
 - Sales for buyer request origination and accepted status feedback.
 - Gravitee and Authentik for authenticated ingress, service identities, and user roles.
 - Buyer, Warehouse Operator, Inventory Supervisor, and Sales Assistant application APIs for user-facing workflows and presentation.
 
-## 16. Assumptions and MVP Defaults
+## 15. Assumptions and MVP Defaults
 
 - Purchasing owns supplier reference data for the 10 to 20 active MVP suppliers until a dedicated supplier master is introduced.
 - The MVP purchase order approval threshold is 10,000 in the configured company currency.
@@ -161,8 +153,7 @@ Operational history records shall include actor/service, source application/doma
 - Supplier-facing status visibility is out of scope; all purchase order status visibility is internal for MVP.
 - Accounts payable, invoice matching, tax, landed cost, and payment processing are deferred.
 - Receipt status is copied visibility from Inventory Management and does not transfer stock ownership to Purchasing.
-- Purchasing approvals and PO amendment history are retained according to Purchasing-owned operational data policy; no central compliance-retention baseline applies in MVP.
 
-## 17. Acceptance Summary
+## 16. Acceptance Summary
 
-The Purchasing requirements are complete for MVP when they define authoritative PO and supplier-reference ownership, buyer request decisions, approval and amendment workflows, Inventory and Sales integrations, receipt visibility, local approval controls, operational history, reporting needs, and explicit MVP defaults without assigning UI workflows or durable purchasing state to application services.
+The Purchasing requirements are complete for MVP when they define authoritative PO and supplier-reference ownership, buyer request decisions, approval and amendment workflows, Inventory and Sales integrations, receipt visibility, local approval controls, reporting needs, and explicit MVP defaults without assigning UI workflows or durable purchasing state to application services.

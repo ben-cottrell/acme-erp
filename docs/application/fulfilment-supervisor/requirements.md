@@ -4,7 +4,7 @@
 
 The Fulfilment Supervisor application supports fulfilment control users who monitor workload, resolve pick/pack/ship/completion exceptions, approve controlled overrides, review partial fulfilment, and oversee completion reversals or cancellations after picking starts.
 
-The MVP outcome is a supervisory control application that gives fulfilment leaders enough Sales, Inventory, and fulfilment context to make decisions while Order Fulfilment remains authoritative for lifecycle, approvals, and operational history.
+The MVP outcome is a supervisory control application that gives fulfilment leaders enough Sales, Inventory, and fulfilment context to make decisions while Order Fulfilment remains authoritative for lifecycle and approvals.
 
 ## 2. Application Boundary
 
@@ -27,7 +27,7 @@ The Fulfilment Supervisor UI calls only the Fulfilment Supervisor API. The Fulfi
 - Approval/rejection of controlled fulfilment exceptions through Order Fulfilment.
 - Review of partial fulfilment/backorder proposals and cancellation after picking starts.
 - Read-only Sales order/customer delivery context and Inventory reservation/consumption context where needed and allowed.
-- Operational reports, CSV exports, accessible supervisor review screens, and operational history visibility.
+- Operational reports, CSV exports, and accessible supervisor review screens.
 
 ### Out of Scope
 
@@ -42,11 +42,11 @@ Fulfilment supervisors need a control surface for resolving blocked warehouse wo
 
 | Role | Description | Key Responsibilities | UX / Access Needs |
 |---|---|---|---|
-| Fulfilment Supervisor | Fulfilment control user. | Monitor queues, approve/reject exceptions, review partial fulfilment and reversals. | Exception dashboard, decision context, operational history, filters, CSV export. |
+| Fulfilment Supervisor | Fulfilment control user. | Monitor queues, approve/reject exceptions, review partial fulfilment and reversals. | Exception dashboard, decision context, filters, and CSV export. |
 
 ## 6. User Journeys and Workflows
 
-- **Monitor workload**: supervisor opens dashboard and reviews released, in-progress, blocked, aging, and completed fulfilment work.
+- **Monitor workload**: supervisor opens dashboard and reviews released, in-progress, blocked, and aging fulfilment work.
 - **Review pick exception**: supervisor opens exception, reviews required/picked quantities, product/SKU/serial context, operator reason, Inventory state, and Sales impact.
 - **Approve partial fulfilment**: supervisor reviews remaining quantities and customer/order impact before approving partial completion/backorder.
 - **Approve cancellation/reversal**: supervisor reviews task progress, stock effects, Sales state, and business reason before submitting decision to Order Fulfilment.
@@ -60,7 +60,6 @@ Fulfilment supervisors need a control surface for resolving blocked warehouse wo
 | FSU-APP-003 | Exception decisions | The application shall allow authorized supervisors to approve or reject pick exceptions, short picks, substitutions, partial fulfilment release, cancellation after picking starts, and completion reversals through Order Fulfilment. | Must | Given a valid decision, when submitted, then Order Fulfilment records the outcome; invalid state or self-approval denial is shown. |
 | FSU-APP-004 | Self-approval prevention | The application shall prevent or surface self-approval denials when Order Fulfilment reports a self-approval conflict. | Must | Given the supervisor created/requested the exception, when approval is attempted, then the action is denied and the UI explains the conflict. |
 | FSU-APP-005 | Filtering/reporting | The application shall support filtering by exception type, SKU, operator, date, courier, order, status, age, and channel. | Should | Given filters are applied, when results load, then paginated domain results are shown and export is available where permitted. |
-| FSU-APP-006 | History | The application shall display fulfilment task history, supervisor decision history, accepted shipping and label references, and completion/reversal history where authorized. | Should | Given a task is opened, when history loads, then entries include actor/service, action, timestamp, outcome, and reason where available. |
 
 ## 8. UI, Accessibility, and Usability Requirements
 
@@ -79,7 +78,6 @@ Fulfilment supervisors need a control surface for resolving blocked warehouse wo
 | Sales order context | Sales/Order Fulfilment | Customer/order impact. | Conditional | Display minimum necessary customer data. |
 | Inventory context | Inventory Management | Stock impact. | Conditional | Show accepted reservation and stock movement references. |
 | Decision reason | User input to Order Fulfilment | Approval/rejection. | Conditional | Required for controlled decisions. |
-| Operational history | Order Fulfilment | Review traceability. | Conditional | Read-only and role-scoped. |
 
 ## 10. Orchestration and Integration Requirements
 
@@ -99,29 +97,24 @@ Fulfilment supervisors need a control surface for resolving blocked warehouse wo
 | Exception Queue | Fulfilment Supervisor | Resolve blocked tasks. | Exception type, courier, SKU, operator, date, order. | CSV. |
 | Partial Fulfilment Review | Fulfilment Supervisor, Sales | Track backorder decisions. | Order, customer, SKU, date, status. | CSV optional. |
 | Shipment References | Fulfilment Supervisor | Review accepted shipment, tracking, and label references. | Courier, date, task, status. | CSV optional. |
-| Completion/Reversal History | Fulfilment Supervisor | Review controlled outcomes. | Actor, date, order, status, exception. | CSV for operational review. |
 
 ## 12. Security and Permissions
 
-The application shall enforce Fulfilment Supervisor route and screen access. Order Fulfilment remains authoritative for exception approval, override state, completion reversal state, cancellation-after-picking state, courier records, and operational history. Sales and Inventory context is read-only unless explicit domain actions are exposed.
+The application shall enforce Fulfilment Supervisor route and screen access. Order Fulfilment remains authoritative for exception approval, override state, completion reversal state, cancellation-after-picking state, and courier records. Sales and Inventory context is read-only unless explicit domain actions are exposed.
 
-## 13. Operational History and Traceability
-
-The application shall display Order Fulfilment-provided task history, exception history, approval decisions, accepted shipping purchase details, label references, and completion/reversal history. Supervisor decisions shall include user identity, reason, and source application for domain operational history. CSV outputs shall use authorized Order Fulfilment query endpoints.
-
-## 14. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - Dashboards shall use paginated queries and stable filters/sorting.
 - The application shall not store fulfilment, sales, or inventory records locally.
 
-## 15. Dependencies
+## 14. Dependencies
 
-- Order Fulfilment for workload, exceptions, approvals, shipping/label references, lifecycle, and operational history.
+- Order Fulfilment for workload, exceptions, approvals, shipping/label references, and lifecycle.
 - Sales for order/customer impact and status context.
 - Inventory Management for accepted reservation and stock movement context.
 - Authentik and Gravitee for identity, ingress, role claims, and route policy.
 
-## 16. Assumptions and MVP Defaults
+## 15. Assumptions and MVP Defaults
 
 - Fulfilment Supervisor users are internal authenticated users with explicit approval authority.
 - CSV export is sufficient for MVP operational reporting.
@@ -130,6 +123,6 @@ The application shall display Order Fulfilment-provided task history, exception 
 - Supervisors may view recipient name, delivery address, order reference, delivery instructions, SKU/quantity, and fulfilment status where needed for decisions; wider customer account data is not shown.
 - Partial fulfilment approval is allowed for short pick or unavailable inventory scenarios reported by Order Fulfilment and does not require customer confirmation in MVP.
 
-## 17. Acceptance Summary
+## 16. Acceptance Summary
 
-The Fulfilment Supervisor requirements are complete for MVP when they define workload monitoring, exception review, controlled approvals, cross-domain context, reporting/export, security, operational history visibility, and explicit MVP defaults without assigning durable fulfilment, sales, or inventory state to the application.
+The Fulfilment Supervisor requirements are complete for MVP when they define workload monitoring, exception review, controlled approvals, cross-domain context, reporting/export, security, and explicit MVP defaults without assigning durable fulfilment, sales, or inventory state to the application.

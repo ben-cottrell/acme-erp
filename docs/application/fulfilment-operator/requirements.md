@@ -103,30 +103,25 @@ Fulfilment operators need a clear operational workflow for moving released order
 | Released Task Queue | Fulfilment Operator | Select work. | Status, age, SKU, order, channel. | None for MVP. |
 | My In-Progress Tasks | Fulfilment Operator | Resume work. | Operator, status, age. | None. |
 | Task Exceptions | Fulfilment Operator | Track escalations. | Exception type, task, status, age. | Supervisor/reporting apps handle export. |
-| Recent Completions | Fulfilment Operator | Confirm submitted work. | Date, task, order, status. | None. |
 
 ## 12. Security and Permissions
 
-The application shall enforce Fulfilment Operator route and screen access. Order Fulfilment remains authoritative for task lifecycle, allowed actions, exception approval needs, courier records, label references, and operational history. Inventory remains authoritative for stock reservations/consumption. The app shall not expose supervisor-only approvals.
+The application shall enforce Fulfilment Operator route and screen access. Order Fulfilment remains authoritative for task lifecycle, allowed actions, exception approval needs, courier records, and label references. Inventory remains authoritative for stock reservations/consumption. The app shall not expose supervisor-only approvals.
 
-## 13. Operational History and Traceability
-
-The application shall pass operator identity, source app, and command context to Order Fulfilment. Operators may view task history relevant to their workflow, while broader CSV outputs belong to supervisor workflows.
-
-## 14. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - Queue and task screens shall load paged data and clearly display returned business states.
 - The app shall not cache task data beyond request/session needs.
 - Validation and exception messages shall explain the next operational action.
 
-## 15. Dependencies
+## 14. Dependencies
 
-- Order Fulfilment for task lifecycle, shipping, labels, completion, exceptions, and operational history.
+- Order Fulfilment for task lifecycle, shipping, labels, completion, and exceptions.
 - Sales for released order/customer delivery context and accepted fulfilment status updates.
 - Inventory Management for product validation and accepted reservation and consumption references.
 - Authentik and Gravitee for identity, ingress, role claims, and route policy.
 
-## 16. Assumptions and MVP Defaults
+## 15. Assumptions and MVP Defaults
 
 - Fulfilment Operator users are internal authenticated warehouse users.
 - MVP supports one courier provider path through Order Fulfilment.
@@ -136,6 +131,6 @@ The application shall pass operator identity, source app, and command context to
 - Operators may view recipient name, delivery address, order reference, and delivery instructions only; wider customer account data is not shown.
 - Shipping uses the default service level configured in Order Fulfilment; operators do not choose shipping services in MVP.
 
-## 17. Acceptance Summary
+## 16. Acceptance Summary
 
-The Fulfilment Operator requirements are complete for MVP when they define task queue, pick, pack, ship, label, completion, partial fulfilment, exception routing, scanner/accessibility needs, security, operational history context, and explicit MVP defaults without assigning fulfilment, sales, or inventory state to the application.
+The Fulfilment Operator requirements are complete for MVP when they define task queue, pick, pack, ship, label, completion, partial fulfilment, exception routing, scanner/accessibility needs, security, and explicit MVP defaults without assigning fulfilment, sales, or inventory state to the application.

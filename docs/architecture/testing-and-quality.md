@@ -61,7 +61,6 @@ Cross-cutting:
 
 - Authorization categories for read, create, update, approve, cancel, and workflow-owned export.
 - Local self-approval prevention.
-- Operational history records for controlled actions.
 - Service account scope and failed authorization behavior.
 
 ## Quality Gates
