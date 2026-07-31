@@ -96,13 +96,13 @@ Fulfilment operators need a clear operational workflow for moving released order
 | FOP-INT-005 | Print label | Order Fulfilment | Label reference request. | Show the accepted label reference. |
 | FOP-INT-006 | Complete task | Order Fulfilment | Completion or partial-completion data. | Show the accepted completion state or business-rule rejection. |
 
-## 11. Reporting, Search, and Dashboard Requirements
+## 11. Worklist and Queue Requirements
 
-| View / Report | Audience | Purpose | Filters | Export Needs |
-|---|---|---|---|---|
-| Released Task Queue | Fulfilment Operator | Select work. | Status, age, SKU, order, channel. | None for MVP. |
-| My In-Progress Tasks | Fulfilment Operator | Resume work. | Operator, status, age. | None. |
-| Task Exceptions | Fulfilment Operator | Track escalations. | Exception type, task, status, age. | Supervisor/reporting apps handle export. |
+| View | Audience | Purpose | Filters |
+|---|---|---|---|
+| Released Task Queue | Fulfilment Operator | Select work. | Status, age, SKU, order, channel. |
+| My In-Progress Tasks | Fulfilment Operator | Resume work. | Operator, status, age. |
+| Task Exceptions | Fulfilment Operator | Track escalations. | Exception type, task, status, age. |
 
 ## 12. Security and Permissions
 

@@ -61,7 +61,7 @@ The architecture is derived from these requirement sources:
 
 Domain bounded contexts own durable business state and expose WebAPI contracts. User-facing workloads are separate application services with a paired UI and API.
 
-The MVP no longer includes a Security and Audit bounded context, Security Administration application, Audit Reporting application, or active auditing/compliance workflows. Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee through OAuth2/OIDC. Each role-focused UI/application owns its own access-permission experience and its paired API enforces workflow authorization before calling domain APIs. Domain APIs remain authoritative for their own business rules, state transitions, data ownership, and domain-specific authorization checks.
+The MVP no longer includes a Security and Audit bounded context, Security Administration application, or active auditing/compliance workflows. Authentication and identity are cross-cutting platform concerns handled by Authentik and Gravitee through OAuth2/OIDC. Each role-focused UI/application owns its own access-permission experience and its paired API enforces workflow authorization before calling domain APIs. Domain APIs remain authoritative for their own business rules, state transitions, data ownership, and domain-specific authorization checks.
 
 | Domain bounded context | Domain API responsibility | Database ownership | UI ownership |
 |---|---|---|---|
@@ -187,7 +187,7 @@ Each domain keeps its implementation-authoritative `database-design.md` beside i
 - Partial fulfilment shall be allowed. Unfulfilled stocked items remain on backorder, and non-routinely stocked items are routed through the buyer request process.
 - Authentik shall provide password-only authentication for the initial protected-network release. MFA is deferred unless ACME later exposes the ERP outside the protected network or requires privileged-user MFA.
 - Sessions shall use a 60 minute idle timeout and an 8 hour absolute timeout. Account lockout shall be enforced through Authentik after repeated failed login attempts.
-- The MVP does not include a Security and Audit bounded context, Security Administration application, Audit Reporting application, or active auditing/compliance workflows.
+- The MVP does not include a Security and Audit bounded context, Security Administration application, or active auditing/compliance workflows.
 - Local self-approval rules shall prevent users from approving controlled business actions that they created or requested. Users may hold multiple operational roles when each owning domain allows the resulting permissions.
 - All user and external client ingress shall pass through Gravitee. Internal Kubernetes service calls are permitted after ingress for trusted application-to-domain and domain-to-domain APIs where contracts, service identity, and authorization are enforced by the called API.
 
@@ -195,4 +195,4 @@ Each domain keeps its implementation-authoritative `database-design.md` beside i
 
 - No separate master-data service is required for the first implementation. Inventory Management owns the MVP product catalog, SKU, barcode, stocking, and serialized-product configuration. Sales owns customer account reference data. Purchasing owns supplier reference data. Other domains keep only the external IDs and read models needed for their workflows. Application services do not own master data.
 - The first release shall support one courier integration path. Royal Mail is the default first provider unless ACME supplies a different existing courier account before implementation starts. FedEx, DHL, and additional provider adapters are future scope.
-- Finance integration is not part of the MVP. AP, AR, invoicing, tax, payment, and automated finance event export are future scope; MVP users rely on operational reports and CSV exports where finance visibility is needed.
+- Finance integration is not part of the MVP. AP, AR, invoicing, tax, payment, and automated finance events are future scope; current operational data is available through domain query contracts.

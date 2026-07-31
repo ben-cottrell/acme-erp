@@ -27,7 +27,7 @@ The Sales Assistant UI calls only the Sales Assistant API. The Sales Assistant A
 - Sales order create, amend, submit, release, cancel/request-cancel, and controlled approval initiation through Sales.
 - Non-routinely stocked product request submission through Sales and status display from Sales/Purchasing visibility.
 - Fulfilment release, fulfilment progress, partial fulfilment, backorder, completion, and exception visibility.
-- Search, filtering, operational dashboards, exception queues, CSV export, accessibility, and deterministic validation presentation.
+- Search, filtering, exception queues, accessibility, and deterministic validation presentation.
 
 ### Out of Scope
 
@@ -44,7 +44,7 @@ Sales users need one internal workflow for turning customer requests into valid 
 | Role | Description | Key Responsibilities | UX / Access Needs |
 |---|---|---|---|
 | Sales Assistant | Internal order capture user. | Create/amend orders, review availability, submit buyer requests, release eligible orders, monitor status. | Fast form entry, search, field-level validation, keyboard support, clear exception guidance. |
-| Sales Supervisor | Sales control and escalation user. | Approve controlled changes, cancellations, overrides, and review exception queues. | Approval queues, decision context, denial reasons, CSV export. |
+| Sales Supervisor | Sales control and escalation user. | Approve controlled changes, cancellations, overrides, and review exception queues. | Approval queues, decision context, denial reasons. |
 | Support User | Limited internal support role where approved. | View order context for support without controlled actions. | Read-only, scoped access with privacy controls. |
 
 ## 6. User Journeys and Workflows
@@ -52,7 +52,7 @@ Sales users need one internal workflow for turning customer requests into valid 
 - **Create internal order**: user searches customer, enters contact/address/reference/channel, adds product lines, reviews availability, submits to Sales, and receives confirmation or validation errors.
 - **Handle unavailable stock**: user sees Inventory availability state, can save/submit pending inventory state, or route non-stocked items through the Sales buyer request path.
 - **Submit buyer request**: user enters requested product details and reason; Sales creates the request and Purchasing status is later shown in the order workspace.
-- **Release to fulfilment**: user requests release only when Sales reports eligibility; the accepted release or business-rule rejection is shown.
+- **Release to fulfilment**: user requests release only when Sales indicates eligibility; the accepted release or business-rule rejection is shown.
 - **Monitor order**: user searches orders and views current status, fulfilment progress, partial fulfilment/backorder state, and customer-impacting exceptions.
 - **Supervisor approval**: supervisor opens queue, reviews reason and change context, approves or rejects controlled action through Sales.
 
@@ -63,10 +63,10 @@ Sales users need one internal workflow for turning customer requests into valid 
 | SA-APP-001 | Order capture | The application shall allow authorized Sales Assistant users to create and update sales orders by orchestrating Sales and Inventory Management APIs. | Must | Given required fields are complete, when the user submits, then the API sends a Sales command and displays the Sales result; given Sales rejects validation, then field-level errors are shown without local persistence. |
 | SA-APP-002 | Availability | The application shall display Inventory Management availability and product validation results during order entry without storing inventory balances locally. | Must | Given a product is selected, when availability is requested, then the UI shows the returned quantity and stock status. |
 | SA-APP-003 | Buyer request | The application shall let sales users submit non-routinely stocked product requests through Sales without directly writing Purchasing data. | Must | Given a line requires buyer action, when the request is submitted, then Sales returns a request reference and the UI shows Pending Buyer Request or validation errors. |
-| SA-APP-004 | Release | The application shall expose release actions only when Sales reports release criteria are satisfied. | Must | Given Sales reports an order is not releasable, when the order is viewed, then release is disabled with a domain-provided reason. |
+| SA-APP-004 | Release | The application shall expose release actions only when Sales indicates release criteria are satisfied. | Must | Given Sales indicates an order is not releasable, when the order is viewed, then release is disabled with a domain-provided reason. |
 | SA-APP-005 | Fulfilment visibility | The application shall show fulfilment status, shipment reference, partial fulfilment, backorder, and exceptions from Sales and Order Fulfilment read contracts. | Must | Given fulfilment updates exist, when the order is opened, then status and exception details are displayed without the app mutating fulfilment state. |
-| SA-APP-006 | Search and dashboards | The application shall support search and filtering by customer, channel, product/SKU, status, date, buyer request state, fulfilment state, and exception type. | Should | Given filters are applied, when results load, then the API queries domain contracts and returns paginated results with no local database. |
-| SA-APP-007 | Approval workflow | The application shall provide Sales Supervisor approval/rejection actions for controlled sales changes when Sales reports approval is required. | Must | Given an approval is pending, when a supervisor approves or rejects it, then Sales records the decision; self-approval or unauthorized approval is denied and shown to the user. |
+| SA-APP-006 | Search and filtering | The application shall support search and filtering by customer, channel, product/SKU, status, date, buyer request state, fulfilment state, and exception type. | Should | Given filters are applied, when results load, then the API queries domain contracts and returns paginated results with no local database. |
+| SA-APP-007 | Approval workflow | The application shall provide Sales Supervisor approval/rejection actions for controlled sales changes when Sales indicates approval is required. | Must | Given an approval is pending, when a supervisor approves or rejects it, then Sales records the decision; self-approval or unauthorized approval is denied and shown to the user. |
 
 ## 8. UI, Accessibility, and Usability Requirements
 
@@ -98,15 +98,15 @@ Sales users need one internal workflow for turning customer requests into valid 
 | SA-INT-005 | Release order | Sales | Sales order ID, release request, and reason where applicable. | Show the accepted release or business-rule rejection. |
 | SA-INT-006 | Approval decision | Sales | Approval action and reason/comment. | Show denial including self-approval conflict. |
 
-## 11. Reporting, Search, and Dashboard Requirements
+## 11. Search, Worklist, and Approval Queue Requirements
 
-| View / Report | Audience | Purpose | Filters | Export Needs |
-|---|---|---|---|---|
-| Order Search | Sales Assistant, Sales Supervisor | Find orders quickly. | Customer, channel, date, status, SKU, buyer request, fulfilment state. | CSV. |
-| Sales Exceptions | Sales Assistant, Sales Supervisor | Work blocked orders. | Exception type, age, channel, owner, customer. | CSV optional. |
-| Pending Buyer Requests | Sales Assistant | Track non-stocked requests. | Request status, age, customer, product. | CSV optional. |
-| Release Queue | Sales Assistant | Identify releasable orders. | Status, availability, buyer request state, date. | None for MVP. |
-| Approval Queue | Sales Supervisor | Approve/reject controlled actions. | Action type, requester, value, age, status. | CSV optional for supervisor review. |
+| View | Audience | Purpose | Filters |
+|---|---|---|---|
+| Order Search | Sales Assistant, Sales Supervisor | Find orders quickly. | Customer, channel, date, status, SKU, buyer request, fulfilment state. |
+| Sales Exceptions | Sales Assistant, Sales Supervisor | Work blocked orders. | Exception type, age, channel, owner, customer. |
+| Pending Buyer Requests | Sales Assistant | Track non-stocked requests. | Request status, age, customer, product. |
+| Release Queue | Sales Assistant | Identify releasable orders. | Status, availability, buyer request state, date. |
+| Approval Queue | Sales Supervisor | Approve/reject controlled actions. | Action type, requester, value, age, status. |
 
 ## 12. Security and Permissions
 
@@ -131,7 +131,6 @@ The application shall enforce route-level and screen-level access for Sales Assi
 
 - Sales Assistant is for internal authenticated users only.
 - The application performs orchestration and presentation only; all durable state belongs to domain services.
-- CSV export is sufficient for MVP operational exports.
 - Pricing, tax, payment, invoicing, credit, and returns workflows are excluded.
 - The application displays the Sales domain MVP approval threshold of 5,000 in the configured company currency and uses Sales Supervisor as the approval role.
 - The Support User role is not enabled for Sales Assistant in MVP; customer fields are visible only to Sales Assistant and Sales Supervisor users with Sales authorization.
@@ -139,4 +138,4 @@ The application shall enforce route-level and screen-level access for Sales Assi
 
 ## 16. Acceptance Summary
 
-The Sales Assistant requirements are complete for MVP when they define order capture, availability review, buyer request submission, release, fulfilment visibility, supervisor approval, search/reporting, security, and explicit MVP defaults without assigning durable domain state to the application.
+The Sales Assistant requirements are complete for MVP when they define order capture, availability review, buyer request submission, release, fulfilment visibility, supervisor approval, search, security, and explicit MVP defaults without assigning durable domain state to the application.

@@ -4,7 +4,7 @@
 
 The Inventory Management bounded context owns the durable stock system of record for MVP product/SKU/barcode/stocking configuration, recorded stock, availability, reservations, goods receipts, stock checks, stock movements, and discrepancy state.
 
-Inventory Management exposes WebAPI contracts and owns the Inventory database. It is authoritative for inventory validation, stock balance changes, reservation and consumption decisions, discrepancy handling, receipt booking, and inventory authorization. Warehouse, supervisor, sales, fulfilment, and reporting screens are owned by application services.
+Inventory Management exposes WebAPI contracts and owns the Inventory database. It is authoritative for inventory validation, stock balance changes, reservation and consumption decisions, discrepancy handling, receipt booking, and inventory authorization. Warehouse, supervisor, sales, and fulfilment screens are owned by application services.
 
 ## 2. Domain Scope
 
@@ -18,11 +18,11 @@ Inventory Management exposes WebAPI contracts and owns the Inventory database. I
 
 ### Out of Scope
 
-- Razor Pages UI, scanner workflow presentation, warehouse task screens, or dashboard layout.
+- Razor Pages UI, scanner workflow presentation, or warehouse task screens.
 - Purchase order authoring, supplier ordering, purchasing approval, and supplier master ownership beyond copied references.
 - Sales order authoring, customer order intake, pricing, payment, invoicing, and customer communication.
 - Picking, packing, shipping purchase, label printing, courier state, and fulfilment task ownership.
-- Accounting postings, landed cost calculations, tax handling, returns/RMA, warehouse automation hardware integration, advanced forecasting, and deep BI for the MVP.
+- Accounting postings, landed cost calculations, tax handling, returns/RMA, and warehouse automation hardware integration.
 
 ## 3. Business Context
 
@@ -61,7 +61,7 @@ The MVP outcome is a controlled inventory workflow where stock can be received, 
 | INV-DOM-007 | Availability | The system shall expose availability and stocked-product status for Sales and Order Fulfilment without allowing consumers to mutate balances directly. | Must | Given an authorized availability query, when Inventory responds, then it includes product/SKU identifiers, available quantity or availability state, and any non-available restrictions. |
 | INV-DOM-008 | Reservation | The system shall reserve stock at fulfilment release for a valid Sales order and fulfilment task. | Must | Given Sales releases an eligible order and stock is available, when Inventory receives a valid reservation request, then available-to-promise is reduced and a reservation reference is returned. |
 | INV-DOM-009 | Consumption | The system shall consume reserved stock at fulfilment completion and support authorized reversal where fulfilment is corrected. | Must | Given Order Fulfilment completes a task with valid reservation references, when Inventory consumes stock, then recorded stock and reservation state update with a corresponding stock movement; invalid references are rejected without changing stock. |
-| INV-DOM-010 | Inventory queries | The system shall expose search/reporting contracts for products, current stock balances, reservations, discrepancies, and receipt exceptions. | Should | Given an authorized query with filters, when Inventory processes it, then results are paginated, scoped by permission, and exportable where policy allows. |
+| INV-DOM-010 | Inventory queries | The system shall expose search and query contracts for products, current stock balances, reservations, discrepancies, and receipt exceptions. | Should | Given an authorized query with filters, when Inventory processes it, then results are paginated and scoped by permission. |
 
 ## 7. Business Rules and Validation Rules
 
@@ -106,19 +106,19 @@ The MVP outcome is a controlled inventory workflow where stock can be received, 
 | INV-INT-002 | Inventory Management | Purchasing | Outbound update | Receipt status, received quantities, business exception state, and receipt dates. | Receipt booking or exception change. | Purchasing validates the purchase order, receipt identity, and status change. |
 | INV-INT-003 | Sales | Inventory Management | Inbound query | Product validation, stocked status, and availability. | Order entry and release checks. | Return whether the product is recognized and whether the requested stock is available. |
 | INV-INT-004 | Order Fulfilment | Inventory Management | Inbound command/query | Reservation, consumption, reversal, and fulfilment task references. | Release, completion, reversal. | Reject invalid order, task, location, reference, or quantity data without partially changing stock. |
-| INV-INT-005 | Application APIs | Inventory Management | Inbound command/query | Stock count, receipt, approval, report, and search requests. | User actions. | Domain validation/authorization errors returned without partial balance changes. |
+| INV-INT-005 | Application APIs | Inventory Management | Inbound command/query | Stock count, receipt, approval, and search requests. | User actions. | Domain validation/authorization errors returned without partial balance changes. |
 
-## 11. Reporting and Query Requirements
+## 11. Search and Query Requirements
 
-| Report / Query | Audience | Purpose | Filters | Export Needs |
-|---|---|---|---|---|
-| Stock Balance Search | Warehouse, Sales, Fulfilment, Supervisors | Review current stock and availability. | SKU, barcode, location, stock state, availability. | CSV for operational review. |
-| Discrepancy Queue | Inventory Supervisor | Review count variances and pending adjustments. | Age, variance, value, location, SKU, recorder, status. | CSV optional. |
-| Receipt Exception Queue | Warehouse, Inventory Supervisor, Buyer | Manage mismatches and damaged/quarantined receipts. | Supplier, PO, SKU, exception type, status, age. | CSV optional. |
+| Query / View | Audience | Purpose | Filters |
+|---|---|---|---|
+| Stock Balance Search | Warehouse, Sales, Fulfilment, Supervisors | Review current stock and availability. | SKU, barcode, location, stock state, availability. |
+| Discrepancy Queue | Inventory Supervisor | Review count variances and pending adjustments. | Age, variance, value, location, SKU, recorder, status. |
+| Receipt Exception Queue | Warehouse, Inventory Supervisor, Buyer | Manage mismatches and damaged/quarantined receipts. | Supplier, PO, SKU, exception type, status, age. |
 
 ## 12. Security, Authorization, and Approval Controls
 
-Inventory Management shall enforce authorization for product configuration, stock count recording, receipt booking, exception resolution, adjustment approval, reservation, consumption, reversal, reporting, and export. Application UI checks are not authoritative.
+Inventory Management shall enforce authorization for product configuration, stock count recording, receipt booking, exception resolution, adjustment approval, reservation, consumption, reversal, and queries. Application UI checks are not authoritative.
 
 Inventory Supervisor approval is required for controlled adjustments, receipt exception resolution where policy requires review, and reversal/correction actions that affect stock. The actor who records a count, receipt exception, or adjustment request shall not approve the related controlled action. Service-to-service inventory mutations shall be scoped to the source domain and authorized for the requested action.
 
@@ -150,4 +150,4 @@ Inventory Supervisor approval is required for controlled adjustments, receipt ex
 
 ## 16. Acceptance Summary
 
-The Inventory Management requirements are complete for MVP when they define authoritative inventory state ownership, product/stock/receipt/discrepancy/reservation workflows, cross-domain contracts, approval and self-approval rules, reporting needs, and explicit MVP defaults without assigning UI workflows or durable inventory state to application services.
+The Inventory Management requirements are complete for MVP when they define authoritative inventory state ownership, product/stock/receipt/discrepancy/reservation workflows, cross-domain contracts, approval and self-approval rules, query needs, and explicit MVP defaults without assigning UI workflows or durable inventory state to application services.

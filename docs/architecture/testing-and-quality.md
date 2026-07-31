@@ -55,11 +55,11 @@ Order Fulfilment:
 - Fulfilment starts only from Sales-released orders.
 - Picked components validate against sales order requirements.
 - Shipping purchase and label availability are required before completion unless approved exception exists.
-- Partial fulfilment reports remaining quantities to Sales as backordered.
+- Partial fulfilment sends remaining quantities to Sales as backordered.
 
 Cross-cutting:
 
-- Authorization categories for read, create, update, approve, cancel, and workflow-owned export.
+- Authorization categories for read, create, update, approve, and cancel.
 - Local self-approval prevention.
 - Service account scope and failed authorization behavior.
 

@@ -26,13 +26,13 @@ The Inventory Supervisor UI calls only the Inventory Supervisor API. The Invento
 - Approve, reject, return for investigation, or close inventory adjustments through Inventory Management.
 - Review goods receipt mismatches, under-receipts, over-receipts, damaged goods, quarantine, rejected receipt states, and PO context.
 - View related purchase order and fulfilment task context where needed for a decision.
-- Search/filter discrepancy, receipt exception, and pending review dashboards.
-- Accessible supervisor review and approval screens with CSV export where appropriate.
+- Search and filter discrepancy and receipt exception queues.
+- Accessible supervisor review and approval screens.
 
 ### Out of Scope
 
 - Durable inventory, purchasing, or fulfilment state; direct SQL access; EF Core migrations.
-- Warehouse count/receipt entry, PO authoring, sales order capture, fulfilment task execution, accounting postings, and advanced BI.
+- Warehouse count/receipt entry, PO authoring, sales order capture, fulfilment task execution, and accounting postings.
 
 ## 4. Business Context
 
@@ -42,7 +42,7 @@ Inventory supervisors need to keep stock trustworthy by reviewing exceptions cre
 
 | Role | Description | Key Responsibilities | UX / Access Needs |
 |---|---|---|---|
-| Inventory Supervisor | Inventory control user. | Review discrepancies, approve/reject adjustments, resolve receipt exceptions, and monitor inventory accuracy. | Exception queues, decision context, self-approval warnings, and CSV outputs. |
+| Inventory Supervisor | Inventory control user. | Review discrepancies, approve/reject adjustments, resolve receipt exceptions, and monitor inventory accuracy. | Exception queues, decision context, and self-approval warnings. |
 
 ## 6. User Journeys and Workflows
 
@@ -55,10 +55,10 @@ Inventory supervisors need to keep stock trustworthy by reviewing exceptions cre
 
 | ID | Workflow | Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|---|
-| ISU-APP-001 | Discrepancy queue | The application shall display inventory discrepancies and receipt exceptions requiring supervisor review. | Must | Given pending exceptions exist, when the supervisor opens the dashboard, then queues show status, age, SKU, location, variance/exception type, and priority context. |
+| ISU-APP-001 | Discrepancy queue | The application shall display inventory discrepancies and receipt exceptions requiring supervisor review. | Must | Given pending exceptions exist, when the supervisor opens the review queues, then they show status, age, SKU, location, variance/exception type, and priority context. |
 | ISU-APP-002 | PO context | The application shall show related PO context from Purchasing without copying Purchasing data into a local database. | Must | Given a receipt exception references a PO, when opened, then supplier, PO line, ordered quantity, and expected arrival context are displayed if authorized. |
 | ISU-APP-003 | Adjustment decision | The application shall submit approval, rejection, investigation, or closure outcomes to Inventory Management. | Must | Given a supervisor submits a decision, when Inventory accepts it, then the UI shows the updated state; denial or self-approval conflict is shown. |
-| ISU-APP-004 | Self-approval prevention | The application shall prevent or clearly surface self-approval denials when Inventory Management reports a self-approval conflict. | Must | Given the supervisor recorded the count/exception, when they attempt approval, then the action is denied by Inventory and the UI shows conflict reason. |
+| ISU-APP-004 | Self-approval prevention | The application shall prevent or clearly surface self-approval denials when Inventory Management indicates a self-approval conflict. | Must | Given the supervisor recorded the count/exception, when they attempt approval, then the action is denied by Inventory and the UI shows conflict reason. |
 | ISU-APP-005 | Search/filter | The application shall support filtering by age, status, location, SKU, variance, supplier, PO, exception type, recorder, and approver. | Should | Given filters are applied, when results load, then paginated domain results are shown with no local persistence. |
 
 ## 8. UI, Accessibility, and Usability Requirements
@@ -87,12 +87,12 @@ Inventory supervisors need to keep stock trustworthy by reviewing exceptions cre
 | ISU-INT-003 | Submit adjustment decision | Inventory Management | Decision, reason, and exception ID. | Show self-approval, authorization, or validation denial. |
 | ISU-INT-004 | Resolve receipt exception | Inventory Management | Resolution outcome, reason, and condition. | Show the accepted resolution or Inventory validation denial. |
 
-## 11. Reporting, Search, and Dashboard Requirements
+## 11. Exception and Approval Queue Requirements
 
-| View / Report | Audience | Purpose | Filters | Export Needs |
-|---|---|---|---|---|
-| Discrepancy Review Queue | Inventory Supervisor | Approve/reject variances. | Age, SKU, location, variance, status, recorder. | CSV. |
-| Receipt Exception Queue | Inventory Supervisor | Resolve receipt problems. | Supplier, PO, SKU, exception type, age, status. | CSV. |
+| View | Audience | Purpose | Filters |
+|---|---|---|---|
+| Discrepancy Review Queue | Inventory Supervisor | Approve/reject variances. | Age, SKU, location, variance, status, recorder. |
+| Receipt Exception Queue | Inventory Supervisor | Resolve receipt problems. | Supplier, PO, SKU, exception type, age, status. |
 
 ## 12. Security and Permissions
 
@@ -116,10 +116,9 @@ The application shall enforce Inventory Supervisor route and screen access. Inve
 - The application displays the Inventory Management MVP adjustment thresholds of 2,000 in the configured company currency or 10 percent variance, whichever is reached first.
 - Inventory Supervisor is the MVP approval role for discrepancy adjustments and receipt exception resolution.
 - The application can show read-only linked context from Purchasing and Order Fulfilment but cannot mutate those domains unless explicit contracts are added.
-- CSV export is sufficient for MVP operational oversight.
 - Recorded stock is visible to supervisors during discrepancy review to minimize MVP workflow complexity.
 - MVP receipt exception resolution options are Approve Booking, Reject Receipt, Quarantine, and Return for Investigation.
 
 ## 16. Acceptance Summary
 
-The Inventory Supervisor requirements are complete for MVP when they define discrepancy review, adjustment approval, receipt exception review, PO/fulfilment context, search/reporting, security, and explicit MVP defaults without assigning durable inventory, purchasing, or fulfilment state to the application.
+The Inventory Supervisor requirements are complete for MVP when they define discrepancy review, adjustment approval, receipt exception review, PO/fulfilment context, search, security, and explicit MVP defaults without assigning durable inventory, purchasing, or fulfilment state to the application.

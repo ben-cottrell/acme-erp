@@ -528,7 +528,7 @@ Key local relationship groups are catalog to SKU, warehouse to location, SKU/loc
 | `INV-DOM-009` | Reservation consumption/release/reversal quantities, immutable movements, and accepted external references |
 | `INV-DOM-010` | Product, balance, reservation, discrepancy, and receipt-exception indexes |
 
-Authorization, scanner/form validation, transition decisions, policy evaluation, service calls, pagination, CSV shaping, and serialized cross-row reconciliation remain domain/API responsibilities.
+Authorization, scanner/form validation, transition decisions, policy evaluation, service calls, pagination, data serialization, and cross-row reconciliation remain domain/API responsibilities.
 
 ### Business Rule Traceability
 

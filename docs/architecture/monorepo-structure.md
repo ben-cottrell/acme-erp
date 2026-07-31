@@ -53,7 +53,7 @@ The top-level `Acme.Erp.slnx` is the only solution file. Do not create per-domai
 | Inventory Supervisor | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Api` | `src/Applications/InventorySupervisor/Acme.Erp.InventorySupervisor.Ui` | `acme-erp/inventory-supervisor-api`, `acme-erp/inventory-supervisor-ui` | `/apps/inventory-supervisor/api`, `/apps/inventory-supervisor/ui` |
 | Fulfilment Supervisor | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Api` | `src/Applications/FulfilmentSupervisor/Acme.Erp.FulfilmentSupervisor.Ui` | `acme-erp/fulfilment-supervisor-api`, `acme-erp/fulfilment-supervisor-ui` | `/apps/fulfilment-supervisor/api`, `/apps/fulfilment-supervisor/ui` |
 
-The active MVP contains four domain API projects and seven application API/UI pairs. Security Administration and Audit Reporting are retired for MVP and must not be scaffolded from this structure.
+The active MVP contains four domain API projects and seven application API/UI pairs. Security Administration is retired for MVP and must not be scaffolded from this structure.
 
 ## Naming Rules
 

@@ -323,7 +323,7 @@ All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The
 | `IX_FulfilmentTasks_Status_Priority_ReleasedAt` on `(Status, Priority, ReleasedAt, Id)` | Stable operator task queue |
 | `IX_FulfilmentTasks_Assignee_Status_ReleasedAt` on `(AssignedOperatorSubject, Status, ReleasedAt, Id)` | Assigned workload |
 | `IX_FulfilmentTasks_Channel_Status` on `(SalesChannel, Status, ReleasedAt, Id)` | Channel filtering |
-| `IX_FulfilmentTaskLines_ExternalSkuId` on `(ExternalSkuId, FulfilmentTaskId)` | SKU queue/report search |
+| `IX_FulfilmentTaskLines_ExternalSkuId` on `(ExternalSkuId, FulfilmentTaskId)` | SKU queue search |
 | `IX_FulfilmentExceptions_Status_Type_OpenedAt` on `(Status, ExceptionType, OpenedAt, Id)` | Supervisor exception queue |
 | `IX_ShipmentPurchases_TrackingReference` filtered unique on `TrackingReference` | Tracking lookup |
 | `IX_ShipmentPurchases_Provider_Status_PurchasedAt` on `(Provider, Status, PurchasedAt, Id)` | Shipment review |
@@ -366,7 +366,7 @@ All foreign keys use `ON DELETE NO ACTION`; required FK columns are indexed. The
 | `FUL-DOM-008` | Typed accepted Inventory reservation/consumption/reversal references with unique external IDs |
 | `FUL-DOM-009` | Purpose-built task, assignment, SKU, business exception, shipment, and completion indexes |
 
-Authorization, payload/schema validation, transition decisions, provider adapter behavior, Inventory/Sales calls, pagination, CSV shaping, and cumulative cross-row validation remain domain/API responsibilities.
+Authorization, payload/schema validation, transition decisions, provider adapter behavior, Inventory/Sales calls, pagination, data serialization, and cumulative cross-row validation remain domain/API responsibilities.
 
 ### Business Rule Traceability
 

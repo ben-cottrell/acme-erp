@@ -4,7 +4,7 @@
 
 The Sales bounded context owns the durable business record for MVP customer account reference data, sales orders, sales order lines, sales channels, buyer request origination, and release-to-fulfilment decisions.
 
-Sales provides the authoritative sales demand record for internal sales-assisted ordering and authenticated customer ordering. It exposes WebAPI contracts, owns the Sales database, and remains responsible for sales validation, authorization, and state transitions. User-facing order capture, customer self-service, dashboards, and review screens are owned by application services.
+Sales provides the authoritative sales demand record for internal sales-assisted ordering and authenticated customer ordering. It exposes WebAPI contracts, owns the Sales database, and remains responsible for sales validation, authorization, and state transitions. User-facing order capture, customer self-service, and review screens are owned by application services.
 
 ## 2. Domain Scope
 
@@ -16,11 +16,11 @@ Sales provides the authoritative sales demand record for internal sales-assisted
 - Buyer request origination for non-routinely stocked products and copied buyer request status visibility.
 - Availability and product validation requests to Inventory Management during order validation and fulfilment release.
 - Fulfilment release contracts to Order Fulfilment and copied fulfilment status, shipment reference, partial fulfilment, backorder, and exception visibility.
-- Reporting queries and CSV source data for current sales workflows.
+- Query contracts for current sales workflows.
 
 ### Out of Scope
 
-- Razor Pages UI, screen flow, navigation, presentation validation, or user-facing dashboards.
+- Razor Pages UI, screen flow, navigation, or presentation validation.
 - Physical picking, packing, shipping purchase, label printing, shipment execution, or courier account management.
 - Purchase order authoring, supplier management, buyer workbench presentation, and goods receipt booking.
 - Product master ownership, inventory balance updates, stock checks, reservations outside release, and stock adjustments.
@@ -30,7 +30,7 @@ Sales provides the authoritative sales demand record for internal sales-assisted
 
 ACME needs a consistent sales order record across internal sales-assisted ordering and customer-originated website ordering. Sales must coordinate with Inventory Management for availability, Purchasing for non-stocked product requests, and Order Fulfilment for warehouse execution, while keeping sales state and customer-facing status consistent.
 
-The MVP outcome is a sales workflow where orders can be captured, validated, routed for purchasing where needed, released for fulfilment when eligible, updated from fulfilment progress, and searched or reported without applications owning durable sales state.
+The MVP outcome is a sales workflow where orders can be captured, validated, routed for purchasing where needed, released for fulfilment when eligible, updated from fulfilment progress, and queried without applications owning durable sales state.
 
 ## 4. Stakeholders and Roles
 
@@ -40,7 +40,7 @@ The MVP outcome is a sales workflow where orders can be captured, validated, rou
 | Sales Supervisor | Sales control role for exceptions and approvals. | Approve controlled overrides, post-confirmation cancellations, and released-order amendments. | Approve/reject controlled sales actions and review current order state. |
 | Authenticated Customer | B2B customer user submitting and viewing own orders through Customer Ordering. | Submit website-originated orders and view own order status. | Create customer-scoped orders and query own orders only. |
 | Buyer | Purchasing user responding to non-stocked product requests. | Review Sales-originated buyer requests through Purchasing. | Read buyer request context exposed by Sales; update decisions only through Purchasing integration. |
-| Fulfilment Operator/Supervisor | Warehouse fulfilment users executing released orders. | Execute fulfilment tasks and report exceptions/completion through Order Fulfilment. | Read released order payloads and send fulfilment status via Order Fulfilment contracts. |
+| Fulfilment Operator/Supervisor | Warehouse fulfilment users executing released orders. | Execute fulfilment tasks and submit exceptions/completion through Order Fulfilment. | Read released order payloads and send fulfilment status via Order Fulfilment contracts. |
 
 ## 5. Domain Capabilities and Workflows
 
@@ -56,7 +56,7 @@ The MVP outcome is a sales workflow where orders can be captured, validated, rou
 | ID | Capability | Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|---|
 | SAL-DOM-001 | Order intake | The system shall accept sales order create commands from authorized application APIs only when customer account, contact, billing address, shipping address, channel, order lines, and quantities are present. | Must | Given a complete authorized command, when Sales validates it, then a sales order is created in its initial state; given missing required data, then Sales rejects the command with field-level errors and no durable partial order. |
-| SAL-DOM-002 | Channel control | The system shall record the originating sales channel for every order and preserve it through status changes, reports, and integration payloads. | Must | Given an order is submitted from Sales Assistant or Customer Ordering, when the order is persisted or released, then the originating channel is queryable and included in operational reporting output. |
+| SAL-DOM-002 | Channel control | The system shall record the originating sales channel for every order and preserve it through status changes and integration payloads. | Must | Given an order is submitted from Sales Assistant or Customer Ordering, when the order is persisted or released, then the originating channel is queryable and included in integration payloads. |
 | SAL-DOM-003 | Product validation | The system shall validate stocked order lines against active product, SKU, and stocked-product data owned by Inventory Management. | Must | Given an order line references inactive, unknown, or non-stocked product data, when Sales validates the order, then the line is rejected or routed to the buyer request workflow according to Inventory response. |
 | SAL-DOM-004 | Availability review | The system shall request availability from Inventory Management during order validation and again before fulfilment release. | Must | Given availability changes after order entry, when release is requested, then Sales rechecks Inventory and either releases or moves to Pending Inventory. |
 | SAL-DOM-005 | Buyer request origination | The system shall create and track buyer requests for non-routinely stocked products without writing Purchasing-owned queue decisions. | Must | Given a sales order contains a non-stocked product request, when the request is submitted, then Sales records originating request context and sends Purchasing the request; when Purchasing updates status, then Sales updates copied visibility. |
@@ -119,18 +119,18 @@ The MVP outcome is a sales workflow where orders can be captured, validated, rou
 | SAL-INT-005 | Order Fulfilment | Sales | Inbound update | Fulfilment status, completed quantities, backorder quantities, shipment/tracking reference, and exception state. | Fulfilment task changes. | Reject updates that violate the Sales state model. |
 | SAL-INT-006 | Application APIs | Sales | Inbound command/query | Order commands, customer-scoped queries, sales search filters, approval actions. | User actions. | Domain authorization and validation errors returned without partial state changes. |
 
-## 11. Reporting and Query Requirements
+## 11. Search and Query Requirements
 
-| Report / Query | Audience | Purpose | Filters | Export Needs |
-|---|---|---|---|---|
-| Sales Order Search | Sales Assistant, Sales Supervisor | Find and manage orders. | Customer, channel, product/SKU, status, date range, buyer request state, fulfilment state. | CSV for operational review. |
-| Exception Queue | Sales Assistant, Sales Supervisor | Identify orders blocked by business validation, buyer request, or fulfilment exceptions. | Exception type, age, channel, customer, owner. | CSV optional for supervisor review. |
-| Customer Order Status | Authenticated Customer | Show customer-visible state for own orders. | Customer account, order number, date range, status. | No bulk export in MVP unless approved. |
-| Buyer Request Status | Sales Assistant, Buyer-facing integrations | Track non-stocked requests. | Request state, customer, product, date range, Purchasing status. | CSV for buyer coordination. |
+| Query / View | Audience | Purpose | Filters |
+|---|---|---|---|
+| Sales Order Search | Sales Assistant, Sales Supervisor | Find and manage orders. | Customer, channel, product/SKU, status, date range, buyer request state, fulfilment state. |
+| Exception Queue | Sales Assistant, Sales Supervisor | Identify orders blocked by business validation, buyer request, or fulfilment exceptions. | Exception type, age, channel, customer, owner. |
+| Customer Order Status | Authenticated Customer | Show customer-visible state for own orders. | Customer account, order number, date range, status. |
+| Buyer Request Status | Sales Assistant, Buyer-facing integrations | Track non-stocked requests. | Request state, customer, product, date range, Purchasing status. |
 
 ## 12. Security, Authorization, and Approval Controls
 
-Sales shall enforce domain-level authorization for create, amend, cancel, release, approve, query, and export actions. Application route or screen checks are usability controls only and must not replace Sales API decisions.
+Sales shall enforce domain-level authorization for create, amend, cancel, release, approve, and query actions. Application route or screen checks are usability controls only and must not replace Sales API decisions.
 
 Sales Supervisor approval is required for controlled overrides, configured high-value cancellations, and released-order amendments where policy requires review. The user who requests a controlled action shall not approve the same action. Customer-scoped users shall access only orders linked to their authenticated customer account. Service-to-service calls shall be authenticated, scoped, and authorized for the target operation.
 
@@ -147,7 +147,7 @@ Sales Supervisor approval is required for controlled overrides, configured high-
 - Purchasing for buyer request queue decisions and non-stocked product outcomes.
 - Order Fulfilment for release acceptance, fulfilment task state, shipment references, partial fulfilment, backorder, completion, and exceptions.
 - Gravitee and Authentik for ingress, identity, service account authentication, and customer scoping.
-- Application APIs for user-facing order capture, customer ordering, dashboards, and report presentation.
+- Application APIs for user-facing order capture, customer ordering, search, and review workflows.
 
 ## 15. Assumptions and MVP Defaults
 
@@ -157,9 +157,9 @@ Sales Supervisor approval is required for controlled overrides, configured high-
 - The MVP sales override and post-confirmation cancellation approval threshold is 5,000 in the configured company currency.
 - Sales Supervisor is the MVP approval role for sales overrides, post-confirmation cancellations, and released-order amendments.
 - Customer account scope is resolved from the authenticated user's Authentik group or claim mapped to a Sales customer account reference.
-- Sales stores copied fulfilment and buyer request visibility only to support sales workflows and reporting, not to take ownership of fulfilment or purchasing state.
+- Sales stores copied fulfilment and buyer request visibility only to support sales workflows, not to take ownership of fulfilment or purchasing state.
 - Customer-visible statuses use the Sales status names, with internal-only details hidden by application presentation.
 
 ## 16. Acceptance Summary
 
-The Sales requirements are complete for MVP when they define authoritative sales state ownership, order lifecycle rules, buyer request and fulfilment release integrations, Inventory/Purchasing/Fulfilment boundaries, domain authorization, local approval controls, reporting/query needs, and explicit MVP defaults without assigning UI workflows or durable sales state to application services.
+The Sales requirements are complete for MVP when they define authoritative sales state ownership, order lifecycle rules, buyer request and fulfilment release integrations, Inventory/Purchasing/Fulfilment boundaries, domain authorization, local approval controls, query needs, and explicit MVP defaults without assigning UI workflows or durable sales state to application services.

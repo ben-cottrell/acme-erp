@@ -92,13 +92,13 @@ ACME wants customers to submit orders without rekeying by internal sales staff w
 | CO-INT-003 | Submit order | Sales | Customer scope, order details, and website channel. | Show validation, authorization, and business conflict errors. |
 | CO-INT-004 | View status | Sales | Customer scope and order ID/reference/date filters. | Show no data for unauthorized scope and display the returned customer-visible status. |
 
-## 11. Reporting, Search, and Dashboard Requirements
+## 11. Order Views and Search Requirements
 
-| View / Report | Audience | Purpose | Filters | Export Needs |
-|---|---|---|---|---|
-| Order Status List | Authenticated Customer | Review own orders. | Date range, customer reference, status, order number. | No bulk export in MVP. |
-| Order Detail | Authenticated Customer | Review submitted order and status. | Order ID/reference. | Browser print optional; no compliance export. |
-| Product Search | Authenticated Customer | Find orderable products. | Search text, SKU/category if available, active. | None. |
+| View | Audience | Purpose | Filters |
+|---|---|---|---|
+| Order Status List | Authenticated Customer | Review own orders. | Date range, customer reference, status, order number. |
+| Order Detail | Authenticated Customer | Review submitted order and status. | Order ID/reference. |
+| Product Search | Authenticated Customer | Find orderable products. | Search text, SKU/category if available, active. |
 
 ## 12. Security and Permissions
 

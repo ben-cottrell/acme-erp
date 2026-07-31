@@ -327,7 +327,7 @@ All foreign keys use `ON DELETE NO ACTION`. Required relationships are indexed. 
 |---|---|
 | `IX_SalesOrders_Customer_Status_CreatedAt` on `(CustomerAccountId, Status, CreatedAt DESC, Id)` | Customer-scoped order search with stable sorting |
 | `IX_SalesOrders_Status_UpdatedAt` on `(Status, UpdatedAt, Id)` | Operational queues and age sorting |
-| `IX_SalesOrders_Channel_CreatedAt` on `(SalesChannelId, CreatedAt DESC, Id)` | Channel reporting |
+| `IX_SalesOrders_Channel_CreatedAt` on `(SalesChannelId, CreatedAt DESC, Id)` | Channel filtering and ordering |
 | `IX_SalesOrderLines_ExternalSkuId` on `(ExternalSkuId, SalesOrderId)` | SKU order search |
 | `IX_SalesOrderExceptions_Status_Type_OpenedAt` on `(Status, ExceptionType, OpenedAt, Id)` | Exception queue |
 | `IX_SalesBuyerRequests_Status_UpdatedAt` on `(Status, UpdatedAt, Id)` | Buyer-request visibility |

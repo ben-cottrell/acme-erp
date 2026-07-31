@@ -28,7 +28,7 @@ The Buyer UI calls only the Buyer API. The Buyer API owns no durable business st
 - Purchasing Manager approval/rejection of controlled purchasing actions through Purchasing.
 - Sales-originated buyer request queue handling through Purchasing, including accept, reject, clarify, and link to PO.
 - Receipt status, partial receipt, and receipt exception visibility copied from Inventory Management through Purchasing.
-- Search, filters, dashboards, CSV export, accessible PO entry, and approval review screens.
+- Search, filters, accessible PO entry, and approval review screens.
 
 ### Out of Scope
 
@@ -45,7 +45,7 @@ Buyers need a focused workbench for supplier ordering and Sales buyer requests w
 | Role | Description | Key Responsibilities | UX / Access Needs |
 |---|---|---|---|
 | Buyer | User who creates and manages POs. | Create/amend POs, process buyer requests, review receipt visibility, monitor expected arrivals. | Efficient line entry, supplier/product lookup, validation, queue filters. |
-| Purchasing Manager | Approval/control user. | Approve/reject controlled POs and amendments, review exceptions. | Approval queue, self-approval denial visibility, decision context, CSV export. |
+| Purchasing Manager | Approval/control user. | Approve/reject controlled POs and amendments, review exceptions. | Approval queue, self-approval denial visibility, decision context. |
 
 ## 6. User Journeys and Workflows
 
@@ -61,9 +61,9 @@ Buyers need a focused workbench for supplier ordering and Sales buyer requests w
 |---|---|---|---|---|
 | BYR-APP-001 | PO creation | The application shall allow authorized buyers to create and update purchase orders through Purchasing. | Must | Given required PO data is complete, when submitted, then Purchasing creates/updates the PO; validation errors are shown by field/action without local persistence. |
 | BYR-APP-002 | Product validation | The application shall display product/SKU/barcode validation results from Inventory Management without storing product master data locally. | Must | Given a SKU is inactive or unknown, when the buyer adds it, then validation state is shown and Purchasing determines whether submission is allowed. |
-| BYR-APP-003 | Approval | The application shall allow Purchasing Managers to review, approve, or reject controlled purchasing actions where Purchasing reports approval is required. | Must | Given a PO requires approval, when an authorized manager approves, then Purchasing records the decision; self-approval is denied and displayed. |
+| BYR-APP-003 | Approval | The application shall allow Purchasing Managers to review, approve, or reject controlled purchasing actions where Purchasing indicates approval is required. | Must | Given a PO requires approval, when an authorized manager approves, then Purchasing records the decision; self-approval is denied and displayed. |
 | BYR-APP-004 | Buyer requests | The application shall allow buyers to process Sales-originated non-stocked product requests through Purchasing. | Must | Given a request is pending, when the buyer accepts/rejects/returns/links it, then Purchasing records the decision and status returned to Sales. |
-| BYR-APP-005 | Receipt visibility | The application shall display receipt status, partial receipt, and receipt exceptions returned through Purchasing. | Must | Given Inventory has reported receipt status, when the PO is opened, then the UI shows the copied receipt business state. |
+| BYR-APP-005 | Receipt visibility | The application shall display receipt status, partial receipt, and receipt exceptions returned through Purchasing. | Must | Given Inventory has supplied receipt status, when the PO is opened, then the UI shows the copied receipt business state. |
 | BYR-APP-006 | Search | The application shall support search and filtering by PO number, supplier, SKU, barcode, expected arrival date, status, buyer, request state, and receipt exception. | Should | Given filters are supplied, when results load, then the API queries Purchasing/Inventory contracts and returns paginated data. |
 | BYR-APP-007 | Amend/cancel | The application shall support PO amendment and cancellation requests according to Purchasing state and approval requirements. | Must | Given controlled fields change after approval/order, when submitted, then the UI routes to approval or displays a Purchasing denial. |
 
@@ -95,15 +95,15 @@ Buyers need a focused workbench for supplier ordering and Sales buyer requests w
 | BYR-INT-004 | Process buyer request | Purchasing | Request decision, linked PO, clarification/rejection reason. | Show the accepted decision and resulting buyer-request state. |
 | BYR-INT-005 | View receipt status | Purchasing | PO receipt visibility and exception data. | Show the returned receipt and business exception state. |
 
-## 11. Reporting, Search, and Dashboard Requirements
+## 11. Search, Worklist, and Approval Queue Requirements
 
-| View / Report | Audience | Purpose | Filters | Export Needs |
-|---|---|---|---|---|
-| Open PO Workbench | Buyer | Manage active POs. | Supplier, SKU, date, status, buyer, expected arrival. | CSV. |
-| Expected Arrivals | Buyer, Purchasing Manager | Plan inbound purchases. | Date range, supplier, SKU, receipt state. | CSV. |
-| Buyer Request Queue | Buyer | Process Sales requests. | Request state, age, Sales order, SKU/description. | CSV optional. |
-| Approval Queue | Purchasing Manager | Review controlled actions. | Requester, threshold, status, age. | CSV optional for manager review. |
-| Receipt Exceptions | Buyer, Purchasing Manager | Monitor PO-related receipt issues. | Supplier, PO, SKU, exception type, age. | CSV optional. |
+| View | Audience | Purpose | Filters |
+|---|---|---|---|
+| Open PO Workbench | Buyer | Manage active POs. | Supplier, SKU, date, status, buyer, expected arrival. |
+| Expected Arrivals | Buyer, Purchasing Manager | Plan inbound purchases. | Date range, supplier, SKU, receipt state. |
+| Buyer Request Queue | Buyer | Process Sales requests. | Request state, age, Sales order, SKU/description. |
+| Approval Queue | Purchasing Manager | Review controlled actions. | Requester, threshold, status, age. |
+| Receipt Exceptions | Buyer, Purchasing Manager | Monitor PO-related receipt issues. | Supplier, PO, SKU, exception type, age. |
 
 ## 12. Security and Permissions
 
@@ -126,12 +126,12 @@ The application shall enforce route and screen access for Buyer and Purchasing M
 
 - Supplier reference data is Purchasing-owned for MVP.
 - Buyer application users are authenticated internal users.
-- MVP uses one configured company currency and CSV exports.
+- MVP uses one configured company currency.
 - Accounts payable, invoice matching, tax, landed cost, supplier onboarding, and payment processing are excluded.
 - The application displays the Purchasing domain MVP approval threshold of 10,000 in the configured company currency and uses Purchasing Manager as the approval role.
 - Buyer request screens show Sales order reference, requested product description, quantity, requested-by role, request date, and reason; customer personal data is not shown unless Purchasing/Sales explicitly authorizes it.
-- Buyers may close partially received purchase orders only when Purchasing reports a close action is available; no additional application-specific approval flow is added for MVP.
+- Buyers may close partially received purchase orders only when Purchasing exposes a close action; no additional application-specific approval flow is added for MVP.
 
 ## 16. Acceptance Summary
 
-The Buyer requirements are complete for MVP when they define PO authoring, approvals, buyer request handling, product validation, receipt visibility, search/reporting, security, and explicit MVP defaults without assigning durable purchasing, inventory, or sales state to the application.
+The Buyer requirements are complete for MVP when they define PO authoring, approvals, buyer request handling, product validation, receipt visibility, search, security, and explicit MVP defaults without assigning durable purchasing, inventory, or sales state to the application.

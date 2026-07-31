@@ -95,13 +95,13 @@ Warehouse users need quick, reliable capture of physical counts and received goo
 | WHO-INT-004 | Submit receipt | Inventory Management | PO reference, received lines, quantities, and condition. | Show booked, business exception, or rejected state. |
 | WHO-INT-005 | View exception | Inventory Management | Receipt or discrepancy status. | Show supervisor route with no local approval. |
 
-## 11. Reporting, Search, and Dashboard Requirements
+## 11. Worklist and Exception Queue Requirements
 
-| View / Report | Audience | Purpose | Filters | Export Needs |
-|---|---|---|---|---|
-| Count Task List | Warehouse Operator | Find open counts. | Location, SKU, status, date. | None for MVP. |
-| Receipt Worklist | Warehouse Operator | Receive expected POs. | PO, supplier, expected arrival, status. | None for MVP. |
-| Receipt Exceptions | Warehouse Operator | See items routed to supervisor. | Exception type, PO, SKU, status. | CSV handled by supervisor/reporting apps. |
+| View | Audience | Purpose | Filters |
+|---|---|---|---|
+| Count Task List | Warehouse Operator | Find open counts. | Location, SKU, status, date. |
+| Receipt Worklist | Warehouse Operator | Receive expected POs. | PO, supplier, expected arrival, status. |
+| Receipt Exceptions | Warehouse Operator | See items routed to supervisor. | Exception type, PO, SKU, status. |
 
 ## 12. Security and Permissions
 
@@ -122,7 +122,6 @@ The application shall enforce Warehouse Operator route and screen access. Invent
 
 - Warehouse automation hardware integrations are out of scope; scanner-friendly input is sufficient for MVP.
 - Warehouse Operators cannot approve discrepancies or receipt exceptions.
-- CSV/export needs for inventory exceptions are handled by supervisor/reporting applications.
 - Application does not persist offline work in MVP.
 - MVP scanner support assumes keyboard-wedge barcode scanners that submit text into focused fields; Code 128 labels are the default barcode format.
 - Recorded stock is visible during counts to minimize MVP complexity; blind counts are deferred.

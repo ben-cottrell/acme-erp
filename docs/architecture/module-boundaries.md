@@ -81,7 +81,7 @@ flowchart LR
 - Application APIs may compose domain API calls but must not infer ownership data that domain APIs require.
 - Domain APIs reject incomplete cross-domain payloads rather than inferring missing ownership data.
 - Read models copied from another domain record their source and external ID.
-- Finance integrations are future scope for the MVP; operational CSV exports and reports provide interim visibility.
+- Finance integrations are future scope for the MVP. Operational data is provided through domain query contracts.
 
 ## Review Checklist
 
