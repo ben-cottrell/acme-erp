@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-acme-erp-local
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: authentik-blueprint-acme-erp-local
+    app.kubernetes.io/part-of: acme-erp
+data:
+  acme-erp-local.yaml: |
+    version: 1
+    metadata:
+      name: ACME ERP Local Bootstrap
+    entries:
+      - model: authentik_core.group
+        identifiers:
+          name: Sales Assistant
+      - model: authentik_core.group
+        identifiers:
+          name: Buyer
+      - model: authentik_core.group
+        identifiers:
+          name: Warehouse Operator
+      - model: authentik_core.group
+        identifiers:
+          name: Fulfilment Operator
+      - model: authentik_core.group
+        identifiers:
+          name: Support User
+      - model: authentik_core.group
+        identifiers:
+          name: Customer
+      - model: authentik_core.group
+        identifiers:
+          name: Integration Service Account

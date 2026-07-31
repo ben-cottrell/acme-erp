@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlserver
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: sqlserver
+    app.kubernetes.io/part-of: acme-erp
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: sqlserver
+  ports:
+    - name: tds
+      port: 1433
+      targetPort: tds
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sqlserver-data
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: sqlserver
+    app.kubernetes.io/part-of: acme-erp
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sqlserver
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: sqlserver
+    app.kubernetes.io/part-of: acme-erp
+    app.kubernetes.io/component: database
+spec:
+  serviceName: sqlserver
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sqlserver
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sqlserver
+        app.kubernetes.io/part-of: acme-erp
+        app.kubernetes.io/component: database
+    spec:
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: sqlserver
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: tds
+              containerPort: 1433
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: MSSQL_PID
+              value: Developer
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: erp-sqlserver
+                  key: sa-password
+          volumeMounts:
+            - name: data
+              mountPath: /var/opt/mssql
+          readinessProbe:
+            tcpSocket:
+              port: tds
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: tds
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: sqlserver-data

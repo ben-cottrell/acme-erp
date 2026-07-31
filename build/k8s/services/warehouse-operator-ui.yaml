@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: warehouse-operator-ui
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: warehouse-operator-ui
+    app.kubernetes.io/part-of: acme-erp
+    app.kubernetes.io/component: application-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: warehouse-operator-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: warehouse-operator-ui
+        app.kubernetes.io/part-of: acme-erp
+        app.kubernetes.io/component: application-ui
+    spec:
+      containers:
+        - name: warehouse-operator-ui
+          image: acme-erp/warehouse-operator-ui
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Development
+            - name: ApplicationApi__BaseUrl
+              value: http://warehouse-operator-api/apps/warehouse-operator/api
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: warehouse-operator-ui
+  namespace: erp-local
+  labels:
+    app.kubernetes.io/name: warehouse-operator-ui
+    app.kubernetes.io/part-of: acme-erp
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: warehouse-operator-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,0 +1,70 @@
+name: CI Coverage Gate
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        description: .NET SDK version used to run ReportGenerator.
+        required: false
+        type: string
+        default: 10.0.x
+      minimum-line-coverage:
+        description: Minimum aggregate line coverage percentage. The gate requires a result greater than this value.
+        required: false
+        type: number
+        default: 90
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  coverage:
+    name: Enforce Line Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Download coverage results
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-results
+          path: coverage-results
+
+      - name: Install ReportGenerator
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.*
+
+      - name: Generate coverage report
+        shell: pwsh
+        run: |
+          $coverageFiles = @(Get-ChildItem -Path coverage-results -Filter *.cobertura.xml -ErrorAction SilentlyContinue)
+
+          if ($coverageFiles.Count -eq 0) {
+            Write-Error 'No Cobertura coverage files were produced by the test stage.'
+            exit 1
+          }
+
+          reportgenerator -reports:"coverage-results/*.cobertura.xml" -targetdir:"coverage-report" -reporttypes:"HtmlInline_AzurePipelines;Cobertura"
+
+      - name: Require line coverage threshold
+        shell: pwsh
+        run: |
+          [xml]$coverage = Get-Content coverage-report/Cobertura.xml
+          $lineCoverage = [Math]::Round(([double]$coverage.coverage.'line-rate') * 100, 2)
+          $minimumLineCoverage = [double]'${{ inputs.minimum-line-coverage }}'
+
+          Write-Output "Aggregate line coverage: $lineCoverage%"
+
+          if ($lineCoverage -le $minimumLineCoverage) {
+            Write-Error "Aggregate line coverage must be greater than $minimumLineCoverage%."
+            exit 1
+          }
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report

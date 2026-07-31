@@ -1,0 +1,26 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Domain/">
+    <Project Path="src/Domain/Sales/Acme.Erp.Sales.Api/Acme.Erp.Sales.Api.csproj" />
+    <Project Path="src/Domain/Purchasing/Acme.Erp.Purchasing.Api/Acme.Erp.Purchasing.Api.csproj" />
+    <Project Path="src/Domain/InventoryManagement/Acme.Erp.InventoryManagement.Api/Acme.Erp.InventoryManagement.Api.csproj" />
+    <Project Path="src/Domain/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Acme.Erp.OrderFulfilment.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Applications/">
+    <Project Path="src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Api/Acme.Erp.SalesAssistant.Api.csproj" />
+    <Project Path="src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Ui/Acme.Erp.SalesAssistant.Ui.csproj" />
+    <Project Path="src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Api/Acme.Erp.CustomerOrdering.Api.csproj" />
+    <Project Path="src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Ui/Acme.Erp.CustomerOrdering.Ui.csproj" />
+    <Project Path="src/Applications/Buyer/Acme.Erp.Buyer.Api/Acme.Erp.Buyer.Api.csproj" />
+    <Project Path="src/Applications/Buyer/Acme.Erp.Buyer.Ui/Acme.Erp.Buyer.Ui.csproj" />
+    <Project Path="src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Api/Acme.Erp.WarehouseOperator.Api.csproj" />
+    <Project Path="src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui/Acme.Erp.WarehouseOperator.Ui.csproj" />
+    <Project Path="src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api/Acme.Erp.FulfilmentOperator.Api.csproj" />
+    <Project Path="src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui/Acme.Erp.FulfilmentOperator.Ui.csproj" />
+  </Folder>
+</Solution>

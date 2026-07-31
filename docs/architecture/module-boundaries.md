@@ -1,0 +1,99 @@
+# Module Boundaries
+
+## Status
+
+This document summarizes the boundary model defined in `docs/architecture/domain-and-application-boundaries.md`. Bounded contexts are domain services, and user-facing workloads are application services.
+
+## Updated Boundary Rules
+
+- Domain bounded contexts own durable business state and SQL Server databases.
+- Domain bounded contexts expose WebAPI contracts and do not own Razor Pages UI services.
+- Application services own user-facing workflows for roles or channels.
+- Each application service has exactly one Razor Pages UI and exactly one application WebAPI.
+- Application UIs call only their paired application APIs.
+- Application APIs do not own databases, EF Core migrations, or durable business state.
+- Application APIs call one or more domain APIs to read or mutate durable business state.
+- Domain APIs remain authoritative for business authorization, validation, persistence, domain invariants, and state transitions.
+
+## Domain Boundary Matrix
+
+| Domain bounded context | Domain API | Database | Owns | Does not own |
+|---|---|---|---|---|
+| Sales | `Acme.Erp.Sales.Api` | Sales database | Customer account reference data for MVP, sales orders, order channels, buyer request state, release-to-fulfilment decisions | Sales assistant UI, customer ordering UI, picking, packing, shipping, PO creation, stock balance updates |
+| Purchasing | `Acme.Erp.Purchasing.Api` | Purchasing database | Supplier reference data for MVP, purchase orders, buyer request queue state, PO status | Buyer UI, goods receipt booking, inventory balances, sales order entry, finance postings |
+| Inventory Management | `Acme.Erp.InventoryManagement.Api` | Inventory database | Product/SKU/barcode/stocking configuration for MVP, recorded stock, availability, reservations, goods receipts, informational stock checks, stock movements | Warehouse UI, purchase order authoring, sales order authoring, courier shipment purchase |
+| Order Fulfilment | `Acme.Erp.OrderFulfilment.Api` | Fulfilment database | Fulfilment task state, exact-quantity picking, packing, courier shipment records, label references, full completion | Fulfilment application UI, sales order creation, product master ownership, stock balance authority |
+
+## Application Boundary Matrix
+
+| Application | Application API | Application UI | Primary users | Domain APIs consumed | Database |
+|---|---|---|---|---|---|
+| Sales Assistant | `Acme.Erp.SalesAssistant.Api` | `Acme.Erp.SalesAssistant.Ui` | Sales Assistant | Sales, Inventory Management, Purchasing, Order Fulfilment | None |
+| Customer Ordering | `Acme.Erp.CustomerOrdering.Api` | `Acme.Erp.CustomerOrdering.Ui` | Authenticated Customer | Sales, Inventory Management | None |
+| Buyer | `Acme.Erp.Buyer.Api` | `Acme.Erp.Buyer.Ui` | Buyer | Purchasing, Sales, Inventory Management | None |
+| Warehouse Operator | `Acme.Erp.WarehouseOperator.Api` | `Acme.Erp.WarehouseOperator.Ui` | Warehouse Operator | Inventory Management, Purchasing | None |
+| Fulfilment Operator | `Acme.Erp.FulfilmentOperator.Api` | `Acme.Erp.FulfilmentOperator.Ui` | Fulfilment Operator | Order Fulfilment, Sales, Inventory Management | None |
+
+## Boundary Diagram
+
+```mermaid
+flowchart LR
+    Gravitee[Gravitee ingress] --> WarehouseUi[Warehouse Operator UI]
+    Gravitee --> WarehouseApi[Warehouse Operator API]
+    Gravitee --> FulfilmentUi[Fulfilment Operator UI]
+    Gravitee --> FulfilmentAppApi[Fulfilment Operator API]
+    Gravitee --> SalesAssistantUi[Sales Assistant UI]
+    Gravitee --> SalesAssistantApi[Sales Assistant API]
+    Gravitee --> CustomerOrderingUi[Customer Ordering UI]
+    Gravitee --> CustomerOrderingApi[Customer Ordering API]
+    Gravitee --> BuyerUi[Buyer UI]
+    Gravitee --> BuyerApi[Buyer API]
+
+    WarehouseUi --> WarehouseApi
+    FulfilmentUi --> FulfilmentAppApi
+    SalesAssistantUi --> SalesAssistantApi
+    CustomerOrderingUi --> CustomerOrderingApi
+    BuyerUi --> BuyerApi
+
+    WarehouseApi --> InventoryApi[Inventory Domain API]
+    WarehouseApi --> PurchasingApi[Purchasing Domain API]
+    FulfilmentAppApi --> FulfilmentApi[Order Fulfilment Domain API]
+    FulfilmentAppApi --> SalesApi[Sales Domain API]
+    FulfilmentAppApi --> InventoryApi
+    SalesAssistantApi --> SalesApi
+    SalesAssistantApi --> InventoryApi
+    SalesAssistantApi --> PurchasingApi
+    SalesAssistantApi --> FulfilmentApi
+    CustomerOrderingApi --> SalesApi
+    CustomerOrderingApi --> InventoryApi
+    BuyerApi --> PurchasingApi
+    BuyerApi --> SalesApi
+    BuyerApi --> InventoryApi
+
+    SalesApi --> SalesDb[(Sales DB)]
+    PurchasingApi --> PurchasingDb[(Purchasing DB)]
+    InventoryApi --> InventoryDb[(Inventory DB)]
+    FulfilmentApi --> FulfilmentDb[(Fulfilment DB)]
+```
+
+## Integration Contract Rules
+
+- Every cross-service command carries the source service, target service, and required external record identifiers.
+- Application APIs may compose domain API calls but must not infer ownership data that domain APIs require.
+- Domain APIs reject incomplete cross-domain payloads rather than inferring missing ownership data.
+- Read models copied from another domain record their source and external ID.
+- Finance integrations are future scope for the MVP. Operational data is provided through domain query contracts.
+
+## Review Checklist
+
+- [ ] Each domain bounded context has one database-owning API and no UI.
+- [ ] Each application has one UI and one API.
+- [ ] Application UI services call only their paired application APIs.
+- [ ] Application APIs call domain APIs and never connect directly to SQL Server.
+- [ ] Domain APIs own persistence and EF Core migrations for their databases.
+- [ ] Cross-domain references use external ID columns.
+- [ ] Sales releases orders and Order Fulfilment executes warehouse fulfilment state.
+- [ ] Inventory reserves every required line quantity at fulfilment release and consumes those exact quantities at full fulfilment completion.
+- [ ] Inventory stock checks are informational and do not change stock balances or create movements.
+- [ ] Purchasing supplies PO data for inventory receipt validation but does not book stock.
+- [ ] All ingress is routed through Gravitee with Authentik-backed identity.

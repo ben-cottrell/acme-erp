@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - feature/**
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  packages: write
+  pull-requests: read
+  security-events: write
+
+jobs:
+  version:
+    name: Version
+    uses: ./.github/workflows/ci-version.yml
+    with:
+      dotnet-version: 10.0.x
+
+  vulnerability-scan:
+    name: Vulnerability Scan
+    needs: version
+    uses: ./.github/workflows/ci-vulnerability-scan.yml
+    with:
+      dotnet-version: 10.0.x
+
+  dependency-review:
+    name: Dependency Review
+    needs: version
+    uses: ./.github/workflows/ci-dependency-review.yml
+
+  build:
+    name: Build
+    needs:
+      - dependency-review
+      - vulnerability-scan
+    uses: ./.github/workflows/ci-build.yml
+    with:
+      dotnet-version: 10.0.x
+      configuration: Release
+
+  codeql:
+    name: CodeQL
+    needs: build
+    uses: ./.github/workflows/ci-codeql.yml
+    with:
+      dotnet-version: 10.0.x
+      configuration: Release
+
+  test:
+    name: Unit Tests
+    needs: build
+    uses: ./.github/workflows/ci-test.yml
+    with:
+      dotnet-version: 10.0.x
+      configuration: Release
+
+  coverage:
+    name: Coverage Gate
+    needs: test
+    uses: ./.github/workflows/ci-coverage.yml
+    with:
+      dotnet-version: 10.0.x
+      minimum-line-coverage: 90
+
+  docker-images:
+    name: Docker Images
+    needs:
+      - codeql
+      - version
+      - coverage
+    uses: ./.github/workflows/ci-docker-images.yml
+    with:
+      dotnet-version: 10.0.x

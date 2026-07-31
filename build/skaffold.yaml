@@ -1,0 +1,212 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: acme-erp-local
+build:
+  tagPolicy:
+    inputDigest: {}
+  local:
+    push: false
+  artifacts:
+    - image: acme-erp/sales-api
+      context: .
+      docker:
+        dockerfile: src/Domain/Sales/Acme.Erp.Sales.Api/Dockerfile
+    - image: acme-erp/purchasing-api
+      context: .
+      docker:
+        dockerfile: src/Domain/Purchasing/Acme.Erp.Purchasing.Api/Dockerfile
+    - image: acme-erp/inventory-management-api
+      context: .
+      docker:
+        dockerfile: src/Domain/InventoryManagement/Acme.Erp.InventoryManagement.Api/Dockerfile
+    - image: acme-erp/order-fulfilment-api
+      context: .
+      docker:
+        dockerfile: src/Domain/OrderFulfilment/Acme.Erp.OrderFulfilment.Api/Dockerfile
+    - image: acme-erp/sales-assistant-api
+      context: .
+      docker:
+        dockerfile: src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Api/Dockerfile
+    - image: acme-erp/sales-assistant-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/SalesAssistant/Acme.Erp.SalesAssistant.Ui/Dockerfile
+    - image: acme-erp/customer-ordering-api
+      context: .
+      docker:
+        dockerfile: src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Api/Dockerfile
+    - image: acme-erp/customer-ordering-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/CustomerOrdering/Acme.Erp.CustomerOrdering.Ui/Dockerfile
+    - image: acme-erp/buyer-api
+      context: .
+      docker:
+        dockerfile: src/Applications/Buyer/Acme.Erp.Buyer.Api/Dockerfile
+    - image: acme-erp/buyer-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/Buyer/Acme.Erp.Buyer.Ui/Dockerfile
+    - image: acme-erp/warehouse-operator-api
+      context: .
+      docker:
+        dockerfile: src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Api/Dockerfile
+    - image: acme-erp/warehouse-operator-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/WarehouseOperator/Acme.Erp.WarehouseOperator.Ui/Dockerfile
+    - image: acme-erp/fulfilment-operator-api
+      context: .
+      docker:
+        dockerfile: src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Api/Dockerfile
+    - image: acme-erp/fulfilment-operator-ui
+      context: .
+      docker:
+        dockerfile: src/Applications/FulfilmentOperator/Acme.Erp.FulfilmentOperator.Ui/Dockerfile
+manifests:
+  rawYaml:
+    - build/k8s/namespaces/*.yaml
+    - build/k8s/gravitee/routes/*.yaml
+    - build/k8s/services/*.yaml
+deploy:
+  kubectl:
+    defaultNamespace: erp-local
+portForward:
+  - resourceType: service
+    resourceName: gravitee-apim-gateway
+    namespace: erp-local
+    port: 8082
+    localPort: 8082
+profiles:
+  - name: namespace
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+  - name: sqlserver
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+          - build/k8s/sqlserver/*.yaml
+  - name: identity
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+          - build/k8s/authentik/blueprint-configmap.yaml
+      - op: add
+        path: /manifests/helm
+        value:
+          releases:
+            - name: authentik
+              namespace: erp-local
+              remoteChart: authentik
+              repo: https://charts.goauthentik.io
+              version: 2026.5.5
+              valuesFiles:
+                - build/k8s/authentik/values.local.yaml
+                - build/.local/authentik.generated-values.yaml
+  - name: gateway
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+      - op: add
+        path: /manifests/helm
+        value:
+          releases:
+            - name: gravitee
+              namespace: erp-local
+              remoteChart: apim
+              repo: https://helm.gravitee.io
+              version: 4.12.9
+              valuesFiles:
+                - build/k8s/gravitee/values.local.yaml
+  - name: gateway-loadbalancer
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+      - op: add
+        path: /manifests/helm
+        value:
+          releases:
+            - name: gravitee
+              namespace: erp-local
+              remoteChart: apim
+              repo: https://helm.gravitee.io
+              version: 4.12.9
+              valuesFiles:
+                - build/k8s/gravitee/values.local.yaml
+                - build/k8s/gravitee/values.local-loadbalancer.yaml
+  - name: routes
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+          - build/k8s/gravitee/routes/*.yaml
+  - name: platform
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+          - build/k8s/sqlserver/*.yaml
+          - build/k8s/authentik/blueprint-configmap.yaml
+          - build/k8s/gravitee/routes/*.yaml
+      - op: add
+        path: /manifests/helm
+        value:
+          releases:
+            - name: authentik
+              namespace: erp-local
+              remoteChart: authentik
+              repo: https://charts.goauthentik.io
+              version: 2026.5.5
+              valuesFiles:
+                - build/k8s/authentik/values.local.yaml
+                - build/.local/authentik.generated-values.yaml
+            - name: gravitee
+              namespace: erp-local
+              remoteChart: apim
+              repo: https://helm.gravitee.io
+              version: 4.12.9
+              valuesFiles:
+                - build/k8s/gravitee/values.local.yaml
+  - name: apps
+    patches:
+      - op: replace
+        path: /manifests/rawYaml
+        value:
+          - build/k8s/namespaces/*.yaml
+          - build/k8s/gravitee/routes/*.yaml
+          - build/k8s/services/*.yaml

@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gravitee-acme-erp-route-order-fulfilment-api
+  namespace: erp-local
+  labels:
+    managed-by: gravitee.io
+    gio-type: apidefinitions.gravitee.io
+    app.kubernetes.io/part-of: acme-erp
+data:
+  environmentId: DEFAULT
+  apiDefinitionVersion: "4.0.0"
+  definition: |
+    {
+      "id": "acme-erp-order-fulfilment-api",
+      "name": "Order Fulfilment API",
+      "apiVersion": "1.0.0",
+      "definitionVersion": "4.0.0",
+      "type": "proxy",
+      "state": "STARTED",
+      "listeners": [
+        { "type": "http", "paths": [{ "path": "/domain/fulfilment/api" }], "entrypoints": [{ "type": "http-proxy", "configuration": {} }] }
+      ],
+      "endpointGroups": [
+        { "name": "default-group", "type": "http-proxy", "loadBalancer": { "type": "round-robin" }, "endpoints": [{ "name": "default", "type": "http-proxy", "weight": 1, "inheritConfiguration": false, "configuration": { "target": "http://order-fulfilment-api.erp-local.svc.cluster.local/domain/fulfilment/api" } }] }
+      ],
+      "plans": [
+        { "id": "acme-erp-order-fulfilment-api-keyless", "name": "Default Keyless (UNSECURED)", "security": { "type": "key-less" }, "status": "PUBLISHED", "mode": "STANDARD", "flows": [] }
+      ]
+    }
